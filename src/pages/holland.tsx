@@ -29,8 +29,7 @@ export default function HollandPage() {
       alert(
         'Bạn chưa đăng nhập. Kết quả sẽ không lưu vào hệ thống, nhưng bạn có thể tiếp tục chat.'
       );
-      router.push('/chat');
-      return;
+      return router.push('/chat');
     }
 
     const payload = {
@@ -41,34 +40,27 @@ export default function HollandPage() {
       }))
     };
 
-    try {
-      const res = await fetch('/api/holland/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const { profile } = await res.json();
-        alert('Xong! Điểm Holland của bạn:\n' + JSON.stringify(profile));
-        router.push('/chat');
-      } else {
-        const err = await res.json();
-        alert('Lỗi: ' + (err.error || 'Không xác định'));
-      }
-    } catch (error) {
-      console.error(error);
-      alert('Lỗi kết nối');
+    const res = await fetch('/api/holland/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      const { profile } = await res.json();
+      alert('Xong! Điểm Holland của bạn:\n' + JSON.stringify(profile));
+      router.push('/chat');
+    } else {
+      const err = await res.json();
+      alert('Lỗi: ' + (err.error || 'Không xác định'));
     }
   };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
       <header className="p-4 bg-white shadow">
         <h1 className="text-2xl font-bold text-center">Trắc nghiệm Holland</h1>
       </header>
 
-      {/* Nội dung chính có scroll */}
       <main className="flex-1 overflow-y-auto p-4 max-w-xl mx-auto w-full space-y-6">
         {questions.map(q => {
           const sel = responses[q.id];
@@ -120,7 +112,6 @@ export default function HollandPage() {
         })}
       </main>
 
-      {/* Nút Hoàn thành cố định ở dưới */}
       <footer style={{ marginTop: '40px' }} className="pb-4 px-4 bg-white shadow">
         <button
           disabled={
