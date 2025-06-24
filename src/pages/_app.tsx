@@ -1,7 +1,5 @@
 // src/pages/_app.tsx
-'use client';
-
-import '../styles/globals.css';   // ← quan trọng: chỉ 1 cấp lên!
+import '../styles/globals.css';    // ← quan trọng: chỉ một cấp lên tới styles
 import type { AppProps } from 'next/app';
 import { useState } from 'react';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';

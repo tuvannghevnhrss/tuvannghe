@@ -1,3 +1,6 @@
+/* src/styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Chèn custom CSS của bạn ở đây nếu cần */
