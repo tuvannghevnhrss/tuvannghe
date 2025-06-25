@@ -1,28 +1,37 @@
-import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// src/app/api/mbti/route.ts
+import { NextResponse } from "next/server";
+import { cookies, headers } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-export const dynamic = 'force-dynamic';   // luôn chạy trên Edge/Node
-export const runtime = 'nodejs';          // tránh Next biến thành Edge Function
+// ép chạy dynamic trên Node.js
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const supabase = createRouteHandlerClient({ cookies });
+  // khởi tạo Supabase client cho route handler
+  const supabase = createRouteHandlerClient({ cookies, headers });
 
+  // 1) Xác thực user
   const {
     data: { user },
-    error: authError,
+    error: authErr,
   } = await supabase.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Unauth' }, { status: 401 });
+  if (authErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const body = await req.json();               // { code: 'INFP' }
-  const { code } = body as { code: string };
+  // 2) Lấy payload từ body
+  const { code } = (await req.json()) as { code: string };
 
-  const { error: dbError } = await supabase
-    .from('mbti_results')
+  // 3) Lưu kết quả (upsert để tránh duplicate)
+  const { error: dbErr } = await supabase
+    .from("mbti_results")
     .upsert({ user_id: user.id, mbti_code: code });
 
-  if (dbError)
-    return NextResponse.json({ error: dbError.message }, { status: 500 });
+  if (dbErr) {
+    return NextResponse.json({ error: dbErr.message }, { status: 500 });
+  }
 
+  // 4) Trả về thành công
   return NextResponse.json({ ok: true });
 }
