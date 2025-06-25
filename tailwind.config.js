@@ -1,10 +1,22 @@
-// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx}',
-    './src/components/**/*.{js,ts,jsx,tsx}'
+    "./src/app/**/*.{js,ts,jsx,tsx}",
+    "./src/components/**/*.{js,ts,jsx,tsx}",
   ],
-  theme: { extend: {} },
-  plugins: [],
-}
+  theme: {
+    extend: {
+      colors: {
+        brandYellow: "#FFC40C",
+        navText: "#333333",
+      },
+      spacing: {
+        header: "5rem",   // 80 px
+        navGap: "3rem",   // 48 px
+      },
+    },
+  },
+  plugins: [
+    require("@tailwindcss/typography"),
+  ],
+};
