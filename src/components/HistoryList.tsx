@@ -1,28 +1,36 @@
-// src/components/HistoryList.tsx
-'use client'
+'use client';
+import { ChatMessage } from '@/context/chat';
 
-import { ChatMessage } from '@/context/chat'
-import React from 'react'
-
-interface HistoryListProps {
-  messages: ChatMessage[]
+interface Props {
+  messages: ChatMessage[];
 }
 
-export default function HistoryList({ messages }: HistoryListProps) {
+/* gom block user→assistant, hiển thị 1 dòng + ngày yyyy-mm-dd */
+export default function HistoryList({ messages }: Props) {
+  if (!messages.length)
+    return (
+      <p className="text-sm italic text-gray-500">Chưa có hội thoại.</p>
+    );
+
+  const threads: { date: string; preview: string }[] = [];
+
+  for (let i = 0; i < messages.length; i += 2) {
+    const user = messages[i];
+    const iso = (user.created_at ?? new Date().toISOString()).slice(0, 10); // yyyy-mm-dd
+    threads.push({ date: iso, preview: user.content.slice(0, 40) });
+  }
+
   return (
     <ul className="space-y-2">
-      {messages.map((msg) => {
-        // Hiệu chỉnh tiền tố
-        const prefix = msg.role === 'assistant' ? 'HRSS:' : 'Bạn:'
-        // Chỉ lấy dòng đầu tiên, bỏ xuống dòng
-        const summary = msg.content.split('\n')[0]
-        return (
-          <li key={msg.id} className="text-sm text-gray-700 truncate">
-            <span className="font-semibold mr-1">{prefix}</span>
-            {summary}
-          </li>
-        )
-      })}
+      {threads.map((t, idx) => (
+        <li
+          key={idx}
+          className="border rounded px-3 py-2 hover:bg-gray-100 text-sm leading-snug cursor-pointer"
+        >
+          <div className="font-medium text-gray-600">{t.date}</div>
+          <div className="truncate">Bạn: {t.preview}</div>
+        </li>
+      ))}
     </ul>
-  )
+  );
 }

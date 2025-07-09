@@ -1,22 +1,16 @@
-/** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./src/app/**/*.{js,ts,jsx,tsx}",
-    "./src/components/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./src/**/*.{ts,tsx,js,jsx}"],
   theme: {
     extend: {
-      colors: {
-        brandYellow: "#FFC40C",
-        navText: "#333333",
-      },
-      spacing: {
-        header: "5rem",   // 80 px
-        navGap: "3rem",   // 48 px
+      typography: {
+        DEFAULT: {
+          css: {
+            pre: { whiteSpace: "pre-wrap", wordBreak: "break-word" },
+            code: { whiteSpace: "pre-wrap" },
+          },
+        },
       },
     },
   },
-  plugins: [
-    require("@tailwindcss/typography"),
-  ],
+  plugins: [require("@tailwindcss/typography"), require("tailwind-scrollbar")],
 };

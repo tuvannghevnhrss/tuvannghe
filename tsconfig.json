@@ -1,27 +1,41 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    /* ======== Mục tiêu biên dịch ======== */
+    "target": "ES2020",                       // đủ mới để dùng Promise-allSettled, optional chaining…
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
+
+    /* ======== Chất lượng mã & kiểm tra ======== */
     "strict": true,
-    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noEmit": true,                           // Next.js tự lo emit
+
+    /* ======== Module & bundler ======== */
     "module": "esnext",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+
+    /* ======== Tăng tốc ======== */
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+
+    /* ======== Alias đường dẫn ======== */
+    "baseUrl": ".",                           // 👈 BẮT BUỘC khi dùng "paths"
     "paths": {
-      "@/*": ["./src/*"]
-    }
+      "@/*": ["./src/*"]                      // import '@/utils/…'
+    },
+
+    /* ======== Plugin Next.js ======== */
+    "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

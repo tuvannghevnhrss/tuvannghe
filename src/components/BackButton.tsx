@@ -1,12 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 export default function BackButton() {
+  const router = useRouter();
+
   return (
     <button
-      onClick={() => window.history.back()}
-      className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+      onClick={() => router.back()}             // quay lại trang trước
+      className="mt-6 inline-block rounded border px-4 py-2 hover:bg-gray-50"
     >
-      Quay lại
+      ← Quay lại
     </button>
   );
 }

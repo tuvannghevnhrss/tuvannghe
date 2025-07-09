@@ -1,82 +1,116 @@
-'use client'
+'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import type { Database } from '@/types/supabase'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
-// Kiểu tin nhắn
-export interface ChatMessage {
-  id: string
-  user_id: string
-  role: 'user' | 'assistant'
-  content: string
-  created_at: string
-}
+/* ─── Kiểu dữ liệu ─────────────────────────── */
+export type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at?: string;
+};
 
 interface ChatCtx {
-  messages: ChatMessage[]
-  prependMessage: (m: ChatMessage) => void
-  sendMessage: (content: string) => Promise<void>
+  messages: ChatMessage[];
+  sendMessage: (text: string) => Promise<void>;
+  prependMessage: (m: ChatMessage) => void;
 }
 
-const ChatContext = createContext<ChatCtx | undefined>(undefined)
+const ChatContext = createContext<ChatCtx | null>(null);
+export const useChat = () => useContext(ChatContext)!;
 
-export const useChat = () => {
-  const c = useContext(ChatContext)
-  if (!c) throw new Error('useChat must be used within ChatProvider')
-  return c
-}
-
-export function ChatProvider({
-  userId,
-  children,
-}: {
-  userId: string
-  children: ReactNode
-}) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-
-  // 1) Khởi fetch lịch sử
-  useEffect(() => {
-    // nếu bạn muốn load từ Supabase, gọi ở đây…
-    // supabase.from('chat_messages').select('*').eq('user_id', userId)…
-  }, [userId])
-
-  // 2) prepend (MBTI intro)
-  const prependMessage = (m: ChatMessage) =>
-    setMessages((prev) => [m, ...prev])
-
-  // 3) gửi message lên AI
-  const sendMessage = async (content: string) => {
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      user_id: userId,
-      role: 'user',
-      content,
-      created_at: new Date().toISOString(),
-    }
-    setMessages((p) => [...p, userMsg])
-
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: content }),
-    })
-    const { reply } = await res.json()
-    const botMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      user_id: userId,
-      role: 'assistant',
-      content: reply,
-      created_at: new Date().toISOString(),
-    }
-    setMessages((p) => [...p, botMsg])
+/* ─── helper localStorage ───────────────────── */
+const STORAGE_KEY = 'chatMessages';
+const loadLocal = (): ChatMessage[] => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch {
+    return [];
   }
+};
+
+/* ─── Provider ──────────────────────────────── */
+export function ChatProvider({ children }: { children: React.ReactNode }) {
+  /* 1. cùng server: khởi tạo []  */
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  /* 2. chỉ client: nạp localStorage sau khi hydrate */
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = loadLocal();
+      if (stored.length) setMessages(stored);
+    }
+  }, []);
+
+  /* 3. lưu mỗi khi messages thay đổi  */
+  useEffect(() => {
+    if (typeof window !== 'undefined')
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
+
+  /* 4. gửi và stream (giữ nguyên tăng tốc) */
+  const sendMessage = useCallback(
+    async (text: string) => {
+      const userMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: text,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((m) => [...m, userMsg]);
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...messages, userMsg] }),
+      });
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+
+      let assistant = '';
+      const id = crypto.randomUUID();
+      let lastFlush = Date.now();
+
+      const flush = () =>
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== id),
+          {
+            id,
+            role: 'assistant',
+            content: assistant,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        assistant += decoder.decode(value);
+        if (Date.now() - lastFlush > 60) {
+          flush();
+          lastFlush = Date.now();
+        }
+      }
+      flush(); // đẩy phần còn lại
+    },
+    [messages],
+  );
+
+  /* 5. chèn tin nhắn thủ công */
+  const prependMessage = useCallback((m: ChatMessage) => {
+    setMessages((prev) => [m, ...prev]);
+  }, []);
 
   return (
-    <ChatContext.Provider
-      value={{ messages, prependMessage, sendMessage }}
-    >
+    <ChatContext.Provider value={{ messages, sendMessage, prependMessage }}>
       {children}
     </ChatContext.Provider>
-  )
+  );
 }

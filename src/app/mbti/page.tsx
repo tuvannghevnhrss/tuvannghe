@@ -1,29 +1,50 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import MbtiIntro from "@/components/MbtiIntro";
 import { QUESTIONS } from "./questions";
 
-export default function MBTIQuiz() {
+/* ---------- 1. Component gán cho route /mbti ---------- */
+export default function MbtiPage() {
+  const params = useSearchParams();
+  const started = params.get("start") === "1";
+
+  if (!started) return <MbtiIntro />;   // trang giới thiệu
+  return <MBTIQuiz />;                  // bắt đầu làm bài
+}
+
+/* ---------- 2. Component quiz (không export) ---------- */
+function MBTIQuiz() {
+  /* --- Khởi tạo --- */
+  const router = useRouter();
+  const pathname = usePathname();
+  const supabase = createClientComponentClient();
+
+  /* --- 1. Bắt buộc đăng nhập --- */
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) router.replace(`/login?redirectedFrom=${pathname}`);
+    });
+  }, [pathname, router, supabase]);
+
+  /* --- 2. State câu hỏi --- */
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<(0 | 1)[]>([]);
-  const router = useRouter();
   const current = QUESTIONS[step];
 
   const choose = (choice: 0 | 1) => {
     const next = [...answers, choice];
-    setAnswers(next);
-    if (step + 1 === QUESTIONS.length) {
-      submit(next);
-    } else {
+    if (step + 1 === QUESTIONS.length) submit(next);
+    else {
+      setAnswers(next);
       setStep(step + 1);
     }
   };
 
+  /* --- 3. Tính MBTI (demo) --- */
   const calcMBTI = (ans: (0 | 1)[]): string => {
-    // Ví dụ mapping đơn giản: 
-    // câu lẻ quyết định E/I, chẵn quyết định J/P, v.v.
-    // Tuỳ bạn tự viết logic chính xác theo thang điểm MBTI
     let E = 0, I = 0, S = 0, N = 0, T = 0, F = 0, J = 0, P = 0;
     ans.forEach((v, i) => {
       switch (i % 4) {
@@ -33,47 +54,44 @@ export default function MBTIQuiz() {
         case 3: v === 0 ? J++ : P++; break;
       }
     });
-    const code =
-      (E >= I ? "E" : "I") +
-      (S >= N ? "S" : "N") +
-      (T >= F ? "T" : "F") +
-      (J >= P ? "J" : "P");
-    return code;
+    return (E >= I ? "E" : "I") +
+           (S >= N ? "S" : "N") +
+           (T >= F ? "T" : "F") +
+           (J >= P ? "J" : "P");
   };
 
-const submit = async (all: (0 | 1)[]) => {
-  const mbti_code = calcMBTI(all);
+  /* --- 4. Submit & điều hướng --- */
+  const submit = async (all: (0 | 1)[]) => {
+    const code = calcMBTI(all);
+    const res = await fetch("/api/mbti", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (!res.ok) {
+      alert("Có lỗi khi lưu kết quả, vui lòng đăng nhập rồi thử lại!");
+      return;
+    }
+    router.push(`/mbti/result?code=${code}`);
+  };
 
-  const res = await fetch("/api/mbti", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mbti_code }),
-  });
-
-  if (!res.ok) {
-    alert("Có lỗi khi lưu kết quả, vui lòng thử lại!");
-    return;         // dừng, không reset step
-  }
-  router.push(`/mbti/result?code=${mbti_code}`);
-};
-
+  /* --- 5. UI --- */
   return (
-    <div className="max-w-xl mx-auto py-20 text-center">
+    <div className="mx-auto max-w-xl py-20 text-center">
       <p className="mb-4 font-semibold">
         Câu {step + 1} / {QUESTIONS.length}
       </p>
-      <h1 className="text-2xl font-bold mb-6">{current.question}</h1>
-      <div className="space-y-4">
-        {current.options.map((opt, idx) => (
-          <button
-            key={idx}
-            onClick={() => choose(idx as 0 | 1)}
-            className="w-full border rounded px-4 py-3 hover:bg-blue-50 transition"
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
+      <h1 className="mb-6 text-2xl font-bold">{current.question}</h1>
+
+      {current.options.map((opt, idx) => (
+        <button
+          key={idx}
+          onClick={() => choose(idx as 0 | 1)}
+          className="w-full rounded border px-4 py-3 transition hover:bg-blue-50"
+        >
+          {opt}
+        </button>
+      ))}
     </div>
   );
 }

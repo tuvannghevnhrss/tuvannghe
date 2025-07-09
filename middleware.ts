@@ -1,33 +1,25 @@
-// middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
+
+/* Tất cả URL cần đăng nhập */
+export const config = {
+  matcher: ["/chat/:path*", "/mbti/:path*", "/holland/:path*"],
+};
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-  /* Tạo Supabase client dựa trên cookie request & response */
-  const supabase = createMiddlewareClient({ req, res })
-
-  /* Lấy session (nếu có) */
   const {
     data: { session },
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getSession();
 
-  /* Nếu chưa đăng nhập → chuyển sang /login
-     và lưu lại đường dẫn gốc trong query ?redirectedFrom=... */
-  if (!session && req.nextUrl.pathname.startsWith('/chat')) {
-    const redirectUrl = req.nextUrl.clone()
-    redirectUrl.pathname = '/login'
-    redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
+  if (!session) {
+    const redirect = req.nextUrl.clone();
+    redirect.pathname = "/login";
+    redirect.searchParams.set("redirectedFrom", req.nextUrl.pathname);
+    return NextResponse.redirect(redirect);
   }
-
-  /* Đã có session hoặc không phải /chat → cho đi tiếp  */
-  return res
-}
-
-/* Áp dụng middleware cho mọi URL bắt đầu /chat */
-export const config = {
-  matcher: ['/chat/:path*'],
+  return res;
 }

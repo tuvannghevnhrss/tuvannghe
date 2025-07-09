@@ -1,18 +1,29 @@
+/* ------------------------------------------------------------------
+   Root layout – server component
+-------------------------------------------------------------------*/
+import type { ReactNode } from "react";
 import "./globals.css";
+
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
+/* SEO / Open Graph */
 export const metadata = {
-  title: "Hướng nghiệp AI",
-  description: "Trang tư vấn nghề nghiệp bằng AI",
+  title: "Hướng nghiệp AI | CareerAI",
+  description: "Nền tảng tư vấn nghề nghiệp & luyện phỏng vấn cùng AI",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi">
       <body className="bg-gray-50 antialiased">
+        {/* fixed-top header (client component) */}
         <Header />
-        <main className="pt-header">{children}</main>
+
+        {/* main content */}
+        <main className="pt-header min-h-screen">{children}</main>
+
+        {/* footer */}
         <Footer />
       </body>
     </html>
