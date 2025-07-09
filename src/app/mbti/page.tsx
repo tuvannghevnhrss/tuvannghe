@@ -1,15 +1,15 @@
 /* --------------  Server Component (no hooks) -------------- */
-import dynamic from "next/dynamic";
+import { default as nextDynamic } from "next/dynamic";  // ← đổi tên
 
-/** Bỏ SSG/ISR cho route này */
+/** Ngăn SSG/ISR cho route này */
 export const dynamic = "force-dynamic";
 
 /**
- * Xuất luôn dynamic-component.
- *  - ssr:false   → chỉ render ở client
- *  - loading     → fallback tạm
+ * Xuất trực tiếp component động
+ *  - ssr:false  → chỉ chạy ở client
+ *  - loading    → skeleton
  */
-export default dynamic(() => import("./MbtiClient"), {
-  ssr:    false,
+export default nextDynamic(() => import("./MbtiClient"), {
+  ssr: false,
   loading: () => <p className="p-6">Đang tải MBTI…</p>,
 });
