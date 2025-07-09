@@ -1,21 +1,15 @@
-/* ---------------  Server Component --------------- */
+"use client";                                // <-- trang /mbti là Client
+
 import { Suspense } from "react";
-import dynamic       from "next/dynamic";
+import MbtiClient from "./MbtiClient";
 
-/* nạp MbtiClient chỉ ở client-side */
-const MbtiClient = dynamic(() => import("./MbtiClient"), {
-  ssr: false,
-  loading: () => <p className="p-6">Đang tải MBTI…</p>,
-});
-
-/* tắt SSG cho route này */
+/* Vẫn khai báo dynamic để Next khỏi collect page data ở build */
 export const dynamic = "force-dynamic";
 
 export default function MbtiPage() {
-  /* ✅ BỌC Suspense – Next yêu cầu */
   return (
     <Suspense fallback={<p className="p-6">Đang tải MBTI…</p>}>
-      <MbtiClient />
+      <MbtiClient />                         {/* chứa useSearchParams */}
     </Suspense>
   );
 }
