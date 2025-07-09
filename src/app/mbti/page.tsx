@@ -1,15 +1,21 @@
 /* ---------------  Server Component --------------- */
-import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import dynamic       from "next/dynamic";
 
-/* nạp MbtiClient chỉ ở client-side, tránh SSG */
+/* nạp MbtiClient chỉ ở client-side */
 const MbtiClient = dynamic(() => import("./MbtiClient"), {
-  ssr: false,                     // ⬅️ quan trọng!
+  ssr: false,
   loading: () => <p className="p-6">Đang tải MBTI…</p>,
 });
 
-/* Tắt hoàn toàn SSG/ISR cho route này */
+/* tắt SSG cho route này */
 export const dynamic = "force-dynamic";
 
 export default function MbtiPage() {
-  return <MbtiClient />;
+  /* ✅ BỌC Suspense – Next yêu cầu */
+  return (
+    <Suspense fallback={<p className="p-6">Đang tải MBTI…</p>}>
+      <MbtiClient />
+    </Suspense>
+  );
 }
