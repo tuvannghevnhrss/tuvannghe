@@ -1,31 +1,36 @@
 import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import Footer  from '@/components/Footer';
 import { supabase } from '@/lib/supabaseClient';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-/** Kiểu props chuẩn cho App Router */
-type PageProps = {
+/**
+ *  Dùng tên khác (BlogPageProps) thay vì “PageProps”
+ *  – params.slug: string
+ *  – searchParams?: optional
+ */
+type BlogPageProps = {
   params: { slug: string };
+  searchParams?: Record<string, string | string[]>;
 };
 
-/* ------- ISR / SSG: tạo danh sách slug -------- */
-export async function generateStaticParams() {
+/* -------- 1. Tạo danh sách static params (ISR/SSG) -------- */
+export async function generateStaticParams(): Promise<
+  BlogPageProps['params'][]
+> {
   const { data } = await supabase.from('posts').select('slug');
   return data?.map((p) => ({ slug: p.slug })) || [];
 }
 
-/* ------- Trang bài viết -------- */
-export default async function PostPage({ params }: PageProps) {
+/* -------- 2. Render trang bài viết -------- */
+export default async function BlogPostPage({ params }: BlogPageProps) {
   const { data: post } = await supabase
     .from('posts')
     .select('*')
     .eq('slug', params.slug)
     .single();
 
-  if (!post) {
-    return <p className="p-8">Bài viết không tìm thấy.</p>;
-  }
+  if (!post) return <p className="p-8">Bài viết không tìm thấy.</p>;
 
   return (
     <>
