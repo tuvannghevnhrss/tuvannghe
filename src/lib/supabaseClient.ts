@@ -1,15 +1,13 @@
-// src/lib/supabaseServer.ts
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+/**
+ * Client Supabase dùng cho cả Server Components & Client Components.
+ *  – Export const `supabase`  (named)
+ *  – Export mặc định               (default)
+ */
+import { createClient } from '@supabase/supabase-js';
 
-export async function createServerClient() {
-  // 1) await trước khi dùng cookies()
-  const cookieStore = await cookies();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  // 2) tạo Supabase client với cookieStore
-  const supabase = createRouteHandlerClient({
-    cookies: () => cookieStore,
-  });
+export const supabase = createClient(supabaseUrl, supabaseAnon);
 
-  return supabase;
-}
+export default supabase;
