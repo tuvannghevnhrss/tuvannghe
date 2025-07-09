@@ -1,15 +1,12 @@
-/* --------------  Server Component (no hooks) -------------- */
-import { default as nextDynamic } from "next/dynamic";  // ← đổi tên
+"use client";                                         // 👈 trang là Client
 
-/** Ngăn SSG/ISR cho route này */
-export const dynamic = "force-dynamic";
+import { Suspense } from "react";
+import MbtiClient from "./MbtiClient";                // chứa toàn bộ hook
 
-/**
- * Xuất trực tiếp component động
- *  - ssr:false  → chỉ chạy ở client
- *  - loading    → skeleton
- */
-export default nextDynamic(() => import("./MbtiClient"), {
-  ssr: false,
-  loading: () => <p className="p-6">Đang tải MBTI…</p>,
-});
+export default function MbtiPage() {
+  return (
+    <Suspense fallback={<p className="p-6">Đang tải MBTI…</p>}>
+      <MbtiClient />
+    </Suspense>
+  );
+}
