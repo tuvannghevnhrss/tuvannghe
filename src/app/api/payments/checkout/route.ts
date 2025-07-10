@@ -1,15 +1,19 @@
 // src/app/api/payments/checkout/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
-import { v4 as uuid } from "uuid";
+import { cookies }      from "next/headers";
+import { createRouteHandlerClient }
+        from "@supabase/auth-helpers-nextjs";
+import { v4 as uuid }   from "uuid";
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const supabase = createRouteHandlerClient({ cookies });
+
   const { product, coupon } = await req.json();
 
-  // 1. Xác thực
+  /* 1. Lấy user từ cookie */
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // 2. Tính giá
   const PRICE: Record<string, number> = {
