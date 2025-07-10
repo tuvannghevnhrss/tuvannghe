@@ -1,8 +1,14 @@
 // src/app/payment/page.tsx
-import PaymentContent from "./PaymentContent";
+import { Suspense } from "react";
+import dynamic from "next/dynamic";
 
-export const dynamic = "force-dynamic"; // tránh prerender static
+/** tắt SSR cho PaymentContent: ssr: false */
+const PaymentContent = dynamic(() => import("./PaymentContent"), { ssr: false });
 
 export default function PaymentPage() {
-  return <PaymentContent />;
+  return (
+    <Suspense fallback={<div className="py-10 text-center">Đang tải...</div>}>
+      <PaymentContent />
+    </Suspense>
+  );
 }
