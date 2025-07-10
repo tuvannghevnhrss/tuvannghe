@@ -2,26 +2,37 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { useState } from "react";
+import { formatVND } from "@/lib/formatVND";
 
-const PRICES = { mbti: 10_000, holland: 20_000, knowdell: 100_000, combo: 90_000 };
+const PRICES = {
+  mbti:     10_000,
+  holland:  20_000,
+  knowdell: 100_000,
+  combo:    90_000,
+};
 
 export default function PaymentContent() {
-  const params      = useSearchParams();
-  const product     = params.get("product") ?? "mbti";
+  const params  = useSearchParams();
+  const product = params.get("product") ?? "mbti";
 
   const [code,   setCode]   = useState("");
   const [qr,     setQr]     = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
 
   const checkout = async () => {
-    const res  = await fetch("/api/payments/checkout", {
+    const res = await fetch("/api/payments/create", {
       method: "POST",
-      body  : JSON.stringify({ product, coupon: code }),
-    }).then(r => r.json());
-
-    setQr(res.qr_url);
-    setAmount(res.amount);
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product, coupon: code }),
+    });
+    if (!res.ok) {
+      console.error(await res.text());
+      return;
+    }
+    const { qr, amount } = await res.json();
+    setQr(qr);
+    setAmount(amount);
   };
 
   return (
@@ -33,14 +44,14 @@ export default function PaymentContent() {
       {!qr ? (
         <>
           <p className="mb-4">
-            Giá gốc: {PRICES[product as keyof typeof PRICES].toLocaleString()} ₫
+            Giá gốc: {formatVND(PRICES[product as keyof typeof PRICES])}
           </p>
 
           <input
             className="border p-2 w-full mb-4"
             placeholder="Mã giảm giá"
             value={code}
-            onChange={e => setCode(e.target.value)}
+            onChange={(e) => setCode(e.target.value)}
           />
 
           <button
@@ -53,7 +64,7 @@ export default function PaymentContent() {
       ) : (
         <div className="text-center">
           <p className="mb-4">
-            Quét QR để thanh toán {amount?.toLocaleString()} ₫
+            Quét QR để thanh toán {formatVND(amount!)}
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qr} alt="QR code" className="mx-auto" />

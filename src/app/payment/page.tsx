@@ -1,13 +1,8 @@
-// src/app/payment/page.tsx  (RSC, KHÔNG cần "use client")
-import { Suspense } from "react";
+// src/app/payment/page.tsx
 import PaymentContent from "./PaymentContent";
 
-export const dynamic = "force-dynamic";  // ngăn Next.js prerender tĩnh
+export const dynamic = "force-dynamic"; // tránh prerender static
 
 export default function PaymentPage() {
-  return (
-    <Suspense fallback={<div className="p-12 text-center">Đang tải…</div>}>
-      <PaymentContent />
-    </Suspense>
-  );
+  return <PaymentContent />;
 }
