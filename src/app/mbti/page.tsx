@@ -1,18 +1,11 @@
-"use client";                                      // Trang client 100 %
-
-import { default as nd } from "next/dynamic";     // 👉 Đổi tên tránh “dynamic”
+"use client";
 import { Suspense } from "react";
-
-/* Tạo component động chỉ chạy ở client */
-const Mbti = nd(() => import("./MbtiClient"), {
-  ssr: false,
-  loading: () => <p className="p-6">Đang tải MBTI…</p>,
-});
+import MbtiClient from "./MbtiClient";
 
 export default function MbtiPage() {
   return (
     <Suspense fallback={<p className="p-6">Đang tải MBTI…</p>}>
-      <Mbti />
+      <MbtiClient />
     </Suspense>
   );
 }
