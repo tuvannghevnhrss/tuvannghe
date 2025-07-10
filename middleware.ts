@@ -8,16 +8,7 @@ export const config = {
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
-
-  // Lấy user (KHÔNG lấy session)
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    const redirect = req.nextUrl.clone();
-    redirect.pathname = "/login";
-    redirect.searchParams.set("redirectedFrom", req.nextUrl.pathname);
-    return NextResponse.redirect(redirect);
-  }
+  // KHÔNG GỌI getSession hay getUser ở đây nữa!
+  await createMiddlewareClient({ req, res });
   return res;
 }
