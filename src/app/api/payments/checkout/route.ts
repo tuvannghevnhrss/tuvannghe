@@ -1,4 +1,4 @@
-// src/app/api/payment/checkout/route.ts
+// src/app/api/payments/checkout/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       amount: amount_real,
       description: payment.qr_desc,
       return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment/success?id=${payment.id}`,
-      callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment/callback`,
+      callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payments/callback`,
     }),
   }).then(r => r.json());
 

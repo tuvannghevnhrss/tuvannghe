@@ -15,7 +15,7 @@ export default function PaymentContent() {
   const [amount, setAmount] = useState<number | null>(null);
 
   const checkout = async () => {
-    const res  = await fetch("/api/payment/checkout", {
+    const res  = await fetch("/api/payments/checkout", {
       method: "POST",
       body  : JSON.stringify({ product, coupon: code }),
     }).then(r => r.json());
