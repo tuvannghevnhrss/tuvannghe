@@ -8,7 +8,7 @@ export const config = {
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  // KHÔNG gọi getSession hoặc getUser ở đây!
-  await createMiddlewareClient({ req, res }); // chỉ để sync cookie!
+  // KHÔNG được gọi getSession hoặc getUser ở đây nữa!
+  await createMiddlewareClient({ req, res }); // Chỉ đồng bộ cookie
   return res;
 }
