@@ -23,6 +23,7 @@ export default function PaymentContent({ product }: Props) {
 
     const res = await fetch("/api/payments/checkout", {
       method : "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body   : JSON.stringify({ product, coupon: code }),
     });
