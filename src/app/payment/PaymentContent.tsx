@@ -1,20 +1,18 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { formatVND } from "@/lib/formatVND";
 
 const PRICES = {
-  mbti: 10_000,
-  holland: 20_000,
+  mbti:     10_000,
+  holland:  20_000,
   knowdell: 100_000,
-  combo: 90_000,
+  combo:    90_000,
 };
 
-export default function PaymentContent() {
-  const params   = useSearchParams();
-  const product  = params.get("product") ?? "mbti";
+type Props = { product: string };
 
+export default function PaymentContent({ product }: Props) {
   const [code,   setCode]   = useState("");
   const [qr,     setQr]     = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
@@ -22,27 +20,31 @@ export default function PaymentContent() {
 
   const checkout = async () => {
     setLoading(true);
+
     const res = await fetch("/api/payments/checkout", {
       method : "POST",
       headers: { "Content-Type": "application/json" },
       body   : JSON.stringify({ product, coupon: code }),
     });
 
-    if (!res.ok) {
-      console.error(await res.text());   // debug thấy 405/500 ở đây
+    if (!res.ok) {                 // ghi log khi API trả 4xx/5xx
+      console.error(await res.text());
       setLoading(false);
       return;
     }
 
-    const { qr, amount } = await res.json();
-    setQr(qr);
+    const { qr_url, amount } = await res.json();
+    setQr(qr_url);
     setAmount(amount);
     setLoading(false);
   };
 
+  /* JSX */
   return (
-    <section className="max-w-lg mx-auto py-12">
-      <h1 className="text-2xl font-bold mb-6">Thanh toán {product.toUpperCase()}</h1>
+    <div className="max-w-lg mx-auto py-12">
+      <h1 className="text-2xl font-bold mb-6">
+        Thanh toán {product.toUpperCase()}
+      </h1>
 
       {!qr ? (
         <>
@@ -58,8 +60,8 @@ export default function PaymentContent() {
           />
 
           <button
-            disabled={loading}
             onClick={checkout}
+            disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded"
           >
             {loading ? "Đang tạo QR…" : "Tạo mã QR"}
@@ -77,6 +79,6 @@ export default function PaymentContent() {
           </p>
         </div>
       )}
-    </section>
+    </div>
   );
 }

@@ -1,14 +1,12 @@
-// src/app/payment/page.tsx
-import { Suspense } from "react";
-import dynamic from "next/dynamic";
+// ⬅️ KHÔNG “use client” ở đây
+export const dynamic = "force-dynamic";  // buộc render mỗi request
 
-/** tắt SSR cho PaymentContent: ssr: false */
-const PaymentContent = dynamic(() => import("./PaymentContent"), { ssr: false });
+import PaymentContent from "./PaymentContent";
 
-export default function PaymentPage() {
-  return (
-    <Suspense fallback={<div className="py-10 text-center">Đang tải...</div>}>
-      <PaymentContent />
-    </Suspense>
-  );
+type Props = { searchParams: { product?: string } };
+
+export default function PaymentPage({ searchParams }: Props) {
+  // lấy product ngay trên server
+  const product = searchParams.product ?? "mbti";
+  return <PaymentContent product={product} />;
 }
