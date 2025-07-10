@@ -1,8 +1,9 @@
 // src/app/checkout/page.tsx
 "use client";
+
 import { useState } from "react";
 
-// ✅ formatter cố định
+// formatter cố định cho tiền VND
 const VND = new Intl.NumberFormat("vi-VN");
 
 const PRODUCTS = [
@@ -13,20 +14,35 @@ const PRODUCTS = [
 ];
 
 export default function Checkout() {
-  const [selected, setSelected] = useState("mbti");
-  const [coupon,   setCoupon]   = useState("");
+  const [selected, setSelected] = useState<string>("mbti");
+  const [coupon,   setCoupon]   = useState<string>("");
   const [qr,       setQr]       = useState<string | null>(null);
-  const [loading,  setLoading]  = useState(false);
+  const [amount,   setAmount]   = useState<number | null>(null);
+  const [loading,  setLoading]  = useState<boolean>(false);
 
   const pay = async () => {
     setLoading(true);
-    const res  = await fetch("/api/payments/create", {
-      method: "POST",
-      body  : JSON.stringify({ product: selected, coupon }),
-    });
-    const data = await res.json();
-    setQr(data.qr);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product: selected, coupon }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        // show lỗi từ server nếu có
+        alert(data.error || "Có lỗi khi tạo QR");
+      } else {
+        setQr(data.qr_url);
+        setAmount(data.amount);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Không thể kết nối đến server");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -34,8 +50,11 @@ export default function Checkout() {
       <h1 className="text-2xl font-bold mb-4">Chọn gói thanh toán</h1>
 
       <ul className="space-y-3 mb-4">
-        {PRODUCTS.map(p => (
-          <li key={p.id} className="flex justify-between items-center border p-3 rounded">
+        {PRODUCTS.map((p) => (
+          <li
+            key={p.id}
+            className="flex justify-between items-center border p-3 rounded"
+          >
             <label className="flex items-center gap-3">
               <input
                 type="radio"
@@ -45,8 +64,6 @@ export default function Checkout() {
               />
               {p.name}
             </label>
-
-            {/* ✅ luôn format bằng VND.format(...) */}
             <span className="font-semibold">
               {VND.format(p.price)} ₫
             </span>
@@ -57,7 +74,7 @@ export default function Checkout() {
       <input
         placeholder="Mã khuyến mãi (nếu có)"
         value={coupon}
-        onChange={e => setCoupon(e.target.value)}
+        onChange={(e) => setCoupon(e.target.value)}
         className="border rounded px-3 py-2 w-full mb-4"
       />
 
@@ -69,9 +86,11 @@ export default function Checkout() {
         {loading ? "Đang tạo QR…" : "Thanh toán"}
       </button>
 
-      {qr && (
+      {qr && amount != null && (
         <div className="mt-6 text-center">
-          <h2 className="font-semibold mb-2">Quét QR bằng app ngân hàng</h2>
+          <h2 className="font-semibold mb-2">
+            Quét QR để thanh toán {VND.format(amount)} ₫
+          </h2>
           <img src={qr} alt="QR code" className="mx-auto w-56 h-56" />
           <p className="mt-2 text-sm text-gray-500">
             Sau khi hoàn tất, trang sẽ tự cập nhật.

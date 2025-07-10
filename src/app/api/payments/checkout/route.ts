@@ -1,13 +1,14 @@
+// src/app/api/payments/checkout/route.ts
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { v4 as uuid } from "uuid";
 
 export async function POST(request: Request) {
-  // 1) Tạo client gắn với cookie của request
+  // 1. Khởi tạo supabase client (server) kèm cookie để lấy session
   const supabase = createRouteHandlerClient({ cookies });
 
-  // 2) Lấy user từ session
+  // 2. Lấy user đang login
   const {
     data: { user },
     error: userErr,
@@ -17,46 +18,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 3) Đọc body JSON
+  // 3. Đọc body từ client
   const { product, coupon } = await request.json();
 
-  // 4) Xác định giá gốc
-  const PRICE_MAP = {
-    mbti: 10_000,
-    holland: 20_000,
-    knowdell: 100_000,
-    combo: 90_000,
-  };
+  // 4. Tính giá gốc
+  const PRICE_MAP = { mbti: 10000, holland: 20000, knowdell: 100000, combo: 90000 };
   const amountDue = PRICE_MAP[product as keyof typeof PRICE_MAP];
   if (!amountDue) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
 
-  // 5) Kiểm tra coupon (nếu có)
+  // 5. Kiểm tra mã khuyến mãi
   let discount = 0;
   if (coupon) {
-    const { data: couponRows } = await supabase
+    const { data: coupons } = await supabase
       .from("coupons")
       .select("discount")
       .eq("code", coupon)
-      .gt("expires_at", new Date().toISOString()); // chưa hết hạn
-    if (couponRows?.length) {
-      discount = couponRows[0].discount;
+      // <= today
+      .lte("expires_at", new Date().toISOString());
+
+    if (coupons && coupons.length > 0) {
+      discount = coupons[0].discount;
     }
   }
-  const amountToPay = Math.max(amountDue - discount, 0);
 
-  // 6) Gọi Sepay tạo QR
+  const amountToPay = Math.max(amountDue - discount, 0);
   const externalId = uuid();
+
+  // 6. Gọi Sepay
   const body = {
     merchant_code: process.env.SEPAY_MERCHANT_CODE,
     amount: amountToPay,
-    description: `Pay ${product} - ${externalId}`,
+    description: `MBTI payment - ${externalId}`,
     external_id: externalId,
     callback_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payments/webhook`,
   };
 
-  const sepayRes = await fetch(
+  const resp = await fetch(
     `${process.env.SEPAY_ENDPOINT}/v1/transactions`,
     {
       method: "POST",
@@ -68,14 +67,14 @@ export async function POST(request: Request) {
     }
   );
 
-  if (!sepayRes.ok) {
-    const errorText = await sepayRes.text();
-    return NextResponse.json({ error: errorText }, { status: 500 });
+  if (!resp.ok) {
+    // nếu Sepay lỗi, trả về nguyên văn
+    const text = await resp.text();
+    return NextResponse.json({ error: text }, { status: 502 });
   }
+  const sepayData = await resp.json(); // { qr_url, … }
 
-  const sepayData = await sepayRes.json();
-
-  // 7) Lưu vào bảng payments
+  // 7. Lưu vào bảng `payments`
   await supabase.from("payments").insert({
     id: externalId,
     user_id: user.id,
@@ -86,6 +85,9 @@ export async function POST(request: Request) {
     status: "pending",
   });
 
-  // 8) Trả về URL QR cho client
-  return NextResponse.json({ qr: sepayData.qr_url });
+  // 8. Trả về client
+  return NextResponse.json({
+    qr_url: sepayData.qr_url,
+    amount: amountToPay,
+  });
 }
