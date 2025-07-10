@@ -91,7 +91,7 @@ export default function Header() {
           ) : (
             <Link
               href="/signup"
-              className="bg-brandYellow hover:bg-yellow-500 text-white px-5 py-2 rounded-full transition flex-shrink-0"
+              className="bg-brandYellow hover:bg-yellow-500 text-black px-5 py-2 rounded-full transition flex-shrink-0"
             >
               Đăng ký / Đăng nhập
             </Link>
