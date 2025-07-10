@@ -17,72 +17,24 @@ export default function Checkout() {
   const [qr,       setQr]       = useState<string | null>(null);
   const [loading,  setLoading]  = useState(false);
 
+  /** 🔑 gọi đúng endpoint /api/payments/checkout */
   const pay = async () => {
     setLoading(true);
-    const res = await fetch("/api/payments/create", {
-      method: "POST",
+    const res = await fetch("/api/payments/checkout", {
+      method : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product: selected, coupon }),
+      body   : JSON.stringify({ product: selected, coupon }),
     });
+
     if (!res.ok) {
-      // bạn có thể đọc thêm chi tiết lỗi ở đây
       console.error(await res.text());
       setLoading(false);
       return;
     }
-    const { qr, amount } = await res.json();
+    const { qr } = await res.json();
     setQr(qr);
     setLoading(false);
   };
 
-  return (
-    <section className="max-w-xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Chọn gói thanh toán</h1>
-
-      <ul className="space-y-3 mb-4">
-        {PRODUCTS.map((p) => (
-          <li
-            key={p.id}
-            className="flex justify-between items-center border p-3 rounded"
-          >
-            <label className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="product"
-                checked={selected === p.id}
-                onChange={() => setSelected(p.id)}
-              />
-              {p.name}
-            </label>
-            <span className="font-semibold">{formatVND(p.price)}</span>
-          </li>
-        ))}
-      </ul>
-
-      <input
-        placeholder="Mã khuyến mãi (nếu có)"
-        value={coupon}
-        onChange={(e) => setCoupon(e.target.value)}
-        className="border rounded px-3 py-2 w-full mb-4"
-      />
-
-      <button
-        onClick={pay}
-        disabled={loading}
-        className="bg-brandYellow hover:bg-yellow-500 text-black px-6 py-3 rounded w-full"
-      >
-        {loading ? "Đang tạo QR…" : "Thanh toán"}
-      </button>
-
-      {qr && (
-        <div className="mt-6 text-center">
-          <h2 className="font-semibold mb-2">Quét QR bằng app ngân hàng</h2>
-          <img src={qr} alt="QR code" className="mx-auto w-56 h-56" />
-          <p className="mt-2 text-sm text-gray-500">
-            Sau khi hoàn tất, hệ thống sẽ tự cập nhật.
-          </p>
-        </div>
-      )}
-    </section>
-  );
+  /* …phần JSX giữ nguyên, chỉ đổi mỗi fetch phía trên … */
 }

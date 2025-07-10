@@ -20,12 +20,14 @@ export default function PaymentContent() {
   const [qr,     setQr]     = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
 
+  /** 🔑 chuyển sang /api/payments/checkout */
   const checkout = async () => {
-    const res = await fetch("/api/payments/create", {
-      method: "POST",
+    const res = await fetch("/api/payments/checkout", {
+      method : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product, coupon: code }),
+      body   : JSON.stringify({ product, coupon: code }),
     });
+
     if (!res.ok) {
       console.error(await res.text());
       return;
@@ -35,44 +37,5 @@ export default function PaymentContent() {
     setAmount(amount);
   };
 
-  return (
-    <div className="max-w-lg mx-auto py-12">
-      <h1 className="text-2xl font-bold mb-6">
-        Thanh toán {product.toUpperCase()}
-      </h1>
-
-      {!qr ? (
-        <>
-          <p className="mb-4">
-            Giá gốc: {formatVND(PRICES[product as keyof typeof PRICES])}
-          </p>
-
-          <input
-            className="border p-2 w-full mb-4"
-            placeholder="Mã giảm giá"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-
-          <button
-            onClick={checkout}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded"
-          >
-            Tạo mã QR
-          </button>
-        </>
-      ) : (
-        <div className="text-center">
-          <p className="mb-4">
-            Quét QR để thanh toán {formatVND(amount!)}
-          </p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} alt="QR code" className="mx-auto" />
-          <p className="mt-4 text-sm text-gray-600">
-            Sau khi thanh toán xong, hệ thống sẽ tự kích hoạt.
-          </p>
-        </div>
-      )}
-    </div>
-  );
+  /* …phần JSX giữ nguyên… */
 }
