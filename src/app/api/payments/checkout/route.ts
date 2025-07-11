@@ -2,70 +2,47 @@
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
 
-/* ------------------------------------------------------------------ */
 export async function POST(req: Request) {
-  /* 1. Khởi Supabase + lấy user ------------------------------------ */
+  // 1. Khởi Supabase client với cookie
   const supabase = createRouteHandlerClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user)
+  // 2. Xác thực user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const { product, coupon = "" } = await req.json();
+  // 3. Read body
+  const { product, coupon } = await req.json();
 
-  /* 2. Bảng giá & kiểm tra sản phẩm -------------------------------- */
+  // 4. Tính số tiền gốc theo product
   const PRICE = {
-    mbti:     10_000,
-    holland:  20_000,
+    mbti: 10_000,
+    holland: 20_000,
     knowdell: 100_000,
-    combo:    90_000,
+    combo: 90_000,
   } as const;
-
-  const amount_due = PRICE[product as keyof typeof PRICE];
-  if (!amount_due)
+  const amountDue = PRICE[product as keyof typeof PRICE];
+  if (!amountDue) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
-
-  /* 3. Tính giảm giá (tra bảng coupons) ----------------------------- */
-  let discount = 0;
-
-  if (coupon.trim()) {
-    const { data: cp } = await supabase
-      .from("coupons")
-      .select("value, product")
-      .eq("code", coupon.trim().toUpperCase())
-      .eq("active", true)
-      .lte("start_at", new Date().toISOString())
-      .gte("end_at",   new Date().toISOString())
-      .maybeSingle();
-
-    // hợp lệ khi: còn hiệu lực + áp cho đúng product hoặc ALL
-    if (cp && (cp.product === product || cp.product === null))
-      discount = Math.min(cp.value, amount_due);
   }
 
-  const amount = Math.max(amount_due - discount, 0);
+  // 5. (TODO) Áp dụng coupon lookup nếu cần, tạm thời không giảm
+  const amount = amountDue;
 
-  /* 4. Tạo order_code “SEVQR XXXX” – đảm bảo UNIQUE ----------------- */
-  let order_code = "";
-  for (;;) {
-    order_code = randomUUID().slice(0, 4).toUpperCase();       // 4 ký tự
-    const { count } = await supabase
-      .from("payments")
-      .select("id", { count: "exact", head: true })
-      .eq("order_code", order_code);
-    if (!count) break;                                         // chưa trùng
-  }
+  // 6. Tạo mã đơn hàng ngắn gọn: SEVQR + 4 ký tự
+  const suffix = Math.random().toString(36).slice(-4).toUpperCase(); // ex: "7F9X"
+  const order_code = suffix;
 
-  /* 5. Ghi DB (để PG tự sinh cột id bigserial) --------------------- */
+  // 7. Lưu vào DB (Supabase sẽ tự gán id serial)
   const { error } = await supabase.from("payments").insert({
-    user_id   : user.id,
-    product   ,
-    amount_due,
-    discount  ,
-    amount    ,
-    status    : "pending",
+    user_id: user.id,
+    product,
+    amount,         // CHỈ dùng cột `amount`; đã bỏ `amount_due`
+    status: "pending",
     order_code,
   });
 
@@ -74,15 +51,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
 
-  /* 6. Tạo QR SePay ------------------------------------------------- */
+  // 8. Build URL QR SePay
   const BANK_CODE = process.env.SEPAY_BANK_CODE!;
   const BANK_ACC  = process.env.SEPAY_BANK_ACC!;
-  const TEMPLATE  = "compact";
+  // Chú ý: content phải chứa “SEVQR␣{order_code}” để SePay parse
+  const qr_url = [
+    `https://qr.sepay.vn/img`,
+    `?bank=${encodeURIComponent(BANK_CODE)}`,
+    `&acc=${encodeURIComponent(BANK_ACC)}`,
+    `&amount=${amount}`,
+    `&des=${encodeURIComponent(`SEVQR ${order_code}`)}`,
+    `&template=compact`,
+  ].join("");
 
-  const qr_url =
-    `https://qr.sepay.vn/img?bank=${BANK_CODE}` +
-    `&acc=${BANK_ACC}&amount=${amount}` +
-    `&des=SEVQR%20${order_code}&template=${TEMPLATE}`;
-
+  // 9. Trả về client
   return NextResponse.json({ qr_url, amount, order_code });
 }
