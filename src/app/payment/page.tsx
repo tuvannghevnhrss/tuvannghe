@@ -1,12 +1,16 @@
-// ⬅️ KHÔNG “use client” ở đây
-export const dynamic = "force-dynamic";  // buộc render mỗi request
+// ❌ KHÔNG thêm "use client" (đây là Server Component)
+export const dynamic = "force-dynamic"; // luôn render mỗi request
 
-import PaymentContent from "./PaymentContent";
+import dynamic from "next/dynamic";
+
+// ---- tắt SSR cho PaymentContent (client-side only) ----
+const PaymentContent = dynamic(() => import("./PaymentContent"), {
+  ssr: false,
+});
 
 type Props = { searchParams: { product?: string } };
 
 export default function PaymentPage({ searchParams }: Props) {
-  // lấy product ngay trên server
-  const product = searchParams.product ?? "mbti";
+  const product = searchParams.product ?? "mbti"; // lấy ngay trên server
   return <PaymentContent product={product} />;
 }
