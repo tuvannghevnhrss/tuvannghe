@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatVND } from "@/lib/formatVND";
+import formatVND from "@/lib/formatVND";
 
 const PRODUCTS = [
   { id: "mbti",     name: "MBTI",             price: 10_000 },
