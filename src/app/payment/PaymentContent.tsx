@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { formatVND } from "@/lib/formatVND";
+import formatVND from "@/lib/formatVND";
 
 type Props = { product: string };          // nhận từ Server-Component
 
