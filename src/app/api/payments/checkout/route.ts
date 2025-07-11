@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 3. Read body
+  // 3. Đọc body từ client
   const { product, coupon } = await req.json();
 
   // 4. Tính số tiền gốc theo product
@@ -30,18 +30,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
 
-  // 5. (TODO) Áp dụng coupon lookup nếu cần, tạm thời không giảm
-  const amount = amountDue;
+  // 5. Lookup coupon (nếu có)
+  let discount = 0;
+  if (coupon) {
+    const { data: row, error: err } = await supabase
+      .from("coupons")
+      .select("discount,product,expires_at")
+      .eq("code", coupon)
+      .single();
 
-  // 6. Tạo mã đơn hàng ngắn gọn: SEVQR + 4 ký tự
-  const suffix = Math.random().toString(36).slice(-4).toUpperCase(); // ex: "7F9X"
+    if (!err && row) {
+      const now = new Date();
+      const exp = new Date(row.expires_at);
+      const applies =
+        (row.product === product || row.product === "all") &&
+        exp >= now;
+
+      if (applies) {
+        discount = row.discount; // số tiền VND được giảm
+      }
+    }
+  }
+
+  // 6. Tính ra số tiền thực khách phải trả
+  const amount = Math.max(amountDue - discount, 0);
+
+  // 7. Tạo order_code cho SePay: chỉ lấy 4 ký tự ngẫu nhiên
+  const suffix = Math.random().toString(36).slice(-4).toUpperCase();
   const order_code = suffix;
 
-  // 7. Lưu vào DB (Supabase sẽ tự gán id serial)
+  // 8. Ghi vào bảng payments (cột amount là số tiền sau giảm)
   const { error } = await supabase.from("payments").insert({
     user_id: user.id,
     product,
-    amount,         // CHỈ dùng cột `amount`; đã bỏ `amount_due`
+    amount,
     status: "pending",
     order_code,
   });
@@ -51,10 +73,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
 
-  // 8. Build URL QR SePay
+  // 9. Tạo URL QR SePay (content = "SEVQR {order_code}")
   const BANK_CODE = process.env.SEPAY_BANK_CODE!;
-  const BANK_ACC  = process.env.SEPAY_BANK_ACC!;
-  // Chú ý: content phải chứa “SEVQR␣{order_code}” để SePay parse
+  const BANK_ACC = process.env.SEPAY_BANK_ACC!;
   const qr_url = [
     `https://qr.sepay.vn/img`,
     `?bank=${encodeURIComponent(BANK_CODE)}`,
@@ -64,6 +85,6 @@ export async function POST(req: Request) {
     `&template=compact`,
   ].join("");
 
-  // 9. Trả về client
+  // 10. Trả về client
   return NextResponse.json({ qr_url, amount, order_code });
 }
