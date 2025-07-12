@@ -1,90 +1,70 @@
-"use client";
+// src/app/holland/page.tsx
+import Link from "next/link";
+import formatVND from "@/lib/formatVND";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { QUESTIONS } from "./questions";
+const PRICE = 20_000;
 
-export default function HollandQuiz() {
-  /* --- Khởi tạo --- */
-  const router = useRouter();
-  const pathname = usePathname();
-  const supabase = createClientComponentClient();
+export const dynamic = "force-dynamic";
 
-  /* --- 1. Bắt buộc đăng nhập --- */
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        router.replace(`/login?redirectedFrom=${pathname}`);
-      }
-    });
-  }, [pathname, router, supabase]);
+export default async function HollandIntro() {
+  /* Nếu đã thanh toán → chuyển thẳng sang làm bài */
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
 
-  /* --- 2. State câu hỏi --- */
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const current = QUESTIONS[step];
+  if (user) {
+    const { data } = await supabase
+      .from("payments")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("product", "holland")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  const choose = (v: 0 | 1) => {
-    const next = [...answers, v];
+    if (data?.status === "paid") redirect("/holland/quiz");
+  }
 
-    if (step + 1 === QUESTIONS.length) {
-      submit(next);
-    } else {
-      setAnswers(next);
-      setStep(step + 1);
-    }
-  };
-
-  /* --- 3. Tính mã Holland & điểm --- */
-  const calcHolland = (ans: number[]) => {
-    const score: Record<string, number> = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
-    ans.forEach((v, i) => {
-      const key = Object.keys(score)[i % 6] as keyof typeof score;
-      score[key] += v;
-    });
-    const code = Object.entries(score)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([k]) => k)
-      .join("");
-    return { code, score };
-  };
-
-  /* --- 4. Gửi API & điều hướng --- */
-  const submit = async (ans: number[]) => {
-    const { code, score } = calcHolland(ans);
-
-    const res = await fetch("/api/holland", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, score }),
-    });
-
-    if (!res.ok) {
-      alert("Có lỗi khi lưu kết quả, vui lòng thử lại!");
-      return;
-    }
-    router.push(`/holland/result?code=${code}`);
-  };
-
-  /* --- 5. UI --- */
   return (
-    <div className="max-w-xl mx-auto py-20 text-center">
-      <p className="mb-4 font-medium">
-        Câu {step + 1} / {QUESTIONS.length}
+    <section className="max-w-xl mx-auto py-20 text-center">
+      <h1 className="text-3xl font-bold mb-3">Bộ câu hỏi Holland</h1>
+      <p className="text-gray-600 mb-8">
+        Khám phá nhóm nghề nghiệp phù hợp nhất với bạn thông qua
+        trắc nghiệm Holland RIASEC.
       </p>
-      <h2 className="text-2xl font-bold mb-6">{current.question}</h2>
 
-      {current.options.map((opt, i) => (
-        <button
-          key={opt}
-          onClick={() => choose(i as 0 | 1)}
-          className="block w-full border rounded p-4 mb-4 hover:bg-purple-50"
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
+      <div className="grid grid-cols-3 gap-6 mb-8">
+        <div>
+          <p className="text-4xl font-bold">54</p>
+          <p className="text-gray-500">Câu hỏi</p>
+        </div>
+        <div>
+          <p className="text-4xl font-bold">2</p>
+          <p className="text-gray-500">Lựa chọn/câu</p>
+        </div>
+        <div>
+          <p className="text-4xl font-bold">
+            {formatVND(PRICE).replace(",00 ₫", "")}
+          </p>
+          <p className="text-gray-500">Phí</p>
+        </div>
+      </div>
+
+      <ol className="text-left inline-block mb-10 leading-8">
+        <li><b>Thanh toán</b> {formatVND(PRICE)} (bằng QR ở trang thanh toán)</li>
+        <li><b>Hoàn thành</b> 54 câu hỏi – chọn đáp án đúng nhất với bạn</li>
+        <li><b>Kết quả</b> sẽ được gửi về email &amp; hiển thị trên chatbot</li>
+      </ol>
+
+      {/* nút tới trang thanh toán */}
+      <Link
+        href="/payment?product=holland"
+        className="block bg-brandYellow hover:bg-yellow-500 text-black font-medium px-8 py-3 rounded"
+      >
+        Thanh toán {formatVND(PRICE)}
+      </Link>
+    </section>
   );
 }
