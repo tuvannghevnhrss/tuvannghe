@@ -1,138 +1,91 @@
+// src/app/payment/PaymentContent.tsx
 "use client";
-
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import formatVND from "@/lib/formatVND";
 
-type Props = { product: string };
-
-// Nhãn hiển thị cho mỗi product
-const LABELS: Record<string, string> = {
-  mbti: "MBTI",
-  holland: "Holland",
-  knowdell: "Giá trị bản thân",
-  combo: "Combo",
-};
+type Props = { product: "mbti" | "holland" | "knowdell" | "combo" };
 
 export default function PaymentContent({ product }: Props) {
+  const PRICE = { mbti: 10_000, holland: 20_000, knowdell: 100_000, combo: 90_000 } as const;
+
   const [coupon, setCoupon] = useState("");
-  const [amount, setAmount] = useState<number>(0);
-  const [qrUrl, setQrUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const [amount, setAmount] = useState<number>(PRICE[product]);
 
-  // Giá gốc
-  const PRICE: Record<string, number> = {
-    mbti: 10_000,
-    holland: 20_000,
-    knowdell: 100_000,
-    combo: 90_000,
-  };
-  const original = PRICE[product] ?? 0;
-  const label = LABELS[product] ?? product;
-
-  // lúc mount, để số tiền = gốc
+  /* 💡 tính tiền mỗi khi mã giảm giá đổi */
   useEffect(() => {
-    setAmount(original);
-  }, [original]);
-
-  // submit form để tạo QR
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const res = await fetch("/api/payments/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product, coupon }),
-    });
-
-    if (!res.ok) {
-      console.error(await res.text());
-      setLoading(false);
+    if (!coupon) {
+      setAmount(PRICE[product]);
       return;
     }
-    const { qr_url, amount: amt } = await res.json();
-    setAmount(amt);
-    setQrUrl(qr_url);
-    setLoading(false);
-  };
 
-  // poll status 3s/lần, khi paid thì điều hướng
-  useEffect(() => {
-    if (!qrUrl) return;
-    intervalRef.current = setInterval(async () => {
-      const res = await fetch(`/api/payments/status?product=${product}`);
-      if (res.ok) {
-        const { paid } = await res.json();
-        if (paid) {
-          clearInterval(intervalRef.current!);
-          router.push(`/${product}`);
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch("/api/payments/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ product, code: coupon.trim() }),
+          signal: ctrl.signal,
+        });
+        if (res.ok) {
+          const { amount: newAmount } = await res.json();
+          setAmount(newAmount);
+        } else {
+          /* mã không hợp lệ → giữ giá gốc */
+          setAmount(PRICE[product]);
         }
-      }
-    }, 3000);
-    return () => clearInterval(intervalRef.current!);
-  }, [qrUrl, product, router]);
+      } catch (_) {}
+    })();
+    return () => ctrl.abort();
+  }, [coupon, product]);
 
+  /* … UI */
   return (
-    <div className="max-w-lg mx-auto py-8 px-4">
-      {/* Tiêu đề & giá gốc */}
-      {!qrUrl && (
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Thanh toán {label}</h1>
-          <p className="text-lg text-gray-700">
-            Giá gốc: <span className="font-medium">{formatVND(original)}</span>
-          </p>
-        </div>
-      )}
+    <div className="max-w-lg mx-auto space-y-6">
+      <h1 className="text-3xl font-bold text-center">Thanh toán {product === "mbti" ? "MBTI" : "Holland"}</h1>
 
-      {!qrUrl ? (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block mb-1 font-medium">Nhập mã giảm giá</label>
-            <input
-              type="text"
-              value={coupon}
-              onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-              placeholder="Nhập mã nếu có"
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring"
-            />
-          </div>
+      <p className="font-medium">
+        Giá gốc: <span className="font-bold">{formatVND(PRICE[product])}</span>
+      </p>
 
-          <div>
-            <label className="block mb-1 font-medium">Số tiền thanh toán</label>
-            <input
-              type="text"
-              readOnly
-              value={formatVND(amount)}
-              className="w-full bg-gray-100 border border-gray-300 rounded px-3 py-2"
-            />
-          </div>
+      <label className="block space-y-2">
+        <span className="font-medium">Nhập mã giảm giá</span>
+        <input
+          value={coupon}
+          onChange={(e) => setCoupon(e.target.value)}
+          placeholder="Nhập mã nếu có"
+          className="w-full border rounded px-4 py-2"
+        />
+      </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            {loading ? "Đang xử lý…" : "Đi đến quét mã Thanh toán"}
-          </button>
-        </form>
-      ) : (
-        <div className="mt-8 text-center">
-          <h2 className="text-2xl font-semibold mb-4">
-            Quét QR để thanh toán {formatVND(amount)}
-          </h2>
-          <img
-            src={qrUrl!}
-            alt="QR Code"
-            className="mx-auto border-2 border-gray-200 rounded p-2 mb-4"
-          />
-          <p className="text-gray-600">
-            Sau khi thanh toán xong, hệ thống sẽ tự động kích hoạt.
-          </p>
-        </div>
-      )}
+      <label className="block space-y-2">
+        <span className="font-medium">Số tiền thanh toán</span>
+        <input
+          readOnly
+          value={formatVND(amount)}
+          className="w-full border rounded px-4 py-2 bg-gray-100 cursor-not-allowed"
+        />
+      </label>
+
+      {/* nút tạo QR */}
+      <button
+        onClick={async () => {
+          const res = await fetch("/api/payments/checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ product, coupon }),
+          });
+          if (res.ok) {
+            const { qr_url } = await res.json();
+            window.location.href = qr_url; // hoặc mở modal QR
+          } else {
+            alert("Đã có lỗi, vui lòng thử lại!");
+          }
+        }}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-3 font-semibold"
+      >
+        Đi đến quét mã Thanh toán
+      </button>
     </div>
   );
 }
