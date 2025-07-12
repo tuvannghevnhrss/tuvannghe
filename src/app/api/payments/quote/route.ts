@@ -1,14 +1,12 @@
-/* ------------------------------------------------------------------
-   Trả về số tiền phải trả sau khi áp dụng (nếu hợp lệ) mã coupon
-   Hỗ trợ     – GET   /api/payments/quote?product=mbti&coupon=ZA80
-            – POST  /api/payments/quote  { product, coupon }
-   ------------------------------------------------------------------ */
+/* src/app/api/payments/checkout/route.ts
+   Tạo QR + ghi bảng payments với số tiền sau khi trừ khuyến mãi         */
 export const dynamic = "force-dynamic";
-import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
 
-/* Bảng giá gốc (đồng) */
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { NextResponse } from "next/server";
+
+/* Bảng giá gốc */
 const PRICE = {
   mbti   : 10_000,
   holland: 20_000,
@@ -16,23 +14,28 @@ const PRICE = {
   combo  : 90_000,
 } as const;
 
-/* -------------------------------------------------- */
-// chia thành hàm dùng chung
-async function buildQuote(
-  productRaw: string,
-  codeRaw   : string
-) {
-  const product = productRaw.toLowerCase().trim();
-  const amount_due = PRICE[product as keyof typeof PRICE] ?? 0;
-  if (amount_due === 0) {
-    return { error: "Invalid product" } as const;
+/* ------------------------------------------------------------------ */
+export async function POST(req: Request) {
+  const supabase = createRouteHandlerClient({ cookies });
+
+  /* 1️⃣ - Xác thực */
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { product: prodRaw = "", coupon: codeRaw = "" } = await req.json();
+  const product = (prodRaw as string).toLowerCase().trim();
+
+  /* 2️⃣ - Giá gốc */
+  const amount_due = PRICE[product as keyof typeof PRICE] ?? 0;
+  if (amount_due === 0) {
+    return NextResponse.json({ error: "Invalid product" }, { status: 400 });
+  }
+
+  /* 3️⃣ - Tính giảm giá */
   let discount = 0;
-
   if (codeRaw) {
-    const supabase = createRouteHandlerClient({ cookies });
-
     const { data: cpn } = await supabase
       .from("coupons")
       .select("discount, expires_at, product")
@@ -50,22 +53,36 @@ async function buildQuote(
     }
   }
 
-  const amount = Math.max(0, amount_due - discount);
-  return { amount_due, discount, amount } as const;
-}
+  const amount   = Math.max(0, amount_due - discount);   // 💰 thực trả
+  const orderRef = Math.random().toString(36).slice(-4).toUpperCase(); // 4 ký tự
+  const qrDesc   = `SEVQR ${orderRef}`;
 
-/* ---------- GET -------------------------------------------------- */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const product = url.searchParams.get("product") ?? "";
-  const coupon  = url.searchParams.get("coupon")  ?? "";
-  const data = await buildQuote(product, coupon);
-  return NextResponse.json(data);
-}
+  /* 4️⃣ - Ghi DB */
+  const { error } = await supabase.from("payments").insert({
+    user_id   : user.id,
+    product,
+    amount,            // 👉 số tiền thực tế
+    status    : "pending",
+    order_ref : orderRef,
+    promo_code: codeRaw || null,
+    discount ,
+    qr_desc   : qrDesc,
+  });
 
-/* ---------- POST ------------------------------------------------- */
-export async function POST(req: Request) {
-  const { product = "", coupon = "" } = await req.json();
-  const data = await buildQuote(product, coupon);
-  return NextResponse.json(data);
+  if (error) {
+    console.error("Insert payment error:", error);
+    return NextResponse.json({ error: "DB error" }, { status: 500 });
+  }
+
+  /* 5️⃣ - Tạo QR SePay với **amount** sau giảm */
+  const BANK_CODE = process.env.SEPAY_BANK_CODE!;
+  const BANK_ACC  = process.env.SEPAY_BANK_ACC!;
+
+  const qr_url =
+    `https://qr.sepay.vn/img?bank=${BANK_CODE}` +
+    `&acc=${BANK_ACC}&amount=${amount}` +
+    `&des=${encodeURIComponent(qrDesc)}` +
+    `&template=compact`;
+
+  return NextResponse.json({ qr_url, amount, order_ref: orderRef });
 }
