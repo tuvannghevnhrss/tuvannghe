@@ -1,43 +1,41 @@
-// src/app/api/payments/checkout/route.ts
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 
 const PRICE = { mbti: 10_000, holland: 20_000, knowdell: 100_000, combo: 90_000 } as const;
-const PARTS = ["mbti", "holland", "knowdell"] as const;
 
 export async function POST(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let { product, coupon: rawCode } = await req.json();          // product có thể là knowdell
+  let { product, coupon: rawCode } = await req.json();
+  product = product.toLowerCase().trim();
+
+  /* 1 ▸ Tính amount_due */
   let amount_due = PRICE[product as keyof typeof PRICE] ?? 0;
   if (!amount_due) return NextResponse.json({ error: "Invalid product" }, { status: 400 });
 
-  /* 1 ▸ trừ phần đã thanh toán lẻ (combo hoặc knowdell) */
-  if (product === "combo" || product === "knowdell") {
-    const { data: paidRows } = await supabase
+  if (product === "knowdell") {
+    const { data: paid } = await supabase
       .from("payments")
       .select("product")
       .eq("user_id", user.id)
       .eq("status", "PAID")
-      .in("product", PARTS);
+      .in("product", ["mbti", "holland"]);
 
-    const already = paidRows?.reduce(
+    const already = paid?.reduce(
       (s, r) => s + PRICE[r.product as keyof typeof PRICE],
       0
     ) ?? 0;
 
     amount_due = Math.max(0, PRICE.combo - already);
-
-    // nếu user bấm knowdell nhưng thực chất hoàn tất combo → lưu product='combo'
-    if (product === "knowdell") product = "combo";
   }
 
-  /* 2 ▸ coupon */
+  /* 2 ▸ Coupon */
   let discount = 0;
   let promo_code: string | null = null;
+
   if (rawCode?.trim()) {
     const code = rawCode.trim().toUpperCase();
     const { data: cpn } = await supabase
@@ -60,7 +58,7 @@ export async function POST(req: Request) {
 
   const amount = Math.max(0, amount_due - discount);
 
-  /* 3 ▸ nếu amount = 0 → coi như đã trả đủ */
+  /* 3 ▸ Nếu amount = 0 → kích hoạt ngay */
   if (amount === 0) {
     await supabase.from("payments").insert({
       user_id : user.id,
@@ -73,7 +71,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ free: true });
   }
 
-  /* 4 ▸ tạo QR SePay */
+  /* 4 ▸ Tạo QR SePay */
   const order_code = Math.random().toString(36).slice(-4).toUpperCase();
   const qr_desc    = `SEVQR ${order_code}`;
 

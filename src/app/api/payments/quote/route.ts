@@ -1,7 +1,3 @@
-/* ------------------------------------------------------------------
-   Trả về số tiền phải trả sau khi áp dụng coupon
-   + trừ đi phần đã mua lẻ cho combo *hoặc* khi product = knowdell
-   ------------------------------------------------------------------ */
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
@@ -16,31 +12,28 @@ const PRICE = {
 
 const PARTS = ["mbti", "holland", "knowdell"] as const;
 
-/* -------------------------------------------------- */
+/* ------------------------------------------------------------------ */
 async function buildQuote(productRaw: string, codeRaw: string) {
   const product = productRaw.toLowerCase().trim();
-  if (!PRICE[product as keyof typeof PRICE])
-    return { error: "Invalid product" } as const;
+  if (!(product in PRICE)) return { error: "Invalid product" } as const;
 
   const supabase = createRouteHandlerClient({ cookies });
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { error: "unauth" } as const;
 
-  /* 1 ▸ tính amount_due */
+  /* 1 ▸ Tính amount_due */
   let amount_due = PRICE[product as keyof typeof PRICE];
 
-  // ⟵ phần combo còn thiếu
-  if (product === "combo" || product === "knowdell") {
-    const { data: paidRows } = await supabase
+  // Nếu là knowdell → phần còn thiếu để đủ combo 90K
+  if (product === "knowdell") {
+    const { data: paid } = await supabase
       .from("payments")
       .select("product")
       .eq("user_id", session.user.id)
       .eq("status", "PAID")
-      .in("product", PARTS);
+      .in("product", ["mbti", "holland"]);
 
-    const already = paidRows?.reduce(
+    const already = paid?.reduce(
       (s, r) => s + PRICE[r.product as keyof typeof PRICE],
       0
     ) ?? 0;
@@ -48,13 +41,13 @@ async function buildQuote(productRaw: string, codeRaw: string) {
     amount_due = Math.max(0, PRICE.combo - already);
   }
 
-  /* 2 ▸ áp dụng coupon */
+  /* 2 ▸ Giảm giá theo coupon */
   let discount = 0;
   if (codeRaw) {
     const { data: cpn } = await supabase
       .from("coupons")
       .select("discount, expires_at, product")
-      .eq("code", codeRaw.toUpperCase())
+      .eq("code", codeRaw.trim().toUpperCase())
       .maybeSingle();
 
     const now = new Date();
@@ -64,26 +57,30 @@ async function buildQuote(productRaw: string, codeRaw: string) {
       (!cpn.product || cpn.product === product)
     ) {
       discount = cpn.discount ?? 0;
+    } else {
+      return { error: "Mã giảm giá không hợp lệ" } as const;
     }
   }
 
   return {
-    listPrice: PRICE[product as keyof typeof PRICE],
+    listPrice : PRICE[product as keyof typeof PRICE],
     amount_due,
     discount,
-    amount: Math.max(0, amount_due - discount),
+    amount    : Math.max(0, amount_due - discount),
   } as const;
 }
 
-/* ---------------- GET ---------------- */
+/* ---------------- GET / POST ---------------- */
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const p   = url.searchParams.get("product") ?? "";
-  const cpn = url.searchParams.get("coupon")  ?? "";
-  return NextResponse.json(await buildQuote(p, cpn));
+  return NextResponse.json(
+    await buildQuote(
+      url.searchParams.get("product") ?? "",
+      url.searchParams.get("coupon")  ?? "",
+    )
+  );
 }
 
-/* ---------------- POST --------------- */
 export async function POST(req: Request) {
   const { product = "", coupon = "" } = await req.json();
   return NextResponse.json(await buildQuote(product, coupon));
