@@ -56,7 +56,7 @@ export default function PaymentContent({ product }: Props) {
               body: JSON.stringify({ product }),
             })
               .then(r => r.json())
-              .then(({ qr_url }) => window.open(qr_url, "_blank"))
+              .then(({ qr_url }) => setQr(qr_url))
           }
           className="px-6 py-3 bg-blue-600 text-white rounded"
         >
