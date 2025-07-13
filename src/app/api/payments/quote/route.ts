@@ -1,7 +1,6 @@
 /* ------------------------------------------------------------------
-   Trả về số tiền phải trả sau khi áp dụng (nếu hợp lệ) mã coupon
-   Hỗ trợ     – GET   /api/payments/quote?product=mbti&coupon=ZA80
-            – POST  /api/payments/quote  { product, coupon }
+   Trả về số tiền phải trả sau khi áp dụng coupon
+   và trừ đi khoản user đã mua lẻ (trường hợp product = combo)
    ------------------------------------------------------------------ */
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
@@ -10,29 +9,51 @@ import { cookies } from "next/headers";
 
 /* Bảng giá gốc (đồng) */
 const PRICE = {
-  mbti   : 10_000,
-  holland: 20_000,
+  mbti    : 10_000,
+  holland : 20_000,
   knowdell: 100_000,
-  combo  : 90_000,
+  combo   : 90_000,
 } as const;
 
+/* 🔹 NEW: thành phần cấu thành combo */
+const COMBO_PARTS = ["mbti", "holland", "knowdell"] as const;
+
 /* -------------------------------------------------- */
-// chia thành hàm dùng chung
-async function buildQuote(
-  productRaw: string,
-  codeRaw   : string
-) {
+async function buildQuote(productRaw: string, codeRaw: string) {
   const product = productRaw.toLowerCase().trim();
-  const amount_due = PRICE[product as keyof typeof PRICE] ?? 0;
-  if (amount_due === 0) {
-    return { error: "Invalid product" } as const;
+  const listPrice = PRICE[product as keyof typeof PRICE] ?? 0;
+  if (listPrice === 0) return { error: "Invalid product" } as const;
+
+  /* 🔹 NEW: khởi tạo Supabase một lần (cần cho cả combo lẫn coupon) */
+  const supabase = createRouteHandlerClient({ cookies });
+
+  /* --------------------------------------------------
+     1) Nếu user mua COMBO, trừ đi phần đã thanh toán lẻ
+  -------------------------------------------------- */
+  let amount_due = listPrice; // mặc định
+  if (product === "combo") {
+    const {
+      data: paidRows,
+    } = await supabase
+      .from("payments")
+      .select("product")
+      .eq("user_id", (await supabase.auth.getSession()).data.session?.user.id)
+      .eq("status", "PAID")
+      .in("product", COMBO_PARTS);
+
+    const alreadyPaid = paidRows?.reduce(
+      (sum, row) => sum + PRICE[row.product as keyof typeof PRICE],
+      0,
+    ) ?? 0;
+
+    amount_due = Math.max(0, listPrice - alreadyPaid);
   }
 
+  /* --------------------------------------------------
+     2) Tính discount nếu có coupon hợp lệ
+  -------------------------------------------------- */
   let discount = 0;
-
   if (codeRaw) {
-    const supabase = createRouteHandlerClient({ cookies });
-
     const { data: cpn } = await supabase
       .from("coupons")
       .select("discount, expires_at, product")
@@ -40,7 +61,6 @@ async function buildQuote(
       .maybeSingle();
 
     const now = new Date();
-
     if (
       cpn &&
       (!cpn.expires_at || new Date(cpn.expires_at) > now) &&
@@ -51,7 +71,7 @@ async function buildQuote(
   }
 
   const amount = Math.max(0, amount_due - discount);
-  return { amount_due, discount, amount } as const;
+  return { listPrice, amount_due, discount, amount } as const;
 }
 
 /* ---------- GET -------------------------------------------------- */

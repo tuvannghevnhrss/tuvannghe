@@ -3,6 +3,11 @@ import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 
+/* 🔹 NEW ----------------------------------------------------------- */
+const PRICE = { mbti: 10_000, holland: 20_000, knowdell: 100_000, combo: 90_000 } as const;
+const COMBO_PARTS = ["mbti", "holland", "knowdell"] as const;
+/* ----------------------------------------------------------------- */
+
 export async function POST(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
 
@@ -11,11 +16,29 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { product, coupon: rawCode } = await req.json();
-  const PRICE = { mbti: 10_000, holland: 20_000, knowdell: 100_000, combo: 90_000 } as const;
-  const amount_due = PRICE[product as keyof typeof PRICE];
+
+  /* 2. Tính **amount_due** sau khi trừ phần đã mua lẻ (nếu combo) */
+  let amount_due = PRICE[product as keyof typeof PRICE] ?? 0;
   if (!amount_due) return NextResponse.json({ error: "Invalid product" }, { status: 400 });
 
-  /* 2. Tra coupon (nếu có) */
+  /* 🔹 NEW: nếu mua combo, trừ giá gói lẻ đã thanh toán */
+  if (product === "combo") {
+    const { data: paidRows } = await supabase
+      .from("payments")
+      .select("product")
+      .eq("user_id", user.id)
+      .eq("status", "PAID")
+      .in("product", COMBO_PARTS);
+
+    const alreadyPaid = paidRows?.reduce(
+      (sum, r) => sum + PRICE[r.product as keyof typeof PRICE],
+      0,
+    ) ?? 0;
+
+    amount_due = Math.max(0, amount_due - alreadyPaid);
+  }
+
+  /* 3. Tra coupon (nếu có) – logic cũ giữ nguyên */
   let discount = 0;
   let promo_code: string | null = null;
 
@@ -26,32 +49,39 @@ export async function POST(req: Request) {
       .from("coupons")
       .select("discount, product, expires_at")
       .eq("code", code)
-      // coupon áp dụng cho tất cả hoặc đúng product
       .or(`product.is.null,product.eq.${product}`)
-      .lte("expires_at", "9999-12-31")        // PG đòi điều kiện nào đó => ta lọc hạn bên dưới
+      .lte("expires_at", "9999-12-31")
       .maybeSingle();
 
-    if (!cpn) {
+    const now = new Date();
+    if (
+      !cpn ||
+      (cpn.expires_at && new Date(cpn.expires_at) < now) ||
+      (cpn.product && cpn.product !== product)
+    ) {
       return NextResponse.json({ error: "Mã giảm giá không hợp lệ hoặc đã hết hạn" }, { status: 400 });
     }
 
-    // hết hạn?
-    if (cpn.expires_at && new Date(cpn.expires_at) < new Date()) {
-      return NextResponse.json({ error: "Mã giảm giá không hợp lệ hoặc đã hết hạn" }, { status: 400 });
-    }
-
-    // sai product?
-    if (cpn.product && cpn.product !== product) {
-      return NextResponse.json({ error: "Mã giảm giá không áp dụng cho sản phẩm này" }, { status: 400 });
-    }
-
-    discount    = cpn.discount ?? 0;
-    promo_code  = code;
+    discount   = cpn.discount ?? 0;
+    promo_code = code;
   }
 
   const amount = Math.max(0, amount_due - discount);
 
-  /* 3. Order & QR */
+  /* 🔹 NEW: nếu amount = 0 → ghi luôn trạng thái PAID, không tạo QR */
+  if (amount === 0) {
+    await supabase.from("payments").insert({
+      user_id : user.id,
+      product,
+      amount  : 0,
+      status  : "PAID",
+      promo_code,
+      discount,
+    });
+    return NextResponse.json({ free: true });
+  }
+
+  /* 4. Order & QR */
   const suffix     = Math.random().toString(36).slice(-4).toUpperCase();
   const order_code = suffix;
   const qr_desc    = `SEVQR ${order_code}`;
@@ -60,12 +90,11 @@ export async function POST(req: Request) {
     user_id   : user.id,
     product,
     amount,
-    status    : "pending",
+    status    : "PENDING",
     promo_code,
     discount,
     qr_desc,
   });
-
   if (insertErr) {
     console.error("Insert payment error:", insertErr);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
