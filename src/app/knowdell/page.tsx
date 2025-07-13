@@ -21,7 +21,7 @@ export default async function KnowdellIntro() {
     .select("id")
     .eq("user_id", session.user.id)
     .eq("product", SERVICE.KNOWDELL)
-    .eq("status", "PAID")
+    .eq("status", STATUS.PAID)
     .maybeSingle();
 
   /* 3. Đã làm quiz chưa? */

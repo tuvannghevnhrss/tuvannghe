@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       .from("payments")
       .select("product")
       .eq("user_id", user.id)
-      .eq("status", "PAID")
+      .eq("status", STATUS.PAID)
       .in("product", ["mbti", "holland"]);
 
     const already = paid?.reduce(
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       user_id : user.id,
       product,
       amount  : 0,
-      status  : "PAID",
+      status  : STATUS.PAID,
       promo_code,
       discount,
     });
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     user_id  : user.id,
     product,
     amount,
-    status   : "PENDING",
+    status   : STATUS.PENDING,
     promo_code,
     discount,
     order_code,
