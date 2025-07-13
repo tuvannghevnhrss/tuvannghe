@@ -1,3 +1,4 @@
+/*  src/app/knowdell/quiz/page.tsx  */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,18 +7,16 @@ import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { SERVICE } from "@/lib/constants";
 
-/* ---------- cấu hình ---------- */
-const LIMIT    = 10;                 // số thẻ phải chọn
-const PRODUCT  = SERVICE.KNOWDELL;   // 'knowdell'
-
+const LIMIT   = 10;
+const PRODUCT = SERVICE.KNOWDELL;
 type Value = { value_key: string; vi: string };
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export default function KnowdellQuizPage() {
-  const router    = useRouter();
-  const supabase  = createClientComponentClient();
+  const router   = useRouter();
+  const supabase = createClientComponentClient();
 
-  /* 1. Kiểm tra thanh toán */
+  /* 1. kiểm tra thanh toán */
   const { data: pay, isLoading } = useSWR(
     `/api/payments/status?product=${PRODUCT}`,
     fetcher
@@ -26,14 +25,14 @@ export default function KnowdellQuizPage() {
     if (!isLoading && !pay?.paid) router.replace("/knowdell");
   }, [isLoading, pay, router]);
 
-  /* 2. Lấy danh sách thẻ */
+  /* 2. lấy danh sách thẻ */
   const [list, setList] = useState<Value[]>([]);
   useEffect(() => {
     supabase.from("lookup_values").select("*").order("vi")
       .then(({ data }) => setList(data as Value[] ?? []));
   }, [supabase]);
 
-  /* 3. State các thẻ đã chọn */
+  /* 3. thẻ đã chọn */
   const [picked, setPicked] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("kv_values") ?? "[]"); }
     catch { return []; }
@@ -45,22 +44,18 @@ export default function KnowdellQuizPage() {
                     : p.length < LIMIT ? [...p, k] : p
     );
 
-  /* 4. Bước tiếp theo */
   function next() {
-    if (picked.length !== LIMIT)
-      return alert(`Hãy chọn đúng ${LIMIT} giá trị`);
+    if (picked.length !== LIMIT) return alert(`Hãy chọn đúng ${LIMIT}`);
     localStorage.setItem("kv_values", JSON.stringify(picked));
     router.push("/knowdell/skills");
   }
 
-  /* ---------- render ---------- */
-  if (isLoading) return null;   // hoặc Spinner
+  if (isLoading) return null;
 
+  /* 4. render UI */
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold">
-        Chọn {LIMIT} giá trị nghề nghiệp quan trọng nhất
-      </h1>
+      <h1 className="text-2xl font-bold">Chọn {LIMIT} giá trị nghề nghiệp quan trọng nhất</h1>
       <p className="text-sm text-gray-600">
         Đã chọn <b>{picked.length}</b>/{LIMIT}
       </p>
@@ -77,7 +72,6 @@ export default function KnowdellQuizPage() {
             </button>
           ))}
         </div>
-
         {/* đã chọn */}
         <div className="border rounded p-3 h-[420px] overflow-y-auto space-y-1 bg-indigo-50">
           {picked.map(k=>(
@@ -93,7 +87,8 @@ export default function KnowdellQuizPage() {
         </div>
       </div>
 
-      <button onClick={next}
+      <button
+        onClick={next}
         disabled={picked.length!==LIMIT}
         className="mt-6 px-6 py-2 rounded bg-indigo-600 text-white disabled:opacity-50">
         Tiếp tục
