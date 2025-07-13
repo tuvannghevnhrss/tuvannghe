@@ -1,5 +1,5 @@
 /* src/app/payment/PaymentContent.tsx
-   Rút gọn: fetch <> useEffect  —   KHÔNG dùng swr */
+   Không dùng swr  – hiển thị QR tại chỗ */
 
 "use client";
 
@@ -10,32 +10,42 @@ type Props = { product: keyof typeof SERVICE };
 
 export default function PaymentContent({ product }: Props) {
   const [amount, setAmount] = useState<number | null>(null);
+  const [qr,     setQr]     = useState<string | null>(null);   // ⬅️ thêm state QR
 
-  /* 1. Gọi API quote duy nhất một lần */
+  /* 1 ▸ Gọi API /quote */
   useEffect(() => {
     fetch(`/api/payments/quote?product=${product}`)
       .then(r => r.json())
       .then(res => setAmount(res.amount))
-      .catch(() => setAmount(-1));                // lỗi
+      .catch(() => setAmount(-1));
   }, [product]);
 
-  /* 2. Loading / lỗi */
+  /* 2 ▸ Loading / lỗi */
   if (amount === null) return <p>Đang tải…</p>;
   if (amount === -1)   return <p className="text-red-600">Không lấy được giá.</p>;
 
-  /* 3. Render */
+  /* 3 ▸ Render */
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">
         Thanh toán gói {product.toUpperCase()}
       </h2>
+
       <p>
-        Phí cần trả:{" "}
-        <b>{amount.toLocaleString("vi-VN")} đ</b>
+        Phí cần trả: <b>{amount.toLocaleString("vi-VN")} đ</b>
       </p>
 
+      {/* —— Nếu đã có QR thì hiển thị —— */}
+      {qr && (
+        <img
+          src={qr}
+          alt="QR thanh toán"
+          className="mx-auto w-64 h-64 border"
+        />
+      )}
+
       {amount === 0 ? (
-        /* —— ĐÃ thanh toán đủ trước đó —— */
+        /* —— ĐÃ thanh toán đủ —— */
         <button
           onClick={() =>
             fetch("/api/payments/checkout", {
@@ -49,19 +59,21 @@ export default function PaymentContent({ product }: Props) {
         </button>
       ) : (
         /* —— Cần thanh toán —— */
-        <button
-          onClick={() =>
-            fetch("/api/payments/checkout", {
-              method: "POST",
-              body: JSON.stringify({ product }),
-            })
-              .then(r => r.json())
-              .then(({ qr_url }) => setQr(qr_url))
-          }
-          className="px-6 py-3 bg-blue-600 text-white rounded"
-        >
-          Thanh toán {amount.toLocaleString("vi-VN")} đ
-        </button>
+        !qr && (                              /* ẩn nút khi đã tạo QR */
+          <button
+            onClick={() =>
+              fetch("/api/payments/checkout", {
+                method: "POST",
+                body: JSON.stringify({ product }),
+              })
+                .then(r => r.json())
+                .then(({ qr_url }) => setQr(qr_url))
+            }
+            className="px-6 py-3 bg-blue-600 text-white rounded"
+          >
+            Thanh toán {amount.toLocaleString("vi-VN")} đ
+          </button>
+        )
       )}
     </div>
   );
