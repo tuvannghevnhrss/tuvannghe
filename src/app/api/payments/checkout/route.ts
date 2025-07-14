@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       user_id : user.id,
       product,
       amount  : 0,
-      status  : STATUS.PAID,
+      status  : "PAID",
       promo_code,
       discount,
     });
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     user_id  : user.id,
     product,
     amount,
-    status   : STATUS.PENDING,
+    status   : "PENDING",
     promo_code,
     discount,
     order_code,
