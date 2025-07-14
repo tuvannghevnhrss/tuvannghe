@@ -69,7 +69,6 @@ export default async function HollandResultPage({ searchParams }: Props) {
       {
         user_id: user.id,
         holland_profile: score, // jsonb column
-        holland_code: code,     // nếu bảng của bạn KHÔNG có cột này, hãy xoá dòng này
         updated_at: new Date(),
       },
       { onConflict: "user_id" }
