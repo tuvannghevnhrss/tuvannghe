@@ -1,6 +1,7 @@
 /* src/app/payment/PaymentContent.tsx
    – Hiển thị giá / mã giảm / QR
-   – Poll 3 giây khi đã phát QR để tự reload khi PAID       */
+   – Poll 3 giây khi đã phát QR để tự reload khi PAID
+   – Vô hiệu hoá cache JSON “quote” (fix refresh giữ 0đ)           */
 
 "use client";
 
@@ -21,9 +22,10 @@ export default function PaymentContent({ product }: Props) {
   const [qr, setQr]           = useState<string | null>(null);
   const [error, setErr]       = useState("");
 
-  /* 1 ▸ lấy giá mặc định */
+  /* 1 ▸ lấy giá mặc định (no-cache) */
   useEffect(() => {
-    fetch(`/api/payments/quote?product=${product}`)
+    const url = `/api/payments/quote?product=${product}&ts=${Date.now()}`;
+    fetch(url, { cache: "no-store" })
       .then(r => r.json() as Promise<QuoteRes>)
       .then(res => {
         if ("error" in res) throw new Error(res.error);
@@ -37,7 +39,7 @@ export default function PaymentContent({ product }: Props) {
   useEffect(() => {
     if (!qr) return;
     const id = setInterval(() => {
-      fetch(`/api/payments/status?product=${product}`)
+      fetch(`/api/payments/status?product=${product}`, { cache: "no-store" })
         .then(r => r.json())
         .then(res => {
           if (res.paid) {
@@ -55,14 +57,14 @@ export default function PaymentContent({ product }: Props) {
     const code = coupon.trim();
     if (!code) return;
 
-    const res = await fetch(
-      `/api/payments/quote?product=${product}&coupon=${code}`
-    ).then(r => r.json() as Promise<QuoteRes>);
+    const url =
+      `/api/payments/quote?product=${product}&coupon=${code}&ts=${Date.now()}`;
 
-    if ("error" in res) {
-      setErr(res.error);
-      return;
-    }
+    const res = await fetch(url, { cache: "no-store" })
+      .then(r => r.json() as Promise<QuoteRes>);
+
+    if ("error" in res) { setErr(res.error); return; }
+
     setAmount(res.amount);
     setDisc(res.discount);
   }
@@ -72,16 +74,14 @@ export default function PaymentContent({ product }: Props) {
     setErr("");
     const body = { product, coupon: coupon.trim() || undefined };
     const res  = await fetch("/api/payments/checkout", {
-      method: "POST",
-      body: JSON.stringify(body),
+      method : "POST",
+      body   : JSON.stringify(body),
+      cache  : "no-store",
     }).then(r => r.json());
 
-    if (res.error) {
-      setErr(res.error);
-      return;
-    }
-    if (res.free) location.reload();    // 0 đ ⇒ kích hoạt ngay
-    else setQr(res.qr_url);             // hiển thị QR
+    if (res.error) { setErr(res.error); return; }
+    if (res.free)  location.reload();    // 0 đ ⇒ kích hoạt ngay
+    else           setQr(res.qr_url);    // hiển thị QR
   }
 
   /* ------------ render ------------- */
@@ -97,7 +97,9 @@ export default function PaymentContent({ product }: Props) {
       <p>
         Phí cần trả: <b>{amount.toLocaleString("vi-VN")} đ</b>
         {discount > 0 && (
-          <span className="text-sm text-green-600"> (đã giảm {discount.toLocaleString("vi-VN")} đ)</span>
+          <span className="text-sm text-green-600">
+            {" "} (đã giảm {discount.toLocaleString("vi-VN")} đ)
+          </span>
         )}
       </p>
 
