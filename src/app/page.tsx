@@ -25,7 +25,7 @@ export default function HomePage() {
             Nền tảng <span className="text-indigo-600">Hướng nghiệp AI</span>
           </h1>
           <p className="mt-4 text-gray-600">
-            Tự khám phá bản thân với MBTI, Holland, Khám phá bản thân và nhận báo cáo
+            Tự khám phá bản thân với MBTI, Holland, Giá trị bản thân và nhận báo cáo
             qua email chuyên sâu chỉ trong vài phút.
           </p>
           <Link
@@ -106,8 +106,8 @@ export default function HomePage() {
       <section className="mx-auto max-w-4xl px-6 text-center">
         <h2 className="text-2xl font-semibold">Những con số nổi bật</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-10">
-          <Counter value="120 +" label="Người dùng" />
-          <Counter value="250 +" label="Bài test đã hoàn thành" />
+          <Counter value="120+" label="Người dùng" />
+          <Counter value="250+" label="Bài test đã hoàn thành" />
           <Counter value="99+" label="Báo cáo đã tạo" />
         </div>
       </section>
