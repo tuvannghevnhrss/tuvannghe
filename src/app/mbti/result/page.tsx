@@ -3,51 +3,32 @@ export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { MBTI_MAP } from "@/lib/mbtiDescriptions";          // 👈 thêm dòng này
 
 interface Props {
   searchParams: { code?: string };
 }
 
-/* ── MÔ TẢ TÍNH CÁCH ─────────────────────────────────── */
-const DESCS: Record<string, string> = {
-  ISTJ: "Thực tế, cẩn trọng, tôn trọng truyền thống và có tổ chức.",
-  ISFJ: "Ân cần, trách nhiệm, trung thành, hướng về phục vụ người khác.",
-  INFJ: "Trực giác mạnh mẽ, lý tưởng cao, hướng về mục đích sâu sắc.",
-  INTJ: "Sáng tạo, phân tích, lập kế hoạch dài hạn, độc lập.",
-  ISTP: "Thực tế, khéo tay, thích giải quyết vấn đề trước mắt.",
-  ISFP: "Hòa nhã, linh hoạt, trân trọng vẻ đẹp và giá trị cá nhân.",
-  INFP: "Đa cảm, lý tưởng, tìm kiếm ý nghĩa cá nhân sâu sắc.",
-  INTP: "Phân tích, tò mò, đam mê nghiên cứu lý thuyết.",
-  ESTP: "Thực tế, ưa mạo hiểm, thích hành động ngay lập tức.",
-  ESFP: "Sôi nổi, thích tương tác, trân trọng niềm vui hiện tại.",
-  ENFP: "Sáng tạo, nhiệt huyết, khám phá khả năng và ý tưởng mới.",
-  ENTP: "Nhạy bén, thích tranh luận, tìm kiếm giải pháp sáng tạo.",
-  ESTJ: "Thực tế, quyết đoán, giỏi tổ chức và điều hành.",
-  ESFJ: "Hòa nhập, chu đáo, quan tâm đến người khác.",
-  ENFJ: "Dẫn dắt, truyền cảm hứng, quan tâm đến sự phát triển của người khác.",
-  ENTJ: "Quyết đoán, chiến lược, giỏi lãnh đạo và quản lý.",
-};
-
 export default async function MBTIResultPage({ searchParams }: Props) {
   const code = (searchParams.code ?? "").toUpperCase();
 
-  /* Validate mã MBTI: 4 kí tự E/I S/N T/F J/P */
+  /* 0. Validate: E/I S/N T/F J/P */
   if (!/^[EI][SN][FT][JP]$/.test(code)) redirect("/mbti");
 
-  /* Supabase server-side */
+  /* 1. Supabase */
   const supabase = createServerComponentClient({ cookies });
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/signup");
+  if (!user) redirect("/login?redirectedFrom=/mbti");
 
-  /* 1. Lưu bảng mbti_results */
+  /* 2. Ghi bảng mbti_results */
   await supabase.from("mbti_results").insert({
     user_id: user.id,
     type_code: code,
   });
 
-  /* 2. Cập nhật career_profiles.mbti */
+  /* 3. Upsert career_profiles.mbti */
   await supabase
     .from("career_profiles")
     .upsert(
@@ -55,14 +36,63 @@ export default async function MBTIResultPage({ searchParams }: Props) {
       { onConflict: "user_id" }
     );
 
-  /* 3. Hiển thị */
-  return (
-    <div className="max-w-2xl mx-auto py-20 text-center space-y-6">
-      <h1 className="text-3xl font-bold">Kết quả MBTI: {code}</h1>
+  /* 4. Đẩy tin nhắn vào Chatbot */
+  await supabase.from("chat_messages").insert({
+    user_id: user.id,
+    role: "assistant",
+    content: `🎉 Chúc mừng! Bạn vừa hoàn thành trắc nghiệm MBTI và kết quả là **${code}**. Hãy đặt câu hỏi cho tôi nếu muốn tìm hiểu sâu hơn nhé!`,
+  });
 
-      <div className="text-left bg-white shadow p-6 rounded-lg">
-        <h2 className="text-xl font-semibold mb-4">Mô tả tính cách</h2>
-        <p>{DESCS[code] ?? "Đang cập nhật mô tả."}</p>
+  /* 5. Lấy mô tả từ MBTI_MAP */
+  const info = MBTI_MAP[code];
+
+  return (
+    <div className="max-w-3xl mx-auto py-20 space-y-10">
+      <h1 className="text-3xl font-bold text-center">Kết quả MBTI: {code}</h1>
+
+      <section className="bg-white shadow rounded-lg p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Mô tả tính cách</h2>
+        <p>{info?.intro ?? "Đang cập nhật mô tả."}</p>
+      </section>
+
+      {info && (
+        <>
+          <section className="bg-white shadow rounded-lg p-6 space-y-2">
+            <h2 className="text-xl font-semibold">Điểm mạnh</h2>
+            <ul className="list-disc list-inside">
+              {info.strengths.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="bg-white shadow rounded-lg p-6 space-y-2">
+            <h2 className="text-xl font-semibold">Điểm cần lưu ý</h2>
+            <ul className="list-disc list-inside">
+              {info.flaws.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="bg-white shadow rounded-lg p-6 space-y-2">
+            <h2 className="text-xl font-semibold">Nghề nghiệp gợi ý</h2>
+            <ul className="list-disc list-inside">
+              {info.careers.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
+
+      <div className="text-center">
+        <a
+          href="/profile"
+          className="inline-block rounded bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
+        >
+          Xem Hồ sơ Phát triển nghề
+        </a>
       </div>
     </div>
   );
