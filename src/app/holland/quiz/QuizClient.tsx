@@ -48,7 +48,7 @@ export default function QuizClient({ QUESTIONS }: Props) {
       alert("Có lỗi khi lưu kết quả, thử lại!");
       return;
     }
-    router.push(`/holland/result?code=${code}`);
+    router.push(`/holland/thanks?code=${code}`);
   };
 
   return (
