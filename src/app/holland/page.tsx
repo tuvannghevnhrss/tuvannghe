@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import HollandIntro from "./HollandIntro";
 import { cookies } from "next/headers";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { STATUS } from "@/lib/constants";
 
 export default async function HollandPage() {
   const supabase = createServerComponentClient({ cookies });

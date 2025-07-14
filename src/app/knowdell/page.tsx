@@ -8,6 +8,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Database } from "@/types/supabase";
 
 import KnowdellIntro from "./KnowdellIntro";
+import { STATUS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 

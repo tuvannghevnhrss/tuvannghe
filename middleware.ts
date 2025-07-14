@@ -1,6 +1,7 @@
 // src/middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
+import { STATUS } from "@/lib/constants"
 
 export const config = { matcher: ["/mbti/:path*", "/holland/:path*", "/knowdell/:path*"] };
 
