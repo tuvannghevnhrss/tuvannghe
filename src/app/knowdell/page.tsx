@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Database } from "@/types/supabase";
 
-import KnowdellIntro from "@/components/KnowdellIntro";
+import KnowdellIntro from "./KnowdellIntro";
 
 export const dynamic = "force-dynamic";
 
