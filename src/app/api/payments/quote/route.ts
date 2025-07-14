@@ -49,7 +49,7 @@ async function buildQuote(
       .from("payments")
       .select("product")
       .eq("user_id", session.user.id)
-      .eq("status", PAID_STATUS);
+      .eq("status", STATUS.PAID);
 
     const alreadyPaidProducts =
       paidRows?.map(r => r.product as string) ?? [];
