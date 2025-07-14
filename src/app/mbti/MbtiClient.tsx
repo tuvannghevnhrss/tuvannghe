@@ -51,19 +51,18 @@ function MBTIQuiz() {
 
   /* --- 3. Tính MBTI (demo) --- */
   const calcMBTI = (ans: (0 | 1)[]): string => {
-    let E = 0, I = 0, S = 0, N = 0, T = 0, F = 0, J = 0, P = 0;
-    ans.forEach((v, i) => {
-      switch (i % 4) {
-        case 0: v === 0 ? E++ : I++; break;
-        case 1: v === 0 ? S++ : N++; break;
-        case 2: v === 0 ? T++ : F++; break;
-        case 3: v === 0 ? J++ : P++; break;
-      }
-    });
-    return (E >= I ? "E" : "I") +
-           (S >= N ? "S" : "N") +
-           (T >= F ? "T" : "F") +
-           (J >= P ? "J" : "P");
+   const count: Record<string, number> =
+     { E:0, I:0, S:0, N:0, T:0, F:0, J:0, P:0 };
+
+   ans.forEach((choice, idx) => {
+     const letter = QUESTIONS[idx].pair[choice]; // 0→a_letter, 1→b_letter
+     count[letter] += 1;
+   });
+
+   return (count.E >= count.I ? "E" : "I") +
+         (count.S >= count.N ? "S" : "N") +
+         (count.T >= count.F ? "T" : "F") +
+         (count.J >= count.P ? "J" : "P");
   };
 
   /* --- 4. Submit & điều hướng --- */

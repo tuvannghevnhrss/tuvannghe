@@ -167,7 +167,7 @@ export default function PhongTranProfile() {
 
         <div className="flex justify-center gap-4">
           <a
-            href="https://www.linkedin.com/in/your-profile"
+            href="https://career-guidance-app-v1.vercel.app/phongtran"
             target="_blank"
             className="rounded-full bg-gray-200 p-3 text-gray-600 hover:bg-gray-300"
           >
