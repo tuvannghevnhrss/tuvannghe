@@ -25,8 +25,8 @@ export default function HomePage() {
             Nền tảng <span className="text-indigo-600">Hướng nghiệp AI</span>
           </h1>
           <p className="mt-4 text-gray-600">
-            Tự khám phá bản thân với MBTI, Holland, Knowdell và nhận báo cáo
-            PDF chuyên sâu chỉ trong vài phút.
+            Tự khám phá bản thân với MBTI, Holland, Khám phá bản thân và nhận báo cáo
+            qua email chuyên sâu chỉ trong vài phút.
           </p>
           <Link
             href="/signup"
@@ -53,7 +53,7 @@ export default function HomePage() {
           {[
             { key: SERVICE.MBTI, label: "MBTI", desc: "60 câu hỏi • 10 K" },
             { key: SERVICE.HOLLAND, label: "Holland", desc: "54 câu hỏi • 20 K" },
-            { key: SERVICE.KNOWDELL, label: "Knowdell", desc: "54 thẻ • 100 K" },
+            { key: SERVICE.KNOWDELL, label: "Giá trị bản thân", desc: "54 thẻ • 100 K" },
             { key: "chat", label: "Chatbot AI", desc: "Tư vấn & FAQ" },
           ].map(card => (
             <Link
@@ -89,8 +89,8 @@ export default function HomePage() {
                 desc: "Báo cáo được tạo riêng cho bạn, nêu rõ điểm mạnh & phù hợp nghề.",
               },
               {
-                title: "Báo cáo PDF song ngữ",
-                desc: "Tải về PDF tiếng Việt & tiếng Anh, dễ chia sẻ với cố vấn/nhà tuyển dụng.",
+                title: "Báo cáo Email /Chatbot",
+                desc: "Dễ dàng đọc lại.",
               },
             ].map(item => (
               <div key={item.title} className="space-y-2 text-center">
@@ -106,9 +106,9 @@ export default function HomePage() {
       <section className="mx-auto max-w-4xl px-6 text-center">
         <h2 className="text-2xl font-semibold">Những con số nổi bật</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-10">
-          <Counter value="12 387+" label="Người dùng" />
-          <Counter value="25 964+" label="Bài test đã hoàn thành" />
-          <Counter value="9 812+" label="Báo cáo PDF đã tạo" />
+          <Counter value="120 +" label="Người dùng" />
+          <Counter value="250 +" label="Bài test đã hoàn thành" />
+          <Counter value="99+" label="Báo cáo đã tạo" />
         </div>
       </section>
 
