@@ -13,7 +13,7 @@ export default function HollandRadar({
       <RadarChart data={data}>
         <PolarGrid />
         <PolarAngleAxis dataKey="name" />
-        <PolarRadiusAxis domain={[0, 3]} angle={30} />
+        <PolarRadiusAxis domain={[0, 9]} angle={30} />
         <Radar dataKey="score" fill="#6366f1" fillOpacity={0.6} />
       </RadarChart>
     </ResponsiveContainer>

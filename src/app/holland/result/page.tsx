@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
 interface Props {
-  searchParams: { code?: string };
+  searchParams: { code?: string; score?: string };
 }
 
 /* ── Giải thích 6 nhóm R-I-A-S-E-C ───────────────────── */
@@ -18,6 +18,7 @@ const TRAITS: Record<string, string> = {
   C: "Conventional – Tỉ mỉ, dữ liệu, quy trình, tổ chức.",
 };
 
+/* helper hiển thị mô tả 3 chữ code */
 const explain = (code: string) =>
   code
     .split("")
@@ -26,10 +27,21 @@ const explain = (code: string) =>
 
 export default async function HollandResultPage({ searchParams }: Props) {
   /* ------------------------------------------------------------------ */
-  /* 0. Lấy & validate mã Holland (3 ký tự R / I / A / S / E / C)      */
+  /* 0. Lấy & validate mã Holland & điểm radar                          */
   /* ------------------------------------------------------------------ */
   const code = (searchParams.code ?? "").toUpperCase();
   if (!/^[RIASEC]{3}$/.test(code)) redirect("/holland");
+
+  /* Giải mã điểm radar (base64-JSON) – nếu không có sẽ redirect */
+  if (!searchParams.score) redirect("/holland");
+  let score: Record<string, number>;
+  try {
+    score = JSON.parse(
+      Buffer.from(searchParams.score, "base64").toString("utf8")
+    );
+  } catch {
+    redirect("/holland");
+  }
 
   /* ------------------------------------------------------------------ */
   /* 1. Supabase + Auth                                                 */
@@ -38,42 +50,63 @@ export default async function HollandResultPage({ searchParams }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/signup");
+  if (!user) redirect("/login?redirectedFrom=/holland");
 
   /* ------------------------------------------------------------------ */
   /* 2. Lưu kết quả vào DB                                              */
   /* ------------------------------------------------------------------ */
-  /* 2a. Ghi bảng holland_results (lịch sử) */
+  /* 2a. Ghi lịch sử holland_results                                    */
   await supabase.from("holland_results").insert({
     user_id: user.id,
     code,
+    score, // jsonb
   });
 
-  /* 2b. Upsert vào career_profiles.holland (hồ sơ hiện tại) */
+  /* 2b. Upsert vào career_profiles                                     */
   await supabase
     .from("career_profiles")
     .upsert(
-      { user_id: user.id, holland: { code }, updated_at: new Date() },
+      {
+        user_id: user.id,
+        holland_profile: score, // jsonb column
+        holland_code: code,     // nếu bảng của bạn KHÔNG có cột này, hãy xoá dòng này
+        updated_at: new Date(),
+      },
       { onConflict: "user_id" }
     );
 
-  /* 2c. Gửi tin nhắn vào chatbot */
+  /* 2c. Gửi tin nhắn vào chatbot                                       */
   await supabase.from("chat_messages").insert({
     user_id: user.id,
-    role: "assistant", // đổi tên cột nếu bạn dùng khác
-    content: `🎉 Chúc mừng! Bạn vừa hoàn thành trắc nghiệm Holland. Kết quả của bạn là **${code}**. Hãy hỏi tôi nếu muốn gợi ý nghề nghiệp phù hợp nhé!`,
+    role: "assistant",
+    content: `🎉 Bạn vừa hoàn thành trắc nghiệm Holland. Kết quả là **${code}** ( ${explain(
+      code
+    )} ). Có cần tôi gợi ý nghề nghiệp phù hợp không?`,
   });
 
   /* ------------------------------------------------------------------ */
   /* 3. UI                                                              */
   /* ------------------------------------------------------------------ */
   return (
-    <div className="max-w-2xl mx-auto py-20 text-center space-y-8">
+    <div className="max-w-3xl mx-auto py-20 space-y-10 text-center">
       <h1 className="text-3xl font-bold">Kết quả Holland: {code}</h1>
 
+      {/* mô tả ngắn 3 chữ */}
       <div className="rounded-lg bg-white p-6 shadow text-left">
         <p>{explain(code)}</p>
       </div>
+
+      {/* bảng điểm radar giản đơn */}
+      <table className="mx-auto text-sm">
+        <tbody>
+          {Object.entries(score).map(([k, v]) => (
+            <tr key={k}>
+              <td className="pr-4 font-medium">{k}</td>
+              <td>{v}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <a
         href="/profile?step=trait"

@@ -18,7 +18,7 @@ export async function GET() {
     .select("*")
     .eq("user_id", user.id)
     .eq("product", "mbti")
-    .eq("status", "paid")
+    .eq("status", STATUS.PAID)
     .maybeSingle();
 
   const paid = Boolean(pay);

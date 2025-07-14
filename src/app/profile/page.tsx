@@ -80,10 +80,8 @@ export default async function Profile({ searchParams }:{searchParams?:{step?:str
 
   /* 5. Holland radar --------------------------------------------------------- */
   const hollCode   = profile.holland?.code as string | undefined;
-  const hollandRadar = hollCode && /^[RIASEC]{3}$/.test(hollCode)
-    ? (()=>{const w=[3,2,1],s:{[k:string]:number}={R:0,I:0,A:0,S:0,E:0,C:0};
-             hollCode.split("").forEach((c,i)=>s[c]+=w[i]);
-             return Object.entries(s).map(([k,v])=>({name:k,score:v}));})()
+  const hollandRadar = profile.holland_profile
+    ? Object.entries(profile.holland_profile).map(([name,score])=>({name,score}))
     : [];
 
   /* 6. JSX ------------------------------------------------------------------- */

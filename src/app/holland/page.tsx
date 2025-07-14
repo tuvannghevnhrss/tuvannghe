@@ -26,7 +26,7 @@ export default async function HollandPage() {
       .select("status")
       .eq("user_id", user.id)
       .eq("product", "holland")
-      .eq("status", "paid")
+      .eq("status", STATUS.PAID)
       .single();
 
     hasPaid = !!pay;

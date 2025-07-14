@@ -1,113 +1,62 @@
 export interface HollandQuestion {
   id: number;
-  question: string;
-  options: string[];     // 2 lựa chọn, 0 / 1
+  text: string;
+  trait: 'R'|'I'|'A'|'S'|'E'|'C';
 }
 
-/**
- * 18 câu hỏi Holland R-I-A-S-E-C (mỗi loại lặp lại 3 lần).
- * Chọn “Phù hợp” (0) hoặc “Không phù hợp” (1).
- */
 export const QUESTIONS: HollandQuestion[] = [
-  /* R - Realistic */
-  {
-    id: 1,
-    question: "Bạn thích sửa chữa, lắp ráp hoặc làm những công việc tay chân (ví dụ: xe máy, đồ gỗ)?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 2,
-    question: "Bạn muốn làm việc ngoài trời và vận động cơ thể hơn là ngồi văn phòng?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 3,
-    question: "Bạn cảm thấy hứng thú với việc vận hành máy móc, thiết bị, công cụ?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-
-  /* I - Investigative */
-  {
-    id: 4,
-    question: "Bạn thích phân tích số liệu hoặc giải quyết bài toán khoa học?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 5,
-    question: "Bạn tò mò tìm hiểu nguyên nhân & cơ chế hoạt động của sự vật hiện tượng?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 6,
-    question: "Bạn muốn làm việc trong phòng thí nghiệm hoặc nghiên cứu học thuật?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-
-  /* A - Artistic */
-  {
-    id: 7,
-    question: "Bạn yêu thích vẽ tranh, thiết kế đồ hoạ, nhiếp ảnh hay làm nhạc?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 8,
-    question: "Bạn thích những công việc đòi hỏi sự sáng tạo, ít quy tắc cứng nhắc?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 9,
-    question: "Bạn hứng thú với việc biểu diễn (hát, nhảy, diễn xuất) trước công chúng?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-
-  /* S - Social */
-  {
-    id: 10,
-    question: "Bạn thích giúp đỡ, hướng dẫn hoặc chăm sóc người khác?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 11,
-    question: "Bạn muốn trở thành cố vấn, giáo viên hoặc nhân viên xã hội?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 12,
-    question: "Bạn dễ dàng đồng cảm và lắng nghe vấn đề của người khác?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-
-  /* E - Enterprising */
-  {
-    id: 13,
-    question: "Bạn hào hứng trong vai trò lãnh đạo, thuyết phục hoặc kinh doanh bán hàng?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 14,
-    question: "Bạn thích đặt mục tiêu lớn và điều hành dự án hay đội nhóm để đạt được chúng?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 15,
-    question: "Bạn cảm thấy tự tin khi đàm phán, thuyết trình trước đám đông?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-
-  /* C - Conventional */
-  {
-    id: 16,
-    question: "Bạn thích sắp xếp hồ sơ, quản lý dữ liệu, làm việc với bảng tính rõ ràng?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 17,
-    question: "Bạn đánh giá cao sự chính xác và quy trình khi hoàn thành công việc hành chính?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
-  {
-    id: 18,
-    question: "Bạn thoải mái với công việc lặp lại, theo quy tắc cố định và chi tiết?",
-    options: ["Phù hợp", "Không phù hợp"],
-  },
+  { id: 1, text: "Tôi thích tự tay sửa chữa, lắp ráp hoặc bảo trì máy móc.", trait: 'R' },
+  { id: 2, text: "Tôi cảm thấy hứng thú với các công việc ngoài trời (vườn tược, xây dựng, lâm nghiệp…).", trait: 'R' },
+  { id: 3, text: "Tôi thích vận hành các dụng cụ, thiết bị kỹ thuật.", trait: 'R' },
+  { id: 4, text: "Tôi cảm thấy thoải mái khi làm việc với vật liệu thô (gỗ, kim loại, bê tông…).", trait: 'R' },
+  { id: 5, text: "Tôi tin tưởng hơn vào kết quả thực nghiệm và bằng chứng cụ thể.", trait: 'R' },
+  { id: 6, text: "Tôi thích công việc đòi hỏi thể lực và khéo léo tay chân.", trait: 'R' },
+  { id: 7, text: "Tôi hứng thú với các hoạt động cơ khí hoặc điện tử.", trait: 'R' },
+  { id: 8, text: "Tôi thích tham gia sửa chữa đồ đạc, ô tô, xe máy.", trait: 'R' },
+  { id: 9, text: "Tôi thấy thỏa mãn khi tự mình hoàn thành một món đồ thủ công.", trait: 'R' },
+  { id: 10, text: "Tôi thích đọc sách, báo khoa học hoặc tìm hiểu kiến thức mới.", trait: 'I' },
+  { id: 11, text: "Tôi thích phân tích và giải quyết những bài toán trừu tượng.", trait: 'I' },
+  { id: 12, text: "Tôi có xu hướng hỏi “Tại sao?” và tò mò về cơ chế hoạt động của sự vật.", trait: 'I' },
+  { id: 13, text: "Tôi hứng thú với các thí nghiệm và công trình nghiên cứu.", trait: 'I' },
+  { id: 14, text: "Tôi thích dùng phương pháp khoa học để kiểm chứng giả thuyết.", trait: 'I' },
+  { id: 15, text: "Tôi thấy thích thú khi phải thu thập và xử lý dữ liệu.", trait: 'I' },
+  { id: 16, text: "Tôi cảm thấy phấn khởi khi phải giải quyết các vấn đề khó bằng tư duy logic.", trait: 'I' },
+  { id: 17, text: "Tôi thích công việc phân tích thông tin, số liệu.", trait: 'I' },
+  { id: 18, text: "Tôi thấy hứng thú với lập trình hoặc công nghệ mới.", trait: 'I' },
+  { id: 19, text: "Tôi thích vẽ, thiết kế hoặc trang trí không gian.", trait: 'A' },
+  { id: 20, text: "Tôi thích viết văn, thơ hoặc kịch bản.", trait: 'A' },
+  { id: 21, text: "Tôi có xu hướng nghĩ “ngoài khung” và thử những ý tưởng mới mẻ.", trait: 'A' },
+  { id: 22, text: "Tôi cảm thấy tự do khi được thể hiện cảm xúc qua âm nhạc, hội họa.", trait: 'A' },
+  { id: 23, text: "Tôi thích tham gia các hoạt động nghệ thuật (nhạc, múa, kịch…).", trait: 'A' },
+  { id: 24, text: "Tôi có khả năng phối hợp màu sắc, hình khối để tạo ra sản phẩm thẩm mỹ.", trait: 'A' },
+  { id: 25, text: "Tôi hứng thú với các dự án đòi hỏi tính thẩm mỹ cao.", trait: 'A' },
+  { id: 26, text: "Tôi thích sáng tác hoặc biến tấu phong cách cá nhân.", trait: 'A' },
+  { id: 27, text: "Tôi thoải mái khi làm việc trong môi trường ít khuôn khổ.", trait: 'A' },
+  { id: 28, text: "Tôi thích giúp đỡ người khác giải quyết khó khăn.", trait: 'S' },
+  { id: 29, text: "Tôi cảm thấy tự tin khi thuyết trình hoặc giảng dạy.", trait: 'S' },
+  { id: 30, text: "Tôi có khả năng lắng nghe và thấu hiểu người khác.", trait: 'S' },
+  { id: 31, text: "Tôi hứng thú với các hoạt động từ thiện hoặc cộng đồng.", trait: 'S' },
+  { id: 32, text: "Tôi thích làm việc nhóm, phối hợp với đồng nghiệp.", trait: 'S' },
+  { id: 33, text: "Tôi cảm thấy vui khi tổ chức các buổi gặp mặt, workshop.", trait: 'S' },
+  { id: 34, text: "Tôi quan tâm đến sức khỏe, tâm lý của người khác.", trait: 'S' },
+  { id: 35, text: "Tôi tin rằng giao tiếp là chìa khóa của mọi mối quan hệ.", trait: 'S' },
+  { id: 36, text: "Tôi thích vai trò hỗ trợ – cố vấn cho người khác.", trait: 'S' },
+  { id: 37, text: "Tôi có xu hướng đề xuất ý tưởng và khởi xướng dự án.", trait: 'E' },
+  { id: 38, text: "Tôi tự tin trong việc đàm phán, thương lượng.", trait: 'E' },
+  { id: 39, text: "Tôi thích thách thức bản thân với các mục tiêu doanh thu, lợi nhuận.", trait: 'E' },
+  { id: 40, text: "Tôi thấy hào hứng khi lãnh đạo, chỉ đạo nhóm.", trait: 'E' },
+  { id: 41, text: "Tôi thích chịu trách nhiệm cho kết quả kinh doanh.", trait: 'E' },
+  { id: 42, text: "Tôi có khả năng thuyết phục và truyền cảm hứng cho người khác.", trait: 'E' },
+  { id: 43, text: "Tôi thoải mái khi ra quyết định quan trọng.", trait: 'E' },
+  { id: 44, text: "Tôi hứng thú với việc xây dựng chiến lược, kế hoạch kinh doanh.", trait: 'E' },
+  { id: 45, text: "Tôi thích môi trường cạnh tranh và thay đổi nhanh.", trait: 'E' },
+  { id: 46, text: "Tôi thích sắp xếp, lưu trữ tài liệu, dữ liệu một cách ngăn nắp.", trait: 'C' },
+  { id: 47, text: "Tôi cảm thấy an tâm khi làm việc theo quy trình, quy định rõ ràng.", trait: 'C' },
+  { id: 48, text: "Tôi thích xử lý các con số, bảng biểu, báo cáo.", trait: 'C' },
+  { id: 49, text: "Tôi cẩn thận trong việc kiểm tra chi tiết, tránh sai sót.", trait: 'C' },
+  { id: 50, text: "Tôi hứng thú với các công việc văn thư, kế toán, hành chính.", trait: 'C' },
+  { id: 51, text: "Tôi yêu thích việc theo dõi tiến độ, chu trình công việc.", trait: 'C' },
+  { id: 52, text: "Tôi tin rằng trật tự và hệ thống là nền tảng của hiệu quả.", trait: 'C' },
+  { id: 53, text: "Tôi thoải mái khi nhập liệu, kiểm soát chất lượng tài liệu.", trait: 'C' },
+  { id: 54, text: "Tôi thích tuân thủ các tiêu chuẩn, quy chuẩn trong công việc.", trait: 'C' },
 ];

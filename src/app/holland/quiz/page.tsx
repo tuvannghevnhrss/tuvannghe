@@ -1,19 +1,25 @@
-// src/app/holland/quiz/page.tsx  (⚠️ di chuyển file quiz cũ vào đây)
+// -----------------------------------------------------------------------------
+// src/app/holland/quiz/page.tsx
+// Server Component bảo vệ route Quiz Holland
+// -----------------------------------------------------------------------------
+
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import QuizClient from "./QuizClient";        // tách phần “use client” ra file riêng
-import { QUESTIONS } from "../questions";
+
+import QuizClient from "./QuizClient";      // 👈 default import (không ngoặc)
 
 export const dynamic = "force-dynamic";
 
 export default async function HollandQuizPage() {
+  /* 1. Auth ----------------------------------------------------------------- */
   const supabase = createServerComponentClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?redirectedFrom=/holland/quiz");
 
-  if (!user) redirect(`/login?redirectedFrom=/holland/quiz`);
-
-  /* Bảo vệ: chưa thanh toán thì trả về trang Intro */
+  /* 2. Kiểm tra thanh toán --------------------------------------------------- */
   const { data } = await supabase
     .from("payments")
     .select("status")
@@ -23,8 +29,10 @@ export default async function HollandQuizPage() {
     .limit(1)
     .maybeSingle();
 
-  if (data?.status !== "paid") redirect("/holland");
+  if (data?.status !== "paid") {
+    redirect("/holland");                   // Chưa trả phí → về trang Intro
+  }
 
-  /* Đã OK → render Client Quiz */
-  return <QuizClient QUESTIONS={QUESTIONS} />;
+  /* 3. Render Client-side Quiz ---------------------------------------------- */
+  return <QuizClient />;
 }
