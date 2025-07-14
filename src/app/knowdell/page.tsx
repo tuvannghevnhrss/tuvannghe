@@ -25,7 +25,7 @@ export default async function KnowdellPage() {
     .select("id")
     .eq("user_id", user.id)
     .eq("product", "knowdell")
-    .eq("status", STATUS.PAID)
+    .eq("status", PAID_STATUS)
     .maybeSingle();
   const hasPaid = !!pay;
 

@@ -15,7 +15,7 @@ export async function GET() {
     .select("id")
     .eq("user_id", user.id)
     .eq("product", "holland")
-    .eq("status", STATUS.PAID)
+    .eq("status", PAID_STATUS)
     .maybeSingle();
 
   /* B. đã có KẾT QUẢ holland? */

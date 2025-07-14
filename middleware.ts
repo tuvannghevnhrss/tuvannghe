@@ -23,7 +23,7 @@ export async function middleware(req: NextRequest) {
     .select("status")
     .eq("user_id", user.id)
     .eq("product", path)
-    .eq("status", STATUS.PAID)
+    .eq("status", PAID_STATUS)
     .maybeSingle();
 
   if (!payment) {
