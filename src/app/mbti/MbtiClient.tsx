@@ -77,7 +77,7 @@ function MBTIQuiz() {
       alert("Có lỗi khi lưu kết quả, vui lòng đăng nhập rồi thử lại!");
       return;
     }
-    router.push(`/mbti/result?code=${code}`);
+    router.push(`/mbti/thanks?code=${code}`);
   };
 
   /* --- 5. UI --- */
