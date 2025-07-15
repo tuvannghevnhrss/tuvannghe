@@ -45,7 +45,7 @@ export default async function Profile({
   const { data: profile } = await supabase
     .from("career_profiles")
     .select(
-      "mbti_type, holland_code, holland_profile, knowdell_summary, suggested_jobs"
+      "mbti_type, holland_profile, knowdell_summary, suggested_jobs"
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -97,22 +97,29 @@ export default async function Profile({
   const mapVN = (rows: any[], key: string) =>
     Object.fromEntries(rows?.map((r) => [r[key], r.vi]) ?? []);
 
-  const valuesVI = valueKeys.map((k) => mapVN(vL.data!, "value_key")[k] ?? k);
-  const skillsVI = skillKeys.map((k) => mapVN(sL.data!, "skill_key")[k] ?? k);
+  const valuesVI    = valueKeys.map((k) => mapVN(vL.data!, "value_key")[k] ?? k);
+  const skillsVI    = skillKeys.map((k) => mapVN(sL.data!, "skill_key")[k] ?? k);
   const interestsVI = interestKeys.map(
     (k) => mapVN(iL.data!, "interest_key")[k] ?? k
   );
 
-  /* 5. Holland radar ------------------------------------------------------- */
-  const hollCode = profile.holland_code as string | null;
-  const hollandRadar = profile.holland_profile
-    ? Object.entries(profile.holland_profile).map(([name, score]) => ({
-        name,
-        score,
-      }))
-    : [];
+  /* 5. Holland radar + code ------------------------------------------------- */
+  let hollCode: string | null = null;
+  let hollandRadar: { name: string; score: number }[] = [];
 
-  /* 6. JSX ----------------------------------------------------------------- */
+  if (profile.holland_profile) {
+    hollandRadar = Object.entries(profile.holland_profile).map(
+      ([name, score]) => ({ name, score })
+    );
+
+    hollCode = [...hollandRadar]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((o) => o.name)
+      .join("");
+  }
+
+  /* 6. JSX ------------------------------------------------------------------ */
   const mbtiCode = profile.mbti_type ?? null;
 
   return (
