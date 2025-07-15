@@ -1,57 +1,47 @@
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { analyseKnowdell } from "@/lib/career/analyseKnowdell";
+import {
+  createRouteHandlerClient,
+} from "@supabase/auth-helpers-nextjs";
+import type { Database } from "@/types/supabase";
 
-export async function GET(req: Request) {
-  const supa = createRouteHandlerClient({ cookies });
+// hãy tách logic phân tích ra hàm riêng (analyseKnowdell.ts) để route sạch
+import { analyseCareer } from "@/lib/career/analyseKnowdell";
+
+export const runtime = "edge";             // chạy Edge – phản hồi nhanh hơn
+
+export async function POST() {
+  const supabase = createRouteHandlerClient<Database>({ cookies });
   const {
-    data: { session },
-  } = await supa.auth.getSession();
-  if (!session) return Response.json({ error: "Unauth" }, { status: 401 });
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { searchParams } = new URL(req.url);
-  const force = searchParams.get("refresh") === "1";
-
-  /* lấy profile + cache + timestamps */
-  const { data: profile } = await supa
-    .from("v_career_profile")
-    .select(
-      "*, career_profiles(updated_at,analysis_markdown,analysis_updated_at)"
-    )
-    .eq("user_id", session.user.id)
-    .single();
-
-  if (!profile) return Response.json({ error: "No profile" }, { status: 404 });
-
-  const profileTime   = new Date(profile.career_profiles.updated_at).getTime();
-  const analysisTime  = profile.career_profiles.analysis_updated_at
-    ? new Date(profile.career_profiles.analysis_updated_at).getTime()
-    : 0;
-
-  /* Nếu đã cache và hồ sơ CHƯA đổi & không ép refresh → trả cache */
-  if (profile.career_profiles.analysis_markdown && !force && analysisTime >= profileTime) {
-    return Response.json({ markdown: profile.career_profiles.analysis_markdown });
+  if (!user) {
+    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
 
-  /* Lấy 20 title */
-  const { data: kJobs } = await supa
-    .from("knowdell_jobs")
-    .select("title")
-    .in("job_key", profile.knowdell_selected);
-
-  const markdown = await analyseKnowdell({
-    ...profile,
-    selectedTitles: kJobs?.map((j) => j.title) ?? [],
-  });
-
-  /* lưu + timestamp mới */
-  await supa
+  /* ---- lấy hồ sơ hiện tại ------------------------------------------------ */
+  const { data: profile } = await supabase
     .from("career_profiles")
-    .update({
-      analysis_markdown: markdown,
-      analysis_updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", session.user.id);
+    .select("mbti_type, holland_profile, knowdell_summary")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  return Response.json({ markdown });
+  if (!profile) {
+    return NextResponse.json(
+      { error: "No profile data" },
+      { status: 400 }
+    );
+  }
+
+  /* ---- gọi AI / hàm phân tích ------------------------------------------- */
+  const jobs = await analyseCareer(profile);
+
+  /* ---- lưu Suggested jobs vào DB (tuỳ chọn) ------------------------------ */
+  await supabase
+    .from("career_profiles")
+    .update({ suggested_jobs: jobs, analysis_updated_at: new Date() })
+    .eq("user_id", user.id);
+
+  return NextResponse.json({ jobs });
 }
