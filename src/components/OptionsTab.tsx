@@ -1,113 +1,67 @@
 "use client";
 
 import { useState } from "react";
-import AnalysisCard  from "./AnalysisCard";
-
-/* Kiểu dữ liệu 1 nghề */
-interface Job {
-  id: string;
-  title: string;
-  avg_salary?: number;
-  growth_path?: string;
-  score?: number;
-  reason?: string;
-}
 
 export default function OptionsTab({
   mbti,
   holland,
   knowdell,
   initialJobs,
+  canAnalyse,
 }: {
-  mbti?: string;
-  holland?: string;
+  mbti: string | null;
+  holland: string | null;
   knowdell: any;
-  initialJobs: Job[];
+  initialJobs: any[];
+  canAnalyse: boolean;
 }) {
-  const [jobs, setJobs]       = useState<Job[]>(initialJobs);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string>();
+  const [jobs, setJobs]       = useState(initialJobs);
 
-  /* Gọi API lấy TOP-5 nghề */
-  const getJobs = async () => {
+  const analyse = async () => {
     setLoading(true);
-    setError(undefined);
-    try {
-      const res = await fetch("/api/career", {
-        method : "POST",
-        headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({
-          mbti,
-          holland,
-          values    : knowdell?.values    ?? [],
-          skills    : knowdell?.skills    ?? [],
-          interests : knowdell?.interests ?? [],
-        }),
-      });
-
-      if (!res.ok) {
-        const { error } = await res.json();
-        throw new Error(error || "Server error");
-      }
-      setJobs((await res.json()) as Job[]);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch("/api/career/analyse", { method: "POST" });
+    const data = await res.json();
+    setJobs(data.jobs);
+    setLoading(false);
   };
 
-  /* UI */
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8 px-4 sm:px-6 md:px-8">
-      {/* 1. Phân tích 20 nghề Knowdell */}
-      <AnalysisCard />
-
-      {/* 2. TOP-5 nghề gợi ý */}
-      {!jobs?.length ? (
-        <div className="space-y-6">
-          <p className="text-gray-600">
-            Nhấn nút dưới đây để AI gợi ý 5 nghề phù hợp nhất với bạn.
-          </p>
-
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-
-          <button
-            onClick={getJobs}
-            disabled={loading}
-            className="px-4 py-2 rounded bg-indigo-600 text-white disabled:opacity-60"
-          >
-            {loading ? "Đang phân tích..." : "Gợi ý nghề nghiệp"}
-          </button>
-        </div>
+    <div className="space-y-6">
+      {/* nút hoặc khung hướng dẫn */}
+      {canAnalyse ? (
+        <button
+          onClick={analyse}
+          disabled={loading}
+          className="rounded bg-indigo-600 px-6 py-3 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
+        </button>
       ) : (
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold">TOP 5 nghề phù hợp</h2>
-          <ul className="space-y-4">
-            {jobs.map((j) => (
-              <li
-                key={j.id}
-                className="border rounded-lg p-4 bg-white shadow-sm space-y-1"
-              >
-                <p className="font-medium">{j.title}</p>
-
-                {j.avg_salary && (
-                  <p className="text-sm text-gray-600">
-                    Lương TB: {j.avg_salary.toLocaleString()}₫ / tháng
-                  </p>
-                )}
-
-                {j.growth_path && (
-                  <p className="text-sm italic">{j.growth_path}</p>
-                )}
-
-                {j.reason && (
-                  <p className="text-xs text-indigo-600 mt-1">{j.reason}</p>
-                )}
-              </li>
-            ))}
+        <div className="rounded border border-yellow-400 bg-yellow-50 p-4 text-sm leading-relaxed">
+          <p className="font-medium">Bạn chưa hoàn tất các đánh giá cần thiết.</p>
+          <ul className="ml-4 list-disc">
+            {!mbti && <li>Hoàn thành & thanh toán MBTI</li>}
+            {!holland && <li>Hoàn thành & thanh toán Holland</li>}
+            {!knowdell && <li>Hoàn thành & thanh toán Knowdell</li>}
           </ul>
+          <p className="mt-2">
+            Sau khi mua đủ 3 gói, bạn có thể nhấn <b>Phân tích kết hợp</b> để
+            nhận gợi ý nghề nghiệp phù hợp.
+          </p>
         </div>
+      )}
+
+      {/* bảng / danh sách jobs gợi ý */}
+      {jobs.length > 0 && (
+        <ul className="space-y-2">
+          {jobs.map((j) => (
+            <li key={j.id} className="rounded border bg-white p-4 shadow-sm">
+              <h3 className="font-semibold">{j.title}</h3>
+              <p className="text-sm text-gray-600">{j.snippet}</p>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

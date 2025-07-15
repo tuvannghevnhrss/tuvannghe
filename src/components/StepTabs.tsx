@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const TABS = [
   { key: "trait",   label: "1. Đặc tính" },
@@ -7,27 +10,27 @@ const TABS = [
   { key: "plan",    label: "4. Kế hoạch" },
 ];
 
-interface Props {
-  step: "trait" | "options" | "focus" | "plan";
-}
+export default function StepTabs({ current }: { current?: string }) {
+  const search = useSearchParams();
+  const step   = current ?? search.get("step") ?? "trait";
 
-export default function StepTabs({ step }: Props) {
   return (
-    <nav className="flex gap-2 mb-8">
-      {TABS.map((t) => (
-        <Link
-          key={t.key}
-          href={`/profile?step=${t.key}`}
-          className={`px-4 py-2 rounded ${
-            step === t.key
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
-          prefetch={false}
-        >
-          {t.label}
-        </Link>
-      ))}
-    </nav>
+    <div className="mb-8 flex flex-wrap gap-3">
+      {TABS.map((t) => {
+        const active = t.key === step;
+        return (
+          <Link
+            key={t.key}
+            href={`/profile?step=${t.key}`}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition
+              ${active
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+          >
+            {t.label}
+          </Link>
+        );
+      })}
+    </div>
   );
 }
