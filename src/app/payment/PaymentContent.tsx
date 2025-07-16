@@ -8,6 +8,12 @@
 import { useEffect, useState, KeyboardEvent } from "react";
 import { SERVICE } from "@/lib/constants";
 
+const START_PATH: Record<keyof typeof SERVICE, string> = {
+  mbti    : "/mbti/quiz",       // ← đường dẫn trang làm bài
+  holland : "/holland/quiz",
+  knowdell: "/knowdell",        // knowdell vẫn là drag-drop ngay tại /knowdell
+};
+
 type Props = { product: keyof typeof SERVICE };
 
 type Quote =
@@ -28,7 +34,7 @@ export default function PaymentContent({ product }: Props) {
   const [qr      , setQr]     = useState<string | null>(null);
   const [error   , setErr]    = useState("");
 
-  const destURL = `/${product}`;               // đích sau khi kích hoạt
+  const destURL = START_PATH[product];               // đích sau khi kích hoạt
 
   /* 1 ▸ Lấy quote gốc ---------------------------------------------------- */
   useEffect(() => {
