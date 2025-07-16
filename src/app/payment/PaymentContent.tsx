@@ -1,142 +1,136 @@
 /* src/app/payment/PaymentContent.tsx
-   – Hiển thị giá / mã giảm / QR, xử lý coupon 0 đ không văng trang
+/*  – Hiển thị giá / mã giảm / QR
+    – Không double-checkout, tự redirect khi amount = 0
 ---------------------------------------------------------------- */
-
 "use client";
 
-import { useEffect, useState, KeyboardEvent } from "react";
+import { useEffect, useState, useRef, KeyboardEvent } from "react";
 import { SERVICE } from "@/lib/constants";
 
 const START_PATH: Record<keyof typeof SERVICE, string> = {
-  mbti: "/mbti/quiz",
-  holland: "/holland/quiz",
-  knowdell: "/knowdell",
+  mbti    : "/mbti/quiz",
+  holland : "/holland/quiz",
+  knowdell: "/knowdell",                 // drag-drop ngay tại /knowdell
 };
 
 type Props = { product: keyof typeof SERVICE };
 
 type Quote =
   | { error: string }
-  | {
-      listPrice: number;
-      amount_due: number;
-      discount: number;
-      amount: number;
-      paid?: boolean;
-    };
+  | { listPrice: number; amount_due: number; discount: number; amount: number; paid?: boolean };
 
 export default function PaymentContent({ product }: Props) {
-  const [coupon, setCoupon] = useState("");
-  const [amount, setAmount] = useState<number | null>(null);
-  const [discount, setDisc] = useState(0);
-  const [qr, setQr] = useState<string | null>(null);
-  const [error, setErr] = useState("");
+  const [coupon,   setCoupon] = useState("");
+  const [amount,   setAmount] = useState<number | null>(null);
+  const [discount, setDisc]   = useState(0);
+  const [qr,       setQr]     = useState<string | null>(null);
+  const [error,    setErr]    = useState("");
+  const [busy,     setBusy]   = useState(false);          // ⬅️  chặn double-click
 
-  const destURL = START_PATH[product] ?? `/${product}`;
+  const destURL  = START_PATH[product] ?? `/${product}`;
+  const onceFlag = useRef(false);                         // ⬅️  chỉ auto-checkout 1 lần
 
-  /* 1 ▸ Lấy quote gốc ----------------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /* 1. lấy quote đầu                                                   */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
     (async () => {
-      try {
-        const ts = Date.now();
-        const res = (await fetch(
-          `/api/payments/quote?product=${product}&ts=${ts}`,
-          { cache: "no-store" }
-        ).then(r => r.json())) as Quote;
+      const res: Quote = await fetch(
+        `/api/payments/quote?product=${product}&ts=${Date.now()}`,
+        { cache: "no-store" }
+      ).then(r => r.json());
 
-        if ("error" in res) throw new Error(res.error);
-        setAmount(res.amount);
-        setDisc(res.discount);
+      if ("error" in res) { setAmount(-1); return; }
 
-        // đã trả hoặc miễn phí ⇒ tạo/ghi nhận PAID rồi vào quiz
-        if (res.paid) window.location.replace(destURL);
-        else if (res.amount === 0) await checkout(true);
-      } catch {
-        setAmount(-1);
+      setAmount(res.amount);
+      setDisc  (res.discount);
+
+      // server đã ghi PAID
+      if (res.paid) window.location.replace(destURL);
+      // amount = 0 (coupon) → auto-checkout đúng 1 lần
+      else if (res.amount === 0 && !onceFlag.current) {
+        onceFlag.current = true;
+        doCheckout(true);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
 
-  /* 2 ▸ Poll 3 s nếu đang chờ QR ------------------------------------ */
+  /* ------------------------------------------------------------------ */
+  /* 2. polling khi có QR                                               */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
-    if (!qr || !amount || amount === 0) return;
-
+    if (!qr) return;
     const id = setInterval(() => {
       fetch(`/api/payments/status?product=${product}`, { cache: "no-store" })
         .then(r => r.json())
-        .then(res => {
-          if (res.paid) {
-            clearInterval(id);
-            window.location.replace(destURL);
-          }
-        });
+        .then(res => { if (res.paid) window.location.replace(destURL); });
     }, 3000);
     return () => clearInterval(id);
-  }, [qr, amount, product, destURL]);
+  }, [qr, product, destURL]);
 
-  /* 3 ▸ Áp mã giảm giá ---------------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /* 3. áp mã giảm                                                      */
+  /* ------------------------------------------------------------------ */
   async function applyCoupon() {
     setErr("");
     const code = coupon.trim();
     if (!code) return;
 
-    const ts = Date.now();
-    const res = (await fetch(
-      `/api/payments/quote?product=${product}&coupon=${code}&ts=${ts}`,
+    const res: Quote = await fetch(
+      `/api/payments/quote?product=${product}&coupon=${code}&ts=${Date.now()}`,
       { cache: "no-store" }
-    ).then(r => r.json())) as Quote;
+    ).then(r => r.json());
 
-    if ("error" in res) {
-      setErr(res.error);
-      return;
-    }
+    if ("error" in res) { setErr(res.error); return; }
 
     setAmount(res.amount);
-    setDisc(res.discount);
+    setDisc  (res.discount);
 
-    // nếu mã giảm khiến số tiền = 0 → gọi checkout để ghi PAID & redirect
-    if (res.amount === 0) await checkout(true);
+    if (res.amount === 0 && !onceFlag.current) {
+      onceFlag.current = true;
+      doCheckout(true);
+    }
   }
 
-  /* 4 ▸ Thanh toán / kích hoạt -------------------------------------- */
-  async function checkout(auto = false) {
+  /* ------------------------------------------------------------------ */
+  /* 4. checkout                                                        */
+  /* ------------------------------------------------------------------ */
+  async function doCheckout(auto = false) {
+    if (busy) return;                     // chặn double
+    setBusy(true);
     setErr("");
-    const body = { product, coupon: coupon.trim() || undefined };
 
-    const res = await fetch("/api/payments/checkout", {
+    const body = { product, coupon: coupon.trim() || undefined };
+    const res  = await fetch("/api/payments/checkout", {
       method: "POST",
-      body: JSON.stringify(body),
-      cache: "no-store",
+      body  : JSON.stringify(body),
+      cache : "no-store",
     }).then(r => r.json());
 
-    if (res.error) {
-      setErr(res.error);
-      return;
-    }
+    setBusy(false);
 
-    // free → server đã ghi PAID
-    if (res.free) {
+    if (res.error) { setErr(res.error); return; }
+
+    if (res.free) {                       // đã ghi PAID
       window.location.replace(destURL);
       return;
     }
-
-    // chỉ hiển thị QR nếu user bấm nút (auto = false)
-    if (!auto) {
+    if (!auto) {                          // chỉ hiện QR khi user bấm
       setQr(res.qr_url);
       setAmount(res.amount);
     }
   }
 
-  /* ---------- render ---------- */
+  /* ------------------------------------------------------------------ */
+  /* 5. Render                                                          */
+  /* ------------------------------------------------------------------ */
   if (amount === null) return <p>Đang tải…</p>;
-  if (amount === -1) return <p className="text-red-600">Không lấy được giá.</p>;
+  if (amount === -1)   return <p className="text-red-600">Không lấy được giá.</p>;
 
   return (
     <div className="mx-auto max-w-sm space-y-6 text-center">
-      <h2 className="text-xl font-semibold">
-        Thanh&nbsp;toán gói {product.toUpperCase()}
-      </h2>
+      <h2 className="text-xl font-semibold">Thanh&nbsp;toán gói {product.toUpperCase()}</h2>
 
       <p>
         Phí cần trả:&nbsp;
@@ -148,7 +142,7 @@ export default function PaymentContent({ product }: Props) {
         )}
       </p>
 
-      {/* ô coupon */}
+      {/* coupon */}
       <div className="flex justify-center gap-2">
         <input
           value={coupon}
@@ -159,7 +153,8 @@ export default function PaymentContent({ product }: Props) {
         />
         <button
           onClick={applyCoupon}
-          className="rounded bg-gray-200 px-4 py-2 hover:bg-gray-300"
+          disabled={busy}
+          className="rounded bg-gray-200 px-4 py-2 hover:bg-gray-300 disabled:opacity-50"
         >
           Áp dụng
         </button>
@@ -167,21 +162,16 @@ export default function PaymentContent({ product }: Props) {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {/* QR hoặc nút checkout */}
+      {/* QR hoặc nút */}
       {qr ? (
-        <img
-          src={qr}
-          alt="QR thanh toán"
-          className="mx-auto h-64 w-64 rounded border"
-        />
+        <img src={qr} alt="QR thanh toán" className="mx-auto h-64 w-64 rounded border" />
       ) : (
         <button
-          onClick={() => checkout(false)}
-          className="w-full rounded bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
+          onClick={() => doCheckout(false)}
+          disabled={busy}
+          className="w-full rounded bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {amount === 0
-            ? "Xác nhận & kích hoạt"
-            : `Thanh toán ${amount.toLocaleString("vi-VN")} đ`}
+          {amount === 0 ? "Xác nhận & kích hoạt" : `Thanh toán ${amount.toLocaleString("vi-VN")} đ`}
         </button>
       )}
     </div>
