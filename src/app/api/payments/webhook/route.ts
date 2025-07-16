@@ -1,52 +1,49 @@
-// src/app/api/payments/webhook/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import crypto from "crypto";
+/*  src/app/api/payments/webhook/route.ts
+    SePay gọi tới (webhook) khi nhận tiền → cập-nhật giao dịch
+---------------------------------------------------------------- */
+
+import { NextResponse } from "next/server";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import type { Database } from "@/types/supabase";
 import { STATUS } from "@/lib/constants";
 
-const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY!;   // <- thêm env
-const SIGN_HEADER   = "x-sepay-signature";
-const SIGN_SECRET   = process.env.SEPAY_WEBHOOK_SECRET!;
+export async function POST(req: Request) {
+  const payload = await req.json();               // dữ liệu do SePay gửi
+  /*
+    Ví dụ payload:
+    {
+      "gateway":"VietinBank",
+      "transactionDate":"2025-07-16 17:04:02",
+      "content":"CT DEN:519810759252 SEVQR X8G0",
+      "transferAmount":2000,
+      "id":17840015,
+      ...
+    }
+  */
 
-// init once
-const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false },
-});
+  const { content = "", transferAmount, id } = payload as Record<string, any>;
+  const match = content.match(/SEVQR\s+([A-Z0-9]{4})/);
+  if (!match) return NextResponse.json({ ok: false, reason: "Không tìm thấy order_code" });
 
-export async function POST(req: NextRequest) {
-  const raw = await req.text();
-  const sig = req.headers.get(SIGN_HEADER) ?? "";
+  const order_code = match[1];
 
-  /* ── verify ───────────────────────── */
-  const hash = crypto.createHmac("sha256", SIGN_SECRET).update(raw).digest("hex");
-  if (hash !== sig) return NextResponse.json({ ok: false }, { status: 403 });
+  const supabase = createRouteHandlerClient<Database>({});
 
-  /* ── parse ────────────────────────── */
-  interface SePayEvent {
-    description: string;         // “… SEVQR XBG0”
-    transferAmount: number;      // 2000
-    id: number;                  // 17840015 (transaction id)
-  }
-  const ev = JSON.parse(raw) as SePayEvent;
-
-  // Lấy code 4 ký tự cuối sau ‘SEVQR ’
-  const m = /SEVQR\s+([A-Z0-9]{4})/.exec(ev.description ?? "");
-  if (!m) return NextResponse.json({ ok: false, err: "no code" });
-
-  const code = m[1];             // eg: XBG0
-
-  /* ── update ───────────────────────── */
-  const { error } = await admin
+  /* tìm giao dịch PENDING tương ứng & cập-nhật */
+  const { error } = await supabase
     .from("payments")
     .update({
       status      : STATUS.PAID,
-      amount_paid : ev.transferAmount,
+      amount_paid : transferAmount,
       paid_at     : new Date().toISOString(),
     })
-    .eq("order_code", code)      // <-- cột order_code có 4 ký tự QR
-    .eq("status",    STATUS.PENDING);
+    .eq("order_code", order_code)
+    .eq("status", STATUS.PENDING);
 
-  if (error) return NextResponse.json({ ok: false, err: error.message }, { status: 500 });
+  if (error) {
+    console.error("Webhook update error", error);
+    return NextResponse.json({ ok: false });
+  }
+
   return NextResponse.json({ ok: true });
 }
