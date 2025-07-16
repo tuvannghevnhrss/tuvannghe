@@ -29,7 +29,7 @@ export default function HomePage() {
             qua email chuyên sâu chỉ trong vài phút.
           </p>
           <Link
-            href="/signup"
+            href="/mbti"
             className="mt-8 inline-block rounded-xl bg-indigo-600 px-8 py-3 text-white shadow hover:bg-indigo-700"
           >
             Bắt đầu miễn phí
@@ -51,7 +51,7 @@ export default function HomePage() {
 
         <div className="mt-10 grid gap-6 md:grid-cols-4">
           {[
-            { key: SERVICE.MBTI, label: "MBTI", desc: "60 câu hỏi • 10 K" },
+            { key: SERVICE.MBTI, label: "MBTI", desc: "60 câu hỏi • Miễn phí" },
             { key: SERVICE.HOLLAND, label: "Holland", desc: "54 câu hỏi • 20 K" },
             { key: SERVICE.KNOWDELL, label: "Giá trị bản thân", desc: "54 thẻ • 100 K" },
             { key: "chat", label: "Chatbot AI", desc: "Tư vấn & FAQ" },
@@ -178,7 +178,7 @@ export default function HomePage() {
           Sẵn sàng khám phá bản thân & chọn đúng nghề?
         </h2>
         <Link
-          href="/signup"
+          href="/mbti"
           className="mt-6 inline-block rounded bg-white/10 px-8 py-3 font-medium hover:bg-white/20"
         >
           Đăng ký ngay

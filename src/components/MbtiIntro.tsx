@@ -1,3 +1,7 @@
+/* src/app/mbti/MbtiIntro.tsx
+   – Intro MBTI (free) – chuyển thẳng sang /mbti/quiz sau khi đã “paid”
+-------------------------------------------------------------------- */
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -22,16 +26,16 @@ const StatCard = ({ value, label }: { value: string; label: string }) => (
 export default function MbtiIntro() {
   const router = useRouter();
 
-  const [loading, setLoading]   = useState(true);
-  const [paid,    setPaid]      = useState(false);
-  const [code,    setCode]      = useState<string | null>(null);   // null = chưa làm
+  const [loading, setLoading] = useState(true);
+  const [paid,    setPaid]    = useState(false);
+  const [code,    setCode]    = useState<string | null>(null);  // null = chưa làm
 
-  /* gọi API lấy trạng thái (đã trả phí? đã có kết quả?) */
+  /* —— gọi API lấy trạng thái —— */
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/mbti/status');
-        const data = await res.json();        // { paid, finished, code }
+        const res  = await fetch('/api/mbti/status', { cache: 'no-store' });
+        const data = await res.json();          // { paid, finished, code }
         setPaid(Boolean(data.paid));
         setCode(data.finished ? data.code : null);
       } finally {
@@ -40,18 +44,19 @@ export default function MbtiIntro() {
     })();
   }, []);
 
-  /* —— hàm điều hướng —— */
+  /* —— điều hướng —— */
   const handleClick = () => {
     if (code) {
-      router.push(`/profile?step=trait`);                   // xem lại kết quả
+      router.push('/profile?step=trait');       // xem kết quả
     } else if (paid) {
-      router.push('/mbti?start=1');                         // bắt đầu quiz
+      /* 🔹 ĐÃ SỬA: chuyển sang trang làm bài đúng route */
+      router.push('/mbti/quiz');
     } else {
-      router.push('/payment?product=mbti');                 // thanh toán
+      router.push('/payment?product=mbti');     // (dù free, giữ luồng đồng nhất)
     }
   };
 
-  /* —— text nút —— */
+  /* —— nhãn nút —— */
   const buttonLabel = loading
     ? 'Đang kiểm tra…'
     : code
@@ -61,38 +66,38 @@ export default function MbtiIntro() {
             : `Thanh toán ${PRICE.toLocaleString()} đ`;
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-12 text-center space-y-10">
+    <main className="mx-auto max-w-lg px-6 py-12 space-y-10 text-center">
       {/* ── tiêu đề & mô tả ── */}
       <header className="space-y-2">
         <h1 className="text-2xl font-bold">Bộ câu hỏi MBTI</h1>
         <p className="text-gray-600">
-          Đây là bộ câu hỏi đánh giá tính&nbsp;cách của&nbsp;bạn, giúp&nbsp;bạn hiểu rõ
-          hơn về điểm mạnh, điểm yếu.
+          Đây là bộ câu hỏi đánh giá tính&nbsp;cách của&nbsp;bạn,
+          giúp&nbsp;bạn hiểu rõ hơn về điểm mạnh, điểm yếu.
         </p>
       </header>
 
-      {/* ── 3 ô thống kê ── */}
+      {/* ── thống kê ── */}
       <section className="grid grid-cols-3 gap-4">
-        {STAT.map((s) => (
+        {STAT.map(s => (
           <StatCard key={s.label} value={s.value} label={s.label} />
         ))}
       </section>
 
-      {/* ── khung Quy trình ── */}
+      {/* ── quy trình ── */}
       <section className="rounded-xl border border-dashed p-6 text-left leading-6">
         <h2 className="font-semibold mb-2">Quy trình:</h2>
         <ol className="list-decimal pl-5 space-y-1">
           <li>
             <strong>Thanh&nbsp;toán</strong> {PRICE.toLocaleString()} đ phí
-            (bằng&nbsp;QR tại trang thanh&nbsp;toán)
+            (bằng QR tại trang thanh toán)
           </li>
           <li>
-            <strong>Hoàn thành</strong> 60 câu hỏi – đừng suy nghĩ quá lâu,
-            hãy&nbsp;chọn đáp&nbsp;án đúng nhất về&nbsp;bạn
+            <strong>Hoàn&nbsp;thành</strong> 60 câu hỏi – đừng suy nghĩ quá lâu,
+            hãy&nbsp;chọn đáp&nbsp;án đúng nhất với bạn
           </li>
           <li>
-            <strong>Kết quả</strong> sẽ được gửi về email, chatbot và hiển thị trong
-            Hồ&nbsp;sơ của&nbsp;bạn
+            <strong>Kết&nbsp;quả</strong> sẽ được gửi về email, chatbot
+            và hiển thị trong Hồ&nbsp;sơ của&nbsp;bạn
           </li>
         </ol>
       </section>
