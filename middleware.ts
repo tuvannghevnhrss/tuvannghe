@@ -19,15 +19,17 @@ export async function middleware(req: NextRequest) {
     ? "holland"
     : "knowdell";
 
-  const { data: payment } = await supabase
+  const { data: payments } = await supabase
     .from("payments")
     .select("status")
     .eq("user_id", user.id)
     .eq("product", path)
     .eq("status", STATUS.PAID)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
-  if (!payment) {
+  const paidRecord = payments?.[0] ?? null;
+  if (!paidRecord) {
     return NextResponse.redirect(new URL(`/payment?product=${path}`, req.url));
   }
   return res;

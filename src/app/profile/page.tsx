@@ -99,8 +99,8 @@ export default async function Profile({
 
   // ─────────── RENDER ───────────
   return (
-    <div className="mx-auto max-w-4xl space-y-10 p-6">
-      <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề</h1>
+    <div className="mx-auto max-w-4xl space-y-6 p-20">
+      <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề nghiệp</h1>
 
       {/* Bật tab hiện tại */}
       <StepTabs current={step} />
