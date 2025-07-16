@@ -1,27 +1,14 @@
 // src/app/api/payments/webhook/route.ts
-import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,          // luôn public
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,         // vừa thêm ở bước 1
-  { auth: { persistSession: false } }
-);
+import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
-  const secret = req.headers.get("x-sepay-signature") ?? "";
-  if (secret !== process.env.SEPAY_WEBHOOK_SECRET) {
-    return NextResponse.json({ ok: false, error: "Invalid secret" }, { status: 401 });
-  }
+  // 🚩 Ghi lại toàn bộ header & body lần đầu để xác định định dạng SePay
+  const headers = Object.fromEntries(req.headers.entries());
+  const body    = await req.text();            // giữ nguyên chuỗi gốc để verify HMAC
 
-  const payload = await req.json();                     // { description: "... SEVQR AAIP", ... }
-  const qrCode   = payload.description.match(/SEVQR (\w{4})/)?.[1]; // AAIP
-  if (!qrCode) return NextResponse.json({ ok: false });
+  console.log('=== SePay webhook ===');
+  console.log('Headers:', headers);            // <- Nhìn log để biết chính xác tên header
+  console.log('Raw body:', body.slice(0, 300)); // in 300 ký tự đầu để tránh log quá dài
 
-  const { error } = await supabase
-    .from("payments")
-    .update({ status: "paid", paid_at: new Date(), amount_paid: payload.transferAmount })
-    .eq("qr_desc", `SEVQR ${qrCode}`);
-
-  return NextResponse.json({ ok: !error });
+  return NextResponse.json({ ok: true });
 }
