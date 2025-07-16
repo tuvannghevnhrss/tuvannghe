@@ -1,31 +1,31 @@
 // src/app/api/payments/webhook/route.ts
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import { STATUS } from "@/lib/constants";
 
-export async function POST(req: Request) {
-  const body = await req.json();
-  // ví dụ body.content = "… SEVQR ABCD"
-  const content: string = body.content || "";
-  const m = content.match(/SEVQR\s+([A-Z0-9]{4})/);
-  if (!m) {
-    return NextResponse.json({ ok: false, error: "No order code" }, { status: 400 });
-  }
-  const code = m[1];
+export async function POST(req: NextRequest) {
+  // ① Nhận payload từ SePay
+  const body = await req.json();        // { desc: "SEVQR Q2DR", amount: 2000, ... }
 
-  // Dùng SERVICE_ROLE_KEY để update bảng payments
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  // ② (Tùy cài đặt) xác thực chữ ký HMAC/secret của SePay
+  //    -> Nếu fail: return 401
+
+  // ③ Tách order_code đã lưu trong cột  `order_code`
+  const order_code = body?.desc?.match(/SEVQR\s+([A-Z0-9]{4})/)?.[1];
+  if (!order_code) return NextResponse.json({ ok: false });
+
+  const supabase = createRouteHandlerClient({ cookies });
+
+  // ④ Cập-nhật bản ghi
   const { error } = await supabase
     .from("payments")
-    .update({ status: "paid" })
-    .eq("order_code", code);
+    .update({ status: STATUS.PAID })
+    .eq("order_code", order_code)
+    .eq("amount", body.amount)          // tránh nhầm giao dịch khác
+    .eq("status", STATUS.PENDING);
 
-  if (error) {
-    console.error("Webhook update failed", error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ ok: false });
 
   return NextResponse.json({ ok: true });
 }
