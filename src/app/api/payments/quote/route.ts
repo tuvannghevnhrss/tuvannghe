@@ -3,102 +3,80 @@
    • Trả về số tiền phải trả sau khi trừ phần combo đã mua
    • Áp dụng mã giảm giá (nếu hợp lệ)
    ------------------------------------------------------------------ */
-export const dynamic = "force-dynamic";
-
-import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { STATUS } from "@/lib/constants";
 
-import {
-  SERVICE,
-  PRICES,
-  STATUS,
-  comboOutstanding,
-} from "@/lib/constants";
+const PRICE = {
+  mbti    : 0,          // MBTI luôn free
+  holland : 20_000,
+  knowdell: 100_000,    // giá gốc – sẽ điều chỉnh thành combo nếu cần
+  combo   : 90_000,
+} as const;
 
-type QuoteOk = {
-  listPrice : number;
-  amount_due: number;
-  discount  : number;
-  amount    : number;
-};
-
-type QuoteErr = { error: string };
-
-/* ------------------------------------------------------------------ */
-async function buildQuote(
-  productRaw: string,
-  codeRaw   : string
-): Promise<QuoteOk | QuoteErr> {
-  const product = productRaw.toLowerCase().trim();
-  if (!(product in PRICES)) return { error: "Invalid product" };
-
-  /* 1 ▸ xác thực */
+export async function GET(req: NextRequest) {
   const supabase = createRouteHandlerClient({ cookies });
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return { error: "unauth" };
+  const { data: { user }} = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  /* 2 ▸ tính amount_due (niêm yết) */
-  let amount_due = PRICES[product as keyof typeof PRICES];
+  const product = (req.nextUrl.searchParams.get("product") ?? "").toLowerCase();
+  const coupon  = (req.nextUrl.searchParams.get("coupon")  ?? "").trim().toUpperCase();
 
-  /* — nếu product = knowdell → phần còn thiếu của combo — */
-  if (product === SERVICE.KNOWDELL) {
-    const { data: paidRows } = await supabase
-      .from("payments")
-      .select("product")
-      .eq("user_id", session.user.id)
-      .eq("status", STATUS.PAID);
-
-    const alreadyPaidProducts =
-      paidRows?.map(r => r.product as string) ?? [];
-
-    amount_due = comboOutstanding(alreadyPaidProducts);
+  /* ---------- MBTI luôn free ---------- */
+  if (product === "mbti") {
+    return NextResponse.json({ listPrice: 0, amount_due: 0, discount: 0,
+                               amount: 0, paid: true });
   }
 
-  /* 3 ▸ áp dụng coupon */
-  let discount = 0;
+  /* ---------- kiểm tra thanh toán trước đó ---------- */
+  const { data: paidBefore } = await supabase
+    .from("payments")
+    .select("product")
+    .eq("user_id", user.id)
+    .eq("status", STATUS.PAID);
 
-  if (codeRaw) {
-    const code = codeRaw.trim().toUpperCase();
+  const alreadyPaid = new Set((paidBefore ?? []).map(r => r.product));
+
+  /* ---------- tính amount_due ---------- */
+  let amount_due = PRICE[product as keyof typeof PRICE] ?? 0;
+
+  if (product === "knowdell") {
+    // combo nếu CHƯA có Holland
+    amount_due = alreadyPaid.has("holland") ? PRICE.knowdell : PRICE.combo;
+  }
+
+  if (product === "holland" && alreadyPaid.has("knowdell")) {
+    // Holland đã được “tặng” trong combo
+    return NextResponse.json({ listPrice: PRICE.holland, amount_due: 0,
+                               discount: PRICE.holland, amount: 0, paid: true });
+  }
+
+  /* ----- coupon (tuỳ biến, giữ nguyên nếu bạn có bảng coupons) ----- */
+  let discount = 0;
+  if (coupon) {
     const { data: cpn } = await supabase
       .from("coupons")
-      .select("discount, expires_at, product")
-      .eq("code", code)
+      .select("discount, product, expires_at")
+      .eq("code", coupon)
       .maybeSingle();
 
     const now = new Date();
-    const valid =
-      cpn &&
-      (!cpn.expires_at || new Date(cpn.expires_at) > now) &&
-      (!cpn.product || cpn.product === product);
-
-    if (!valid) return { error: "Mã giảm giá không hợp lệ" };
-
-    discount = cpn!.discount ?? 0;
+    if (cpn &&
+        (!cpn.expires_at || new Date(cpn.expires_at) > now) &&
+        (!cpn.product    || cpn.product === product)) {
+      discount = cpn.discount ?? 0;
+    }
   }
 
-  return {
-    listPrice : PRICES[product as keyof typeof PRICES],
+  const amount = Math.max(0, amount_due - discount);
+  const paid   = alreadyPaid.has(product);
+
+  return NextResponse.json({
+    listPrice: PRICE[product as keyof typeof PRICE] ?? 0,
     amount_due,
     discount,
-    amount    : Math.max(0, amount_due - discount),
-  };
-}
-
-/* -------------------- GET -------------------- */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const product = url.searchParams.get("product") ?? "";
-  const coupon  = url.searchParams.get("coupon")  ?? "";
-  const data = await buildQuote(product, coupon);
-  return NextResponse.json(data);
-}
-
-/* -------------------- POST ------------------- */
-export async function POST(req: Request) {
-  const { product = "", coupon = "" } = await req.json();
-  const data = await buildQuote(product, coupon);
-  return NextResponse.json(data);
+    amount,
+    paid,
+  });
 }

@@ -11,7 +11,7 @@ export const SERVICE = {
 
 /** Giá NIÊM YẾT (đồng) – KHÔNG trừ khuyến mãi */
 export const PRICES: Record<(typeof SERVICE)[keyof typeof SERVICE], number> = {
-  mbti    : 10_000,
+  mbti    : 0,
   holland : 20_000,
   knowdell: 100_000,
   combo   : 90_000,               // giá gói 3 bài test

@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 /* —— cấu hình cố định —— */
-const PRICE = 10_000;
+const PRICE = 0;
 const STAT = [
   { value: '60',  label: 'Câu hỏi' },
   { value: '2',   label: 'Lựa chọn/câu' },
-  { value: '10K', label: 'Phí' },
+  { value: 'Free', label: 'Phí' },
 ];
 
 /* —— component nhỏ hiển thị 1 ô thống kê —— */
