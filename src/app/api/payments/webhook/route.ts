@@ -1,49 +1,41 @@
-/*  src/app/api/payments/webhook/route.ts
-    SePay gọi tới (webhook) khi nhận tiền → cập-nhật giao dịch
----------------------------------------------------------------- */
-
+// src/app/api/payments/webhook/route.ts
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import type { Database } from "@/types/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { STATUS } from "@/lib/constants";
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!,            // service-role key
+  { auth:{ persistSession:false } }
+);
+
 export async function POST(req: Request) {
-  const payload = await req.json();               // dữ liệu do SePay gửi
-  /*
-    Ví dụ payload:
-    {
-      "gateway":"VietinBank",
-      "transactionDate":"2025-07-16 17:04:02",
-      "content":"CT DEN:519810759252 SEVQR X8G0",
-      "transferAmount":2000,
-      "id":17840015,
-      ...
-    }
-  */
+  try {
+    const body = await req.json();        // JSON SePay gửi sang
+    const desc = (body.description as string)?.toUpperCase();  // “... SEVQR XXXX”
 
-  const { content = "", transferAmount, id } = payload as Record<string, any>;
-  const match = content.match(/SEVQR\s+([A-Z0-9]{4})/);
-  if (!match) return NextResponse.json({ ok: false, reason: "Không tìm thấy order_code" });
+    const order_code = desc?.match(/SEVQR\s+([A-Z0-9]{4})/)?.[1];
+    if (!order_code) return NextResponse.json({ ok:false });
 
-  const order_code = match[1];
+    // Tìm payment đang PENDING
+    const { data: payment, error } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("order_code", order_code)
+      .eq("status", STATUS.PENDING)
+      .maybeSingle();
 
-  const supabase = createRouteHandlerClient<Database>({});
+    if (error || !payment) return NextResponse.json({ ok:false });
 
-  /* tìm giao dịch PENDING tương ứng & cập-nhật */
-  const { error } = await supabase
-    .from("payments")
-    .update({
-      status      : STATUS.PAID,
-      amount_paid : transferAmount,
-      paid_at     : new Date().toISOString(),
-    })
-    .eq("order_code", order_code)
-    .eq("status", STATUS.PENDING);
+    // Cập nhật đã trả
+    await supabase
+      .from("payments")
+      .update({ status: STATUS.PAID, paid_at: new Date(), amount_paid: body.transferAmount })
+      .eq("id", payment.id);
 
-  if (error) {
-    console.error("Webhook update error", error);
-    return NextResponse.json({ ok: false });
+    return NextResponse.json({ ok:true });
+  } catch (err) {
+    console.error("Webhook update error", err);
+    return NextResponse.json({ ok:false });
   }
-
-  return NextResponse.json({ ok: true });
 }
