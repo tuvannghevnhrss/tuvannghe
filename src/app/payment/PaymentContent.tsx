@@ -1,6 +1,5 @@
 /* src/app/payment/PaymentContent.tsx
-   – Hiển thị giá / mã giảm / QR
-   – Xử lý free-checkout & polling
+   – Hiển thị giá / mã giảm / QR, xử lý coupon 0 đ không văng trang
 ---------------------------------------------------------------- */
 
 "use client";
@@ -9,9 +8,9 @@ import { useEffect, useState, KeyboardEvent } from "react";
 import { SERVICE } from "@/lib/constants";
 
 const START_PATH: Record<keyof typeof SERVICE, string> = {
-  mbti    : "/mbti/quiz",       // ← đường dẫn trang làm bài
-  holland : "/holland/quiz",
-  knowdell: "/knowdell",        // knowdell vẫn là drag-drop ngay tại /knowdell
+  mbti: "/mbti/quiz",
+  holland: "/holland/quiz",
+  knowdell: "/knowdell",
 };
 
 type Props = { product: keyof typeof SERVICE };
@@ -19,44 +18,47 @@ type Props = { product: keyof typeof SERVICE };
 type Quote =
   | { error: string }
   | {
-      listPrice   : number;
-      amount_due  : number;
-      discount    : number;
-      amount      : number;   // còn phải trả
-      paid?       : boolean;  // server gửi true khi đã kích hoạt
+      listPrice: number;
+      amount_due: number;
+      discount: number;
+      amount: number;
+      paid?: boolean;
     };
 
 export default function PaymentContent({ product }: Props) {
-  /* ---------- state ---------- */
-  const [coupon  , setCoupon] = useState("");
-  const [amount  , setAmount] = useState<number | null>(null);
-  const [discount, setDisc]   = useState(0);
-  const [qr      , setQr]     = useState<string | null>(null);
-  const [error   , setErr]    = useState("");
+  const [coupon, setCoupon] = useState("");
+  const [amount, setAmount] = useState<number | null>(null);
+  const [discount, setDisc] = useState(0);
+  const [qr, setQr] = useState<string | null>(null);
+  const [error, setErr] = useState("");
 
-  const destURL = START_PATH[product];               // đích sau khi kích hoạt
+  const destURL = START_PATH[product] ?? `/${product}`;
 
-  /* 1 ▸ Lấy quote gốc ---------------------------------------------------- */
+  /* 1 ▸ Lấy quote gốc ----------------------------------------------- */
   useEffect(() => {
-    const ts = Date.now();
-    fetch(`/api/payments/quote?product=${product}&ts=${ts}`, {
-      cache: "no-store",
-    })
-      .then(r => r.json() as Promise<Quote>)
-      .then(res => {
+    (async () => {
+      try {
+        const ts = Date.now();
+        const res = (await fetch(
+          `/api/payments/quote?product=${product}&ts=${ts}`,
+          { cache: "no-store" }
+        ).then(r => r.json())) as Quote;
+
         if ("error" in res) throw new Error(res.error);
-        setAmount  (res.amount);
-        setDisc    (res.discount);
+        setAmount(res.amount);
+        setDisc(res.discount);
 
-        // server cho biết đã kích hoạt hoặc số tiền còn 0
-        if (res.paid || res.amount === 0) {
-          window.location.replace(destURL);
-        }
-      })
-      .catch(() => setAmount(-1));
-  }, [product, destURL]);
+        // đã trả hoặc miễn phí ⇒ tạo/ghi nhận PAID rồi vào quiz
+        if (res.paid) window.location.replace(destURL);
+        else if (res.amount === 0) await checkout(true);
+      } catch {
+        setAmount(-1);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
 
-  /* 2 ▸ Poll 3 s nếu đã có QR & còn phải trả ----------------------------- */
+  /* 2 ▸ Poll 3 s nếu đang chờ QR ------------------------------------ */
   useEffect(() => {
     if (!qr || !amount || amount === 0) return;
 
@@ -69,58 +71,66 @@ export default function PaymentContent({ product }: Props) {
             window.location.replace(destURL);
           }
         });
-    }, 3_000);
-
+    }, 3000);
     return () => clearInterval(id);
   }, [qr, amount, product, destURL]);
 
-  /* 3 ▸ Áp mã giảm ------------------------------------------------------ */
+  /* 3 ▸ Áp mã giảm giá ---------------------------------------------- */
   async function applyCoupon() {
     setErr("");
     const code = coupon.trim();
     if (!code) return;
 
-    const ts  = Date.now();
-    const res = await fetch(
+    const ts = Date.now();
+    const res = (await fetch(
       `/api/payments/quote?product=${product}&coupon=${code}&ts=${ts}`,
       { cache: "no-store" }
-    ).then(r => r.json() as Promise<Quote>);
+    ).then(r => r.json())) as Quote;
 
-    if ("error" in res) { setErr(res.error); return; }
+    if ("error" in res) {
+      setErr(res.error);
+      return;
+    }
 
     setAmount(res.amount);
-    setDisc  (res.discount);
+    setDisc(res.discount);
 
-    // mã coupon khiến số tiền = 0  → tự kích hoạt
-    if (res.amount === 0) window.location.replace(destURL);
+    // nếu mã giảm khiến số tiền = 0 → gọi checkout để ghi PAID & redirect
+    if (res.amount === 0) await checkout(true);
   }
 
-  /* 4 ▸ Thanh toán / kích hoạt ----------------------------------------- */
-  async function checkout() {
+  /* 4 ▸ Thanh toán / kích hoạt -------------------------------------- */
+  async function checkout(auto = false) {
     setErr("");
     const body = { product, coupon: coupon.trim() || undefined };
 
     const res = await fetch("/api/payments/checkout", {
       method: "POST",
-      body  : JSON.stringify(body),
-      cache : "no-store",
+      body: JSON.stringify(body),
+      cache: "no-store",
     }).then(r => r.json());
 
-    if (res.error) { setErr(res.error); return; }
-
-    if (res.free) {
-      window.location.replace(destURL);        // không cần QR
+    if (res.error) {
+      setErr(res.error);
       return;
     }
 
-    // nhận QR
-    setQr    (res.qr_url);
-    setAmount(res.amount);                     // số tiền thực phải trả (sau mã)
+    // free → server đã ghi PAID
+    if (res.free) {
+      window.location.replace(destURL);
+      return;
+    }
+
+    // chỉ hiển thị QR nếu user bấm nút (auto = false)
+    if (!auto) {
+      setQr(res.qr_url);
+      setAmount(res.amount);
+    }
   }
 
   /* ---------- render ---------- */
   if (amount === null) return <p>Đang tải…</p>;
-  if (amount === -1)   return <p className="text-red-600">Không lấy được giá.</p>;
+  if (amount === -1) return <p className="text-red-600">Không lấy được giá.</p>;
 
   return (
     <div className="mx-auto max-w-sm space-y-6 text-center">
@@ -143,8 +153,7 @@ export default function PaymentContent({ product }: Props) {
         <input
           value={coupon}
           onChange={e => setCoupon(e.target.value)}
-          onKeyDown={(e: KeyboardEvent) =>
-            e.key === "Enter" && applyCoupon()}
+          onKeyDown={(e: KeyboardEvent) => e.key === "Enter" && applyCoupon()}
           placeholder="Mã giảm giá"
           className="w-36 rounded border px-3 py-2 text-center"
         />
@@ -167,7 +176,7 @@ export default function PaymentContent({ product }: Props) {
         />
       ) : (
         <button
-          onClick={checkout}
+          onClick={() => checkout(false)}
           className="w-full rounded bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
         >
           {amount === 0
