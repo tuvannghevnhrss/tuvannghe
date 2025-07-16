@@ -1,31 +1,52 @@
 // src/app/api/payments/webhook/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
+import crypto from "crypto";
 import { STATUS } from "@/lib/constants";
 
+const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SERVICE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY!;   // <- thêm env
+const SIGN_HEADER   = "x-sepay-signature";
+const SIGN_SECRET   = process.env.SEPAY_WEBHOOK_SECRET!;
+
+// init once
+const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
+  auth: { persistSession: false },
+});
+
 export async function POST(req: NextRequest) {
-  // ① Nhận payload từ SePay
-  const body = await req.json();        // { desc: "SEVQR Q2DR", amount: 2000, ... }
+  const raw = await req.text();
+  const sig = req.headers.get(SIGN_HEADER) ?? "";
 
-  // ② (Tùy cài đặt) xác thực chữ ký HMAC/secret của SePay
-  //    -> Nếu fail: return 401
+  /* ── verify ───────────────────────── */
+  const hash = crypto.createHmac("sha256", SIGN_SECRET).update(raw).digest("hex");
+  if (hash !== sig) return NextResponse.json({ ok: false }, { status: 403 });
 
-  // ③ Tách order_code đã lưu trong cột  `order_code`
-  const order_code = body?.desc?.match(/SEVQR\s+([A-Z0-9]{4})/)?.[1];
-  if (!order_code) return NextResponse.json({ ok: false });
+  /* ── parse ────────────────────────── */
+  interface SePayEvent {
+    description: string;         // “… SEVQR XBG0”
+    transferAmount: number;      // 2000
+    id: number;                  // 17840015 (transaction id)
+  }
+  const ev = JSON.parse(raw) as SePayEvent;
 
-  const supabase = createRouteHandlerClient({ cookies });
+  // Lấy code 4 ký tự cuối sau ‘SEVQR ’
+  const m = /SEVQR\s+([A-Z0-9]{4})/.exec(ev.description ?? "");
+  if (!m) return NextResponse.json({ ok: false, err: "no code" });
 
-  // ④ Cập-nhật bản ghi
-  const { error } = await supabase
+  const code = m[1];             // eg: XBG0
+
+  /* ── update ───────────────────────── */
+  const { error } = await admin
     .from("payments")
-    .update({ status: STATUS.PAID })
-    .eq("order_code", order_code)
-    .eq("amount", body.amount)          // tránh nhầm giao dịch khác
-    .eq("status", STATUS.PENDING);
+    .update({
+      status      : STATUS.PAID,
+      amount_paid : ev.transferAmount,
+      paid_at     : new Date().toISOString(),
+    })
+    .eq("order_code", code)      // <-- cột order_code có 4 ký tự QR
+    .eq("status",    STATUS.PENDING);
 
-  if (error) return NextResponse.json({ ok: false });
-
+  if (error) return NextResponse.json({ ok: false, err: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,6 @@
 /* src/app/payment/PaymentContent.tsx
    – Hiển thị giá / mã giảm / QR
-   – Xử lý free-checkout không bị lặp trang
+   – Xử lý free-checkout & polling
 ---------------------------------------------------------------- */
 
 "use client";
@@ -13,107 +13,108 @@ type Props = { product: keyof typeof SERVICE };
 type Quote =
   | { error: string }
   | {
-      listPrice: number;
-      amount_due: number;
-      discount: number;
-      amount: number;
+      listPrice   : number;
+      amount_due  : number;
+      discount    : number;
+      amount      : number;   // còn phải trả
+      paid?       : boolean;  // server gửi true khi đã kích hoạt
     };
 
 export default function PaymentContent({ product }: Props) {
   /* ---------- state ---------- */
-  const [coupon, setCoupon]   = useState("");
-  const [amount, setAmount]   = useState<number | null>(null);
+  const [coupon  , setCoupon] = useState("");
+  const [amount  , setAmount] = useState<number | null>(null);
   const [discount, setDisc]   = useState(0);
-  const [qr, setQr]           = useState<string | null>(null);
-  const [error, setErr]       = useState("");
+  const [qr      , setQr]     = useState<string | null>(null);
+  const [error   , setErr]    = useState("");
 
-  const destURL = `/${product}`;          // nơi sẽ chuyển đến khi đã kích hoạt
+  const destURL = `/${product}`;               // đích sau khi kích hoạt
 
-  /* 1 ▸ Lấy giá mặc định hoặc đã PAID ------------------------------------ */
+  /* 1 ▸ Lấy quote gốc ---------------------------------------------------- */
   useEffect(() => {
     const ts = Date.now();
     fetch(`/api/payments/quote?product=${product}&ts=${ts}`, {
       cache: "no-store",
     })
-      .then((r) => r.json() as Promise<Quote>)
-      .then((res) => {
+      .then(r => r.json() as Promise<Quote>)
+      .then(res => {
         if ("error" in res) throw new Error(res.error);
-        setAmount(res.amount);
-        setDisc(res.discount);
+        setAmount  (res.amount);
+        setDisc    (res.discount);
 
-        // ĐÃ THANH TOÁN ➜ vào thẳng trang sản phẩm
-        if (res.amount === 0 && res.discount === 0) {
+        // server cho biết đã kích hoạt hoặc số tiền còn 0
+        if (res.paid || res.amount === 0) {
           window.location.replace(destURL);
         }
       })
       .catch(() => setAmount(-1));
   }, [product, destURL]);
 
-  /* 2 ▸ Poll 3 giây nếu đã có QR ---------------------------------------- */
+  /* 2 ▸ Poll 3 s nếu đã có QR & còn phải trả ----------------------------- */
   useEffect(() => {
-    if (!qr) return;
+    if (!qr || !amount || amount === 0) return;
+
     const id = setInterval(() => {
       fetch(`/api/payments/status?product=${product}`, { cache: "no-store" })
-        .then((r) => r.json())
-        .then((res) => {
+        .then(r => r.json())
+        .then(res => {
           if (res.paid) {
             clearInterval(id);
             window.location.replace(destURL);
           }
         });
-    }, 3000);
-    return () => clearInterval(id);
-  }, [qr, product, destURL]);
+    }, 3_000);
 
-  /* 3 ▸ Áp mã giảm giá --------------------------------------------------- */
+    return () => clearInterval(id);
+  }, [qr, amount, product, destURL]);
+
+  /* 3 ▸ Áp mã giảm ------------------------------------------------------ */
   async function applyCoupon() {
     setErr("");
     const code = coupon.trim();
     if (!code) return;
 
-    const ts = Date.now();
+    const ts  = Date.now();
     const res = await fetch(
       `/api/payments/quote?product=${product}&coupon=${code}&ts=${ts}`,
       { cache: "no-store" }
-    ).then((r) => r.json() as Promise<Quote>);
+    ).then(r => r.json() as Promise<Quote>);
 
-    if ("error" in res) {
-      setErr(res.error);
-      return;
-    }
+    if ("error" in res) { setErr(res.error); return; }
+
     setAmount(res.amount);
-    setDisc(res.discount);
+    setDisc  (res.discount);
+
+    // mã coupon khiến số tiền = 0  → tự kích hoạt
+    if (res.amount === 0) window.location.replace(destURL);
   }
 
-  /* 4 ▸ Thanh toán / Kích hoạt ------------------------------------------ */
+  /* 4 ▸ Thanh toán / kích hoạt ----------------------------------------- */
   async function checkout() {
     setErr("");
     const body = { product, coupon: coupon.trim() || undefined };
 
     const res = await fetch("/api/payments/checkout", {
       method: "POST",
-      body: JSON.stringify(body),
-      cache: "no-store",
-    }).then((r) => r.json());
+      body  : JSON.stringify(body),
+      cache : "no-store",
+    }).then(r => r.json());
 
-    if (res.error) {
-      setErr(res.error);
-      return;
-    }
+    if (res.error) { setErr(res.error); return; }
 
-    // free → chuyển về trang sản phẩm
     if (res.free) {
-      window.location.replace(destURL);
+      window.location.replace(destURL);        // không cần QR
       return;
     }
 
-    // trả QR
-    setQr(res.qr_url);
+    // nhận QR
+    setQr    (res.qr_url);
+    setAmount(res.amount);                     // số tiền thực phải trả (sau mã)
   }
 
   /* ---------- render ---------- */
   if (amount === null) return <p>Đang tải…</p>;
-  if (amount === -1) return <p className="text-red-600">Không lấy được giá.</p>;
+  if (amount === -1)   return <p className="text-red-600">Không lấy được giá.</p>;
 
   return (
     <div className="mx-auto max-w-sm space-y-6 text-center">
@@ -126,8 +127,7 @@ export default function PaymentContent({ product }: Props) {
         <b>{amount.toLocaleString("vi-VN")} đ</b>
         {discount > 0 && (
           <span className="text-sm text-green-600">
-            {" "}
-            (đã giảm {discount.toLocaleString("vi-VN")} đ)
+            &nbsp;(đã giảm {discount.toLocaleString("vi-VN")} đ)
           </span>
         )}
       </p>
@@ -136,8 +136,9 @@ export default function PaymentContent({ product }: Props) {
       <div className="flex justify-center gap-2">
         <input
           value={coupon}
-          onChange={(e) => setCoupon(e.target.value)}
-          onKeyDown={(e: KeyboardEvent) => e.key === "Enter" && applyCoupon()}
+          onChange={e => setCoupon(e.target.value)}
+          onKeyDown={(e: KeyboardEvent) =>
+            e.key === "Enter" && applyCoupon()}
           placeholder="Mã giảm giá"
           className="w-36 rounded border px-3 py-2 text-center"
         />
