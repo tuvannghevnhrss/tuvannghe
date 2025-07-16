@@ -15,40 +15,34 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getSession();
 
   if (!session) {
-    // Chưa đăng nhập → ép về signup
     return NextResponse.redirect(new URL("/signup", req.url));
   }
 
   const user = session.user;
-  // Xác định product từ url
   const path = req.nextUrl.pathname.startsWith("/mbti")
     ? "mbti"
     : req.nextUrl.pathname.startsWith("/holland")
     ? "holland"
     : "knowdell";
 
-  // Lấy bản ghi thanh toán mới nhất có status = "paid"
-  const { data: payments, error } = await supabase
+  // Chỉ lấy 1 record có status = "paid"
+  const { data: payment, error } = await supabase
     .from("payments")
-    .select("status")
+    .select("id")
     .eq("user_id", user.id)
     .eq("product", path)
     .eq("status", STATUS.PAID)
-    .order("created_at", { ascending: false })
-    .limit(1);
+    .maybeSingle();     // or .single() nếu bạn chắc chắn chỉ có 0 hoặc 1 bản ghi
 
   if (error) {
-    console.error("Supabase error in middleware:", error);
-    // Nếu gặp lỗi DB thì vẫn cho qua (hoặc redirect tuỳ ý)
+    console.error("Error fetching payment in middleware:", error);
     return res;
   }
-
-  const paidRecord = payments?.[0] ?? null;
-  if (!paidRecord) {
-    // Chưa có record paid → ép về trang thanh toán
-    return NextResponse.redirect(new URL(`/payment?product=${path}`, req.url));
+  if (!payment) {
+    return NextResponse.redirect(
+      new URL(`/payment?product=${path}`, req.url)
+    );
   }
 
-  // Đã paid → cho qua, tiếp tục vào quiz/result
   return res;
 }
