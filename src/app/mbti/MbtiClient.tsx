@@ -1,12 +1,7 @@
-/*  MBTI Client – toàn bộ UI & logic làm bài MBTI
-    ĐƯỢC import ở:
-      • /app/mbti/page.tsx      (Intro  →  bắt đầu làm bài)
-      • /app/mbti/quiz/page.tsx (Làm bài trực tiếp)
----------------------------------------------------------------- */
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
-import { useRouter, useSearchParams }   from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 import MbtiIntro            from './MbtiIntro';
 import { QUESTIONS }        from './questions';
@@ -20,36 +15,33 @@ const PAIRS = [
   ['J', 'P'],
 ] as const;
 
-/** Đếm 60 đáp án & trả về kiểu MBTI 4 chữ */
-function computeMbti(answers: number[]): string {
-  const counts: Record<string, number> = { E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0 };
-
-  answers.forEach((ans, idx) => {
-    const [a, b] = QUESTIONS[idx].pair;
-    counts[ans === 0 ? a : b] += 1;
+function computeMbti(ans: number[]) {
+  const c: Record<string, number> = { E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0 };
+  ans.forEach((v, i) => {
+    const [a, b] = QUESTIONS[i].pair;
+    c[v === 0 ? a : b] += 1;
   });
-
-  return PAIRS.map(([a, b]) => (counts[a] >= counts[b] ? a : b)).join('');
+  return PAIRS.map(([a, b]) => (c[a] >= c[b] ? a : b)).join('');
 }
-
 /* ────────────────────────────────────────────────────────────── */
 
 export default function MbtiClient() {
-  const router       = useRouter();
-  const params       = useSearchParams();
-  const startQuizNow = params?.get('start') === '1';
+  const router  = useRouter();
+  const params  = useSearchParams();
+  const path    = usePathname();          //  ← NEW
 
-  /** null = Intro, 0-59 = đang làm câu hỏi */
-  const [step, setStep]       = useState<number | null>(startQuizNow ? 0 : null);
+  // auto-start khi (1) URL có ?start=1  **hoặc**  (2) chúng ta đang ở /mbti/quiz
+  const shouldStart = params?.get('start') === '1' || path.endsWith('/quiz');
+
+  const [step, setStep]       = useState<number | null>(shouldStart ? 0 : null);
   const [answers, setAnswers] = useState<number[]>(
     Array(QUESTIONS.length).fill(-1),
   );
 
-  /* đủ 60 câu → tính kết quả & redirect */
+  /* đủ 60 câu ➜ kết quả */
   useEffect(() => {
     if (!answers.includes(-1)) {
-      const mbti = computeMbti(answers);
-      router.replace(`/mbti/result?type=${mbti}`);
+      router.replace(`/mbti/result?type=${computeMbti(answers)}`);
     }
   }, [answers, router]);
 
@@ -73,8 +65,8 @@ export default function MbtiClient() {
             key={idx}
             onClick={() => {
               setAnswers(prev => {
-                const next = [...prev];      // ← đã sửa lỗi cú pháp
-                next[step] = idx;            // 0 hoặc 1
+                const next = [...prev];
+                next[step] = idx;          // 0 / 1
                 return next;
               });
               setStep(s => (s! + 1 < QUESTIONS.length ? s! + 1 : s));
