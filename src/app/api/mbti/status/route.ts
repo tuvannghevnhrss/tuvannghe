@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+// API: GET /api/mbti/status
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { STATUS } from "@/lib/constants";
+import { STATUS } from "@/lib/constants";          // ✅ thêm import
 
 export async function GET() {
   const supabase = createRouteHandlerClient({ cookies });
@@ -10,35 +11,22 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  /* 1. Đã thanh toán hay chưa? */
-  const { data: pay } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("product", "mbti")
-    .eq("status", STATUS.PAID)
-    .maybeSingle();
-
-  const paid = Boolean(pay);
-
-  /* 2. Đã có kết quả MBTI chưa? (lưu ở career_profiles hoặc mbti_results) */
+  /* ------------------------------------------------------------
+     MBTI luôn FREE → coi như ‘paid = true’.
+     Kiểm tra xem user đã có kết quả hay chưa để trả về `done`.
+  ------------------------------------------------------------ */
   const { data: profile } = await supabase
     .from("career_profiles")
     .select("mbti_type")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const code =
-    typeof profile?.mbti === "string"
-      ? profile.mbti                                // cột text
-      : profile?.mbti?.type ?? null;                // kiểu JSON {type:"ENFP"}
-
   return NextResponse.json({
-    paid,
-    finished: Boolean(code),
-    code,
+    paid: true,
+    done: !!profile?.mbti_type,        // true khi đã lưu kết quả
+    status: STATUS.PAID,               // cho đồng bộ hằng trạng thái
   });
 }
