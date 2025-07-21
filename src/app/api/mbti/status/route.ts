@@ -27,7 +27,7 @@ export async function GET() {
   /* 2. Đã có kết quả MBTI chưa? (lưu ở career_profiles hoặc mbti_results) */
   const { data: profile } = await supabase
     .from("career_profiles")
-    .select("mbti")
+    .select("mbti_type")
     .eq("user_id", user.id)
     .maybeSingle();
 
