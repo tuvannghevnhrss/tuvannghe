@@ -1,102 +1,96 @@
-"use client";
+/*  MBTI Client – toàn bộ UI & logic làm bài MBTI
+    ĐƯỢC import ở cả:
+      • /app/mbti/page.tsx     (Intro  ►  bắt đầu làm bài)
+      • /app/mbti/quiz/page.tsx (Làm bài trực tiếp)
+---------------------------------------------------------------- */
+'use client';
 
-import { useState, useEffect } from "react";
-import {
-  useRouter,
-  usePathname,
-  useSearchParams,
-} from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useState, useEffect, Fragment } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-import MbtiIntro from "@/components/MbtiIntro";
-import { QUESTIONS } from "./questions";
+import MbtiIntro      from './MbtiIntro';
+import { QUESTIONS }    from './questions';            // mảng 60 câu hỏi
+import type { FC }    from 'react';
 
-/* ---------- 1. Root component gán cho Suspense ---------- */
-export default function MbtiClient() {
-  const params   = useSearchParams();
-  const started  = params.get("start") === "1";
+/* ────────────────────────────────────────────────────────────── */
+/** 4 cặp phân cực & trợ lý lấy kết quả cuối cùng */
+const PAIRS = [
+  ['E', 'I'],
+  ['S', 'N'],
+  ['T', 'F'],
+  ['J', 'P'],
+] as const;
 
-  if (!started) return <MbtiIntro />;      // trang giới thiệu
-  return <MBTIQuiz />;                     // bắt đầu làm bài
+/** dựa vào mảng answers (0|1), đếm và trả 4-chữ MBTI */
+function computeMbti(answers: number[]): string {
+  const counts: Record<string, number> = {
+    E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0,
+  };
+
+  answers.forEach((ans, idx) => {
+    const [a, b] = QUESTIONS[idx].pair;   // ví dụ ['E','I']
+    counts[ans === 0 ? a : b] += 1;
+  });
+
+  return PAIRS.map(([a, b]) => (counts[a] >= counts[b] ? a : b)).join('');
 }
 
-/* ---------- 2. Component quiz (private) ---------- */
-function MBTIQuiz() {
-  /* --- Khởi tạo --- */
-  const router    = useRouter();
-  const pathname  = usePathname();
-  const supabase  = createClientComponentClient();
+/* ────────────────────────────────────────────────────────────── */
 
-  /* --- 1. Bắt buộc đăng nhập --- */
+const MbtiClient: FC = () => {
+  const router       = useRouter();
+  const params       = useSearchParams();            // ?start=1 ► mở thẳng quiz
+  const startQuizNow = params?.get('start') === '1';
+
+  /** 0‥59 hoặc null (intro) */
+  const [step, setStep]       = useState<number | null>(startQuizNow ? 0 : null);
+  /** mảng 60 đáp án (0 hoặc 1). -1 = chưa trả lời */
+  const [answers, setAnswers] = useState<number[]>(
+    Array(QUESTIONS.length).fill(-1),
+  );
+
+  /* khi đã trả lời đủ 60 câu → tính kết quả & chuyển trang result */
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session)
-        router.replace(`/login?redirectedFrom=${pathname}`);
-    });
-  }, [pathname, router, supabase]);
-
-  /* --- 2. State câu hỏi --- */
-  const [step, setStep]       = useState(0);
-  const [answers, setAnswers] = useState<(0 | 1)[]>([]);
-  const current = QUESTIONS[step];
-
-  const choose = (choice: 0 | 1) => {
-    const next = [...answers, choice];
-    if (step + 1 === QUESTIONS.length) submit(next);
-    else {
-      setAnswers(next);
-      setStep(step + 1);
+    if (!answers.includes(-1)) {
+      const mbti = computeMbti(answers);
+      router.replace(`/mbti/result?type=${mbti}`);
     }
-  };
+  }, [answers, router]);
 
-  /* --- 3. Tính MBTI (demo) --- */
-  const calcMBTI = (ans: (0 | 1)[]): string => {
-   const count: Record<string, number> =
-     { E:0, I:0, S:0, N:0, T:0, F:0, J:0, P:0 };
+  /* ──────────────── render ──────────────── */
+  if (step === null) return <MbtiIntro onStart={() => setStep(0)} />;
 
-   ans.forEach((choice, idx) => {
-     const letter = QUESTIONS[idx].pair[choice]; // 0→a_letter, 1→b_letter
-     count[letter] += 1;
-   });
+  const q   = QUESTIONS[step];
+  const pct = Math.round(((step + 1) / QUESTIONS.length) * 100);
 
-   return (count.E >= count.I ? "E" : "I") +
-         (count.S >= count.N ? "S" : "N") +
-         (count.T >= count.F ? "T" : "F") +
-         (count.J >= count.P ? "J" : "P");
-  };
-
-  /* --- 4. Submit & điều hướng --- */
-  const submit = async (all: (0 | 1)[]) => {
-    const code = calcMBTI(all);
-    const res  = await fetch("/api/mbti", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
-    if (!res.ok) {
-      alert("Có lỗi khi lưu kết quả, vui lòng đăng nhập rồi thử lại!");
-      return;
-    }
-    router.push(`/mbti/thanks?code=${code}`);
-  };
-
-  /* --- 5. UI --- */
   return (
-    <div className="mx-auto max-w-xl py-20 text-center">
-      <p className="mb-4 font-semibold">
-        Câu {step + 1} / {QUESTIONS.length}
+    <div className="mx-auto max-w-xl space-y-8 p-4">
+      <p className="text-center text-sm text-gray-500">
+        Câu {step + 1}/{QUESTIONS.length} &nbsp;•&nbsp; {pct}%
       </p>
-      <h1 className="mb-6 text-2xl font-bold">{current.question}</h1>
 
-      {current.options.map((opt, idx) => (
-        <button
-          key={idx}
-          onClick={() => choose(idx as 0 | 1)}
-          className="w-full rounded border px-4 py-3 transition hover:bg-blue-50"
-        >
-          {opt}
-        </button>
-      ))}
+      <h2 className="text-lg font-semibold">{q.text}</h2>
+
+      <div className="grid gap-4">
+        {q.options.map((opt, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              setAnswers(a => {
+                const next = [...a];
+                next[step] = idx;          // 0 hoặc 1
+                return next;
+              });
+              setStep(s => (s! + 1 < QUESTIONS.length ? s! + 1 : s)); // bước tiếp
+            }}
+            className="rounded border px-4 py-3 text-left hover:bg-gray-50"
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
     </div>
   );
-}
+};
+
+export default MbtiClient;
