@@ -50,7 +50,7 @@ export default function MbtiIntro() {
       router.push('/profile?step=trait');       // xem kết quả
     } else if (paid) {
       /* 🔹 ĐÃ SỬA: chuyển sang trang làm bài đúng route */
-      router.push('/mbti/quiz?start=1');
+      router.push('/mbti/quiz?start=0');
     } else {
       router.push('/payment?product=mbti');     // (dù free, giữ luồng đồng nhất)
     }
