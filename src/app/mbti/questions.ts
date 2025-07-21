@@ -1,11 +1,4 @@
-export interface MBTIQuestion {
-  id: number;
-  question: string;
-  options: [string, string];
-  pair: [string, string];
-}
-
-export const QUESTIONS: MBTIQuestion[] = [
+export const QUESTIONS = [
   { id: 1, question: "Khi tan học bạn thích làm gì?", options: ["Gặp gỡ bạn bè và kể chuyện", "Về nhà và đọc sách"], pair: ["E", "I"] },
   { id: 2, question: "Bạn nhận năng lượng khi", options: ["Tham gia các sự kiện đông người", "Có thời gian một mình suy nghĩ"], pair: ["E", "I"] },
   { id: 3, question: "Trong nhóm dự án, bạn thường", options: ["Khởi xướng trao đổi lớn tiếng", "Quan sát và chỉ góp ý khi cần"], pair: ["E", "I"] },
@@ -66,4 +59,6 @@ export const QUESTIONS: MBTIQuestion[] = [
   { id: 58, question: "Bạn học bài", options: ["Theo giáo trình", "Tự mò nhiều nguồn"], pair: ["J", "P"] },
   { id: 59, question: "Bạn chọn mua đồ", options: ["Theo danh sách", "Ngẫu hứng"], pair: ["J", "P"] },
   { id: 60, question: "Bạn phản ứng khi kế hoạch thay đổi", options: ["Khó chịu", "Thích thú với thay đổi"], pair: ["J", "P"] },
-];
+] as const;
+
+export type Question = typeof QUESTIONS[number];
