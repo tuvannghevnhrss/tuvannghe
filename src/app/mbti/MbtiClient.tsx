@@ -1,119 +1,94 @@
-/*  MBTI Client – 60‑question quiz
-    Route:
-      – /mbti            : intro & nút “Bắt đầu Quiz”
-      – /mbti/quiz       : làm bài; ?start=1 để nhảy thẳng vào
-
-    Flow:
-      1. Intro → click → push('/mbti/quiz?start=1')
-      2. Quiz hiển thị lần lượt 60 câu hỏi (2 lựa chọn)
-      3. Khi trả lời xong → POST điểm lên /api/mbti/result → push("/mbti/thanks")
+/* src/app/mbti/MbtiClient.tsx
+   – Client component hiển thị & xử lý 60 câu MBTI
 ---------------------------------------------------------------- */
 'use client';
 
-import { useEffect, useState }           from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import QUESTIONS                         from './questions';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { QUESTIONS } from './questions';        // ← lấy đúng named-export
+import cx from 'classnames';
 
-// Kiểu cho 1 câu hỏi
-interface Question {
-  a: string;   // lựa chọn A (hướng E/S/T/J)
-  b: string;   // lựa chọn B (hướng I/N/F/P)
+/* ---------- hằng số ---------- */
+const TOTAL = QUESTIONS.length;                 // 60
+
+/* ---------- tiện ích ---------- */
+function nextIndex(index: number) {
+  // Khi đã trả lời hết -> -1 để báo “xong”
+  return index + 1 < TOTAL ? index + 1 : -1;
 }
 
-const TOTAL = QUESTIONS.length;           // = 60
-
+/* ---------- component ---------- */
 export default function MbtiClient() {
-  /* -------------------- hooks -------------------- */
-  const router   = useRouter();
-  const path     = usePathname();           // “/mbti” hoặc “/mbti/quiz”
-  const params   = useSearchParams();
-  const startNow = params?.get('start') === '1';
+  const router       = useRouter();
+  const params       = useSearchParams();
+  const startParam   = Number(params.get('start') ?? '0');
 
-  /* -------------------- state -------------------- */
-  const [step, setStep] = useState(startNow ? 0 : -1);   // -1 → intro, 0‥59: câu hiện tại
-  const [score, setScore] = useState({ E:0,I:0, S:0,N:0, T:0,F:0, J:0,P:0 });
+  // “cursor” là index câu hiện tại; -1 nghĩa là đã xong
+  const [cursor, setCursor] = useState<number>(
+    Number.isFinite(startParam) && startParam >= 0 && startParam < TOTAL
+      ? startParam
+      : 0
+  );
 
-  /* -------------------- handlers -------------------- */
-  function handleBegin() {
-    router.push('/mbti/quiz?start=1');     // đổi URL (không reload) ⇢ startNow = true
-    setStep(0);
-  }
+  // Lưu đáp án (0 | 1) cho 60 câu
+  const [answers] = useState<number[]>(Array(TOTAL).fill(-1));
 
-  function handleChoose(opt: 'a'|'b') {
-    const q = QUESTIONS[step];
-    // map [step] vào chữ cái cặp EI SN TF JP
-    const axis = Math.floor(step/15);      // 0,1,2,3
-    const pair = ['E','S','T','J'][axis] as keyof typeof score;
-    const opp  = ['I','N','F','P'][axis] as keyof typeof score;
-
-    setScore(s => ({
-      ...s,
-      [opt==='a' ? pair : opp]: s[opt==='a'?pair:opp]+1,
-    }));
-
-    setStep(step+1);
-  }
-
-  /* ----------------- side‑effect: finish ---------------- */
+  /* Sau khi xong -> chuyển sang trang thanks  */
   useEffect(() => {
-    if (step !== TOTAL) return;            // chưa xong
-
-    // tính 4 chữ cái
-    const type = (
-      (score.E > score.I ? 'E' : 'I') +
-      (score.S > score.N ? 'S' : 'N') +
-      (score.T > score.F ? 'T' : 'F') +
-      (score.J > score.P ? 'J' : 'P')
-    );
-
-    // gửi lên server (có thể thất bại – không critical)
-    fetch('/api/mbti/result', {
-      method:'POST', body:JSON.stringify({ type })
-    }).finally(()=>{
+    if (cursor === -1) {
+      // Ở đây bạn có thể POST answers lên Supabase trước khi điều hướng
       router.replace('/mbti/thanks');
-    });
-  }, [step, score, router]);
+    }
+  }, [cursor, router]);
 
-  /* -------------------- render -------------------- */
-  if (step === -1) {
-    // Intro
-    return (
-      <div className="mx-auto max-w-lg space-y-6 text-center">
-        <h2 className="text-2xl font-semibold">Bộ câu hỏi MBTI</h2>
-        <p className="text-gray-700">Đây là bộ câu hỏi đánh giá tính cách của bạn…</p>
-        <button onClick={handleBegin} className="mx-auto rounded bg-blue-600 px-6 py-3 text-white hover:bg-blue-700">
-          Bắt đầu Quiz MBTI
-        </button>
-      </div>
-    );
-  }
+  /* ---------- render ---------- */
+  if (cursor === -1) return null;                       // đang navigate
 
-  // Quiz đang diễn ra
-  const q = QUESTIONS[step];
-  const progress = ((step+1)/TOTAL)*100;
+  const q = QUESTIONS[cursor];                          // { a: string, b: string }
 
   return (
-    <div className="mx-auto max-w-lg space-y-8 text-center px-4">
-
+    <div className="mx-auto max-w-xl space-y-8 pb-16 pt-6 text-center">
       {/* thanh tiến trình */}
-      <div className="h-2 w-full rounded bg-gray-200">
-        <div style={{ width:`${progress}%` }} className="h-full rounded bg-blue-600 transition-all" />
+      <div className="relative h-2 w-full rounded bg-gray-200">
+        <div
+          className="absolute inset-0 rounded bg-blue-600 transition-all"
+          style={{ width: ((cursor + 1) / TOTAL) * 100 + '%' }}
+        />
       </div>
-      <p className="text-sm text-gray-500">Câu {step+1}/{TOTAL} ・ {Math.round(progress)}%</p>
 
-      {/* câu hỏi */}
+      <p className="text-sm text-gray-600">
+        Câu {cursor + 1}/{TOTAL} &nbsp;·&nbsp;
+        {Math.round(((cursor + 1) / TOTAL) * 100)}%
+      </p>
+
+      {/* 2 phương án */}
       <div className="space-y-4">
-        <button onClick={()=>handleChoose('a')} className="w-full rounded border px-4 py-3 text-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {q.a}
-        </button>
-        <button onClick={()=>handleChoose('b')} className="w-full rounded border px-4 py-3 text-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {q.b}
-        </button>
+        {[q.a, q.b].map((txt, i) => (
+          <button
+            key={i}
+            className={cx(
+              'w-full rounded border px-4 py-3 text-lg transition',
+              'hover:bg-blue-50 active:scale-[.97]',
+              answers[cursor] === i && 'border-blue-600 bg-blue-50'
+            )}
+            onClick={() => {
+              answers[cursor] = i;
+              setCursor(nextIndex(cursor));
+            }}
+          >
+            {txt}
+          </button>
+        ))}
       </div>
 
       {/* nút quay lại */}
-      {step>0 && (
-        <button onClick={()=>setStep(step-1)} className="text-sm text-gray-500 hover:underline mt-6">← Quay lại</button>
+      {cursor > 0 && (
+        <button
+          className="mt-8 text-sm text-gray-500 underline underline-offset-2 hover:text-black"
+          onClick={() => setCursor(cursor - 1)}
+        >
+          ← Quay lại
+        </button>
       )}
     </div>
   );
