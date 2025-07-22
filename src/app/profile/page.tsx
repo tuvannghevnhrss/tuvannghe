@@ -1,29 +1,23 @@
 // -----------------------------------------------------------------------------
-// src/app/profile/page.tsx – sửa lỗi "Cannot read properties of undefined (reading 'map')"
-// ----------------------------------------------------------------------------
+// src/app/profile/page.tsx
+// -----------------------------------------------------------------------------
 import { cookies } from "next/headers";
 import Link from "next/link";
-import StepTabs from "@/components/StepTabs";
+
+import StepTabs     from "@/components/StepTabs";
 import HollandRadar from "@/components/HollandRadar";
-import OptionsTab from "@/components/OptionsTab";
-import FocusTab from "@/components/FocusTab";
-import PlanTab from "@/components/PlanTab";
-import { MBTI_MAP } from "@/lib/mbtiDescriptions";
+import OptionsTab   from "@/components/OptionsTab";
+import FocusTab     from "@/components/FocusTab";
+import PlanTab      from "@/components/PlanTab";
+
+import { MBTI_MAP }      from "@/lib/mbtiDescriptions";
+import { HOLLAND_MAP }   from "@/lib/hollandDescriptions";   // ➊ NEW – bản mô tả chi tiết Holland
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Database } from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
-/* ── MÔ TẢ ngắn Holland ───────────────────────────────────────────────────── */
-const H_DESC: Record<string, string> = {
-  R: "Realistic – Ưa hành động, thao tác với vật thể.",
-  I: "Investigative – Phân tích, khám phá, nghiên cứu.",
-  A: "Artistic – Sáng tạo, trực giác, biểu đạt ý tưởng.",
-  S: "Social – Hỗ trợ, hợp tác, giúp đỡ người khác.",
-  E: "Enterprising – Thuyết phục, lãnh đạo, kinh doanh.",
-  C: "Conventional – Tỉ mỉ, dữ liệu, quy trình, tổ chức.",
-};
-
+/* ──────────── component ──────────── */
 export default async function Profile({
   searchParams,
 }: {
@@ -31,14 +25,14 @@ export default async function Profile({
 }) {
   const step = searchParams?.step ?? "trait"; // trait | options | focus | plan
 
-  /* ──────────── 1. Auth ──────────── */
+  /* 1 ▸ Auth --------------------------------------------------------------- */
   const supabase = createServerComponentClient<Database>({ cookies });
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Vui lòng đăng nhập.</p>;
 
-  /* ──────────── 2. Hồ sơ ──────────── */
+  /* 2 ▸ Lấy hồ sơ ---------------------------------------------------------- */
   const { data: profile } = await supabase
     .from("career_profiles")
     .select("mbti_type, holland_profile, knowdell_summary, suggested_jobs")
@@ -46,18 +40,18 @@ export default async function Profile({
     .maybeSingle();
   if (!profile) return <p className="p-6">Chưa có dữ liệu hồ sơ.</p>;
 
-  /* ──────────── 3. Thanh toán ──────────── */
+  /* 3 ▸ Thanh toán --------------------------------------------------------- */
   const { data: payments } = await supabase
     .from("payments")
     .select("product, status")
     .eq("user_id", user.id)
     .eq("status", "paid");
-  const paidSet = new Set((payments ?? []).map((p) => p.product));
+  const paidSet    = new Set((payments ?? []).map((p) => p.product));
   const canAnalyse = ["mbti", "holland", "knowdell"].every((pkg) =>
     paidSet.has(pkg)
   );
 
-  /* ──────────── 4. Mục tiêu & Hành động ──────────── */
+  /* 4 ▸ Mục tiêu + hành động --------------------------------------------- */
   const [{ data: goal }, { data: actions }] = await Promise.all([
     supabase
       .from("career_goals")
@@ -71,21 +65,19 @@ export default async function Profile({
       .order("deadline", { ascending: true }),
   ]);
 
-  /* ──────────── 5. Knowdell tóm tắt ──────────── */
-  const kb = profile.knowdell_summary ?? {};
-  const valuesVI: string[] = kb.values ?? [];
-  const skillsVI: string[] = kb.skills ?? [];
-  const interestsVI: string[] = kb.interests ?? [];
+  /* 5 ▸ Knowdell tóm tắt --------------------------------------------------- */
+  const kb           = profile.knowdell_summary ?? {};
+  const valuesVI     = kb.values     ?? [];
+  const skillsVI     = kb.skills     ?? [];
+  const interestsVI  = kb.interests  ?? [];
 
-  /* ──────────── 6. Holland ──────────── */
-  let hollandRadar: { name: string; score: number }[] = [];
-  let hollCode: string | null = null;
+  /* 6 ▸ Holland ----------------------------------------------------------- */
+  type Radar = { name: string; score: number };
+  let hollandRadar : Radar[] = [];
+  let hollCode     : string | null = null;
   if (profile.holland_profile) {
     hollandRadar = Object.entries(profile.holland_profile).map(
-      ([name, score]) => ({
-        name,
-        score: score as number,
-      })
+      ([name, score]) => ({ name, score: score as number })
     );
     hollCode = hollandRadar
       .sort((a, b) => b.score - a.score)
@@ -94,19 +86,20 @@ export default async function Profile({
       .join("");
   }
 
-  /* ──────────── 7. MBTI ──────────── */
-  const mbtiCode: string | null = profile.mbti_type ?? null;
-  const mbtiInfo = mbtiCode ? MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP] : undefined;
-  // Các mảng mặc định rỗng giúp tránh lỗi .map của undefined
-  const strengths: string[] = Array.isArray(mbtiInfo?.strengths)
-    ? mbtiInfo!.strengths
-    : [];
-  const flaws: string[] = Array.isArray(mbtiInfo?.flaws) ? mbtiInfo!.flaws : [];
-  const careers: string[] = Array.isArray(mbtiInfo?.careers)
-    ? mbtiInfo!.careers
-    : [];
+  // 👉 Lấy mô tả chi tiết nếu có
+  const hollandInfo = hollCode
+    ? HOLLAND_MAP[hollCode as keyof typeof HOLLAND_MAP]       // ➋ dùng bản mô tả chi tiết
+    : undefined;
 
-  /* ──────────── RENDER ──────────── */
+  /* 7 ▸ MBTI -------------------------------------------------------------- */
+  const mbtiCode   : string | null = profile.mbti_type ?? null;
+  const mbtiInfo   = mbtiCode ? MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP] : undefined;
+
+  const strengths  = mbtiInfo?.strengths ?? [];
+  const flaws      = mbtiInfo?.flaws     ?? [];
+  const careers    = mbtiInfo?.careers   ?? [];
+
+  /* ────────────  R E N D E R  ──────────── */
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-20">
       <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề nghiệp</h1>
@@ -118,7 +111,7 @@ export default async function Profile({
       {step === "trait" && (
         <>
           <section className="grid gap-8 md:grid-cols-2">
-            {/* MBTI */}
+            {/* MBTI ------------------------------------------------------- */}
             <div className="space-y-2 rounded-lg border bg-white p-5 shadow-sm">
               <h2 className="text-xl font-semibold">MBTI</h2>
 
@@ -127,14 +120,13 @@ export default async function Profile({
                   <p className="text-2xl font-bold">{mbtiCode}</p>
                   <p>{mbtiInfo?.intro ?? "Đang cập nhật mô tả."}</p>
 
-                  {/* strengths – flaws – careers */}
                   {(strengths.length || flaws.length || careers.length) > 0 && (
                     <div className="mt-4 grid gap-6 sm:grid-cols-3 text-[15px] leading-relaxed">
                       {/* strengths */}
                       {strengths.length > 0 && (
                         <div>
                           <h3 className="mb-1 font-semibold flex items-center gap-1">
-                            <span>💪</span> Thế mạnh
+                            💪 Thế mạnh
                           </h3>
                           <ul className="list-disc list-inside">
                             {strengths.map((s) => (
@@ -148,7 +140,7 @@ export default async function Profile({
                       {flaws.length > 0 && (
                         <div>
                           <h3 className="mb-1 font-semibold flex items-center gap-1">
-                            <span>⚠️</span> Điểm yếu
+                            ⚠️ Điểm yếu
                           </h3>
                           <ul className="list-disc list-inside">
                             {flaws.map((s) => (
@@ -162,7 +154,7 @@ export default async function Profile({
                       {careers.length > 0 && (
                         <div>
                           <h3 className="mb-1 font-semibold flex items-center gap-1">
-                            <span>🎯</span> Nghề phù hợp
+                            🎯 Nghề phù hợp
                           </h3>
                           <ul className="list-disc list-inside">
                             {careers.map((s) => (
@@ -176,7 +168,7 @@ export default async function Profile({
                 </>
               ) : (
                 <p className="italic text-gray-500">
-                  Chưa làm {" "}
+                  Chưa làm{" "}
                   <Link href="/mbti" className="text-indigo-600 underline">
                     MBTI
                   </Link>
@@ -184,24 +176,83 @@ export default async function Profile({
               )}
             </div>
 
-            {/* Holland */}
+            {/* Holland ---------------------------------------------------- */}
             <div className="space-y-2 rounded-lg border bg-white p-5 shadow-sm">
               <h2 className="text-xl font-semibold">Holland</h2>
+
               {hollCode ? (
                 <>
                   <p className="text-2xl font-bold">{hollCode}</p>
+
+                  {/* giới thiệu ngắn */}
                   <p className="text-sm">
-                    {hollCode.split("").map((c) => H_DESC[c]).join(" | ")}
+                    {hollandInfo?.intro ??
+                      hollCode
+                        .split("")
+                        .map((c) => HOLLAND_MAP[c as keyof typeof HOLLAND_MAP]?.intro)
+                        .filter(Boolean)
+                        .join(" | ") }
                   </p>
+
+                  {/* strengths / flaws / careers (nếu có trong file mô tả) */}
+                  {(hollandInfo?.strengths?.length ||
+                    hollandInfo?.flaws?.length ||
+                    hollandInfo?.careers?.length) && (
+                    <div className="mt-4 grid gap-6 sm:grid-cols-3 text-[15px] leading-relaxed">
+                      {/* strengths */}
+                      {hollandInfo?.strengths?.length && (
+                        <div>
+                          <h3 className="mb-1 font-semibold flex items-center gap-1">
+                            💪 Thế mạnh
+                          </h3>
+                          <ul className="list-disc list-inside">
+                            {hollandInfo.strengths.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* flaws */}
+                      {hollandInfo?.flaws?.length && (
+                        <div>
+                          <h3 className="mb-1 font-semibold flex items-center gap-1">
+                            ⚠️ Điểm yếu
+                          </h3>
+                          <ul className="list-disc list-inside">
+                            {hollandInfo.flaws.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* careers */}
+                      {hollandInfo?.careers?.length && (
+                        <div>
+                          <h3 className="mb-1 font-semibold flex items-center gap-1">
+                            🎯 Nghề phù hợp
+                          </h3>
+                          <ul className="list-disc list-inside">
+                            {hollandInfo.careers.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Radar chart */}
                   {hollandRadar.length > 0 && (
-                    <div className="mt-4">
+                    <div className="mt-5">
                       <HollandRadar data={hollandRadar} />
                     </div>
                   )}
                 </>
               ) : (
                 <p className="italic text-gray-500">
-                  Chưa làm {" "}
+                  Chưa làm{" "}
                   <Link href="/holland" className="text-indigo-600 underline">
                     Holland
                   </Link>
@@ -210,31 +261,25 @@ export default async function Profile({
             </div>
           </section>
 
-          {/* Knowdell */}
+          {/* Knowdell ----------------------------------------------------- */}
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">Tóm tắt Knowdell</h2>
             <ul className="ml-5 list-disc leading-relaxed">
               <li>
                 <b>Giá trị cốt lõi:</b>{" "}
-                {valuesVI.length > 0 ? (
-                  valuesVI.join(", ")
-                ) : (
+                {valuesVI.length ? valuesVI.join(", ") : (
                   <i className="text-gray-500">chưa chọn</i>
                 )}
               </li>
               <li>
                 <b>Kỹ năng động lực:</b>{" "}
-                {skillsVI.length > 0 ? (
-                  skillsVI.join(", ")
-                ) : (
+                {skillsVI.length ? skillsVI.join(", ") : (
                   <i className="text-gray-500">chưa chọn</i>
                 )}
               </li>
               <li>
                 <b>Sở thích nổi bật:</b>{" "}
-                {interestsVI.length > 0 ? (
-                  interestsVI.join(", ")
-                ) : (
+                {interestsVI.length ? interestsVI.join(", ") : (
                   <i className="text-gray-500">chưa chọn</i>
                 )}
               </li>
