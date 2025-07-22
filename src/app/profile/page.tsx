@@ -233,8 +233,8 @@ export default async function Profile({
                 labels={[
                   "💎 Giá trị cốt lõi",
                   "🛠 Kỹ năng động lực",
-                  "",
                   "🎈 Sở thích nổi bật",
+		  "",
                 ]}
               />
             ) : (
