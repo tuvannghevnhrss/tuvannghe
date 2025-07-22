@@ -112,10 +112,52 @@ export default async function Profile({
             {/* MBTI */}
             <div className="space-y-2 rounded-lg border bg-white p-5 shadow-sm">
               <h2 className="text-xl font-semibold">MBTI</h2>
+
               {mbtiCode ? (
                 <>
                   <p className="text-2xl font-bold">{mbtiCode}</p>
                   <p>{MBTI_MAP[mbtiCode]?.intro ?? "Đang cập nhật mô tả."}</p>
+
+                  {/* strengths – flaws – careers */}
+                  {MBTI_MAP[mbtiCode] && (
+                    <div className="mt-4 grid gap-6 sm:grid-cols-3 text-[15px] leading-relaxed">
+                      {/* strengths */}
+                      <div>
+                        <h3 className="mb-1 font-semibold flex items-center gap-1">
+                          <span>💪</span> Thế mạnh
+                        </h3>
+                        <ul className="list-disc list-inside">
+                          {MBTI_MAP[mbtiCode]!.strengths.map((s) => (
+                            <li key={s}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* flaws */}
+                      <div>
+                        <h3 className="mb-1 font-semibold flex items-center gap-1">
+                          <span>⚠️</span> Điểm yếu
+                        </h3>
+                        <ul className="list-disc list-inside">
+                          {MBTI_MAP[mbtiCode]!.flaws.map((s) => (
+                            <li key={s}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* careers */}
+                      <div>
+                        <h3 className="mb-1 font-semibold flex items-center gap-1">
+                          <span>🎯</span> Nghề phù hợp
+                        </h3>
+                        <ul className="list-disc list-inside">
+                          {MBTI_MAP[mbtiCode]!.careers.map((s) => (
+                            <li key={s}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="italic text-gray-500">
