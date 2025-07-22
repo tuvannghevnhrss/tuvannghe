@@ -17,12 +17,8 @@ import type { Database }               from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
-/* ───────────── component ───────────── */
-export default async function Profile({
-  searchParams,
-}: {
-  searchParams?: { step?: string };
-}) {
+/* ───────────── PAGE ───────────── */
+export default async function Profile({ searchParams }: { searchParams?: { step?: string } }) {
   const step = searchParams?.step ?? "trait";
 
   /* 1 ▸ Auth --------------------------------------------------------------- */
@@ -68,12 +64,12 @@ export default async function Profile({
 
   /* 6 ▸ Holland ------------------------------------------------------------ */
   type Radar = { name: string; score: number };
-  let hollandRadar : Radar[]   = [];
-  let hollCode     : string | null = null;
+  const hollandRadar : Radar[]   = [];
+  let   hollCode     : string | null = null;
 
   if (profile.holland_profile) {
-    hollandRadar = Object.entries(profile.holland_profile).map(
-      ([name, score]) => ({ name, score: score as number })
+    Object.entries(profile.holland_profile).forEach(
+      ([name, score]) => hollandRadar.push({ name, score: score as number })
     );
     hollCode = hollandRadar
       .sort((a, b) => b.score - a.score)
@@ -82,29 +78,13 @@ export default async function Profile({
       .join("");
   }
 
-  /** Trả về mảng gộp & loại trùng cho mã Holland ghép 2-3 ký tự */
-  function merge <T extends string>(
-    getter: (k: keyof typeof HOLLAND_MAP) => readonly T[] | undefined
-  ): T[] {
-    if (!hollCode) return [];
-    return [...new Set(
-      hollCode.split("").flatMap(
-        c => getter(c as keyof typeof HOLLAND_MAP) ?? []
-      )
-    )];
-  }
-
-  const hollandIntro =
-    hollCode?.split("")
-      .map(c => HOLLAND_MAP[c as keyof typeof HOLLAND_MAP]?.intro)
-      .filter(Boolean)
-      .join(" | ") ?? "";
-
-  const hTraits       = merge(k => HOLLAND_MAP[k]?.traits);
-  const hStrengths    = merge(k => HOLLAND_MAP[k]?.strengths);
-  const hWeaknesses   = merge(k => HOLLAND_MAP[k]?.weaknesses);
-  const hImprovements = merge(k => HOLLAND_MAP[k]?.improvements);
-  const hCareers      = merge(k => HOLLAND_MAP[k]?.careers);
+  /* Tách riêng từng chữ cái & load mô tả */
+  const hollandSections = hollCode
+    ? hollCode.split("").map(l => ({
+        code : l,
+        info : HOLLAND_MAP[l as keyof typeof HOLLAND_MAP],
+      }))
+    : [];
 
   /* 7 ▸ MBTI -------------------------------------------------------------- */
   const mbtiCode : string | null = profile.mbti_type ?? null;
@@ -112,104 +92,95 @@ export default async function Profile({
 
   /* ───────────── RENDER ───────────── */
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-20">
+    <div className="mx-auto max-w-5xl space-y-8 px-4 py-20">
       <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề nghiệp</h1>
       <StepTabs current={step} />
 
       {/* TAB 1 – Đặc tính */}
       {step === "trait" && (
-        <>
-          {/* MBTI + Holland */}
-          <section className="grid gap-8 md:grid-cols-2">
-            {/* MBTI ------------------------------------------------------- */}
-            <TraitCard title="MBTI">
-              {mbtiCode ? (
-                <>
-                  <Header code={mbtiCode} intro={mbtiInfo?.intro} />
-                  <TraitGrid
-                    traits={mbtiInfo?.strengths}
-                    strengths={mbtiInfo?.strengths}
-                    weaknesses={mbtiInfo?.flaws}
-                    improvements={[]}
-                    careers={mbtiInfo?.careers}
-                  />
-                </>
-              ) : (
-                <EmptyLink label="MBTI" href="/mbti" />
-              )}
-            </TraitCard>
+        <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {/* ── MBTI ───────────────────────────────────────────── */}
+          <TraitCard title="MBTI">
+            {mbtiCode ? (
+              <>
+                <Header code={mbtiCode} intro={mbtiInfo?.intro} />
+                <TraitGrid
+                  strengths={mbtiInfo?.strengths}
+                  weaknesses={mbtiInfo?.flaws}
+                  careers={mbtiInfo?.careers}
+                  labels={["💪 Thế mạnh", "⚠️ Điểm yếu", "🎯 Nghề phù hợp"]}
+                />
+              </>
+            ) : <EmptyLink label="MBTI" href="/mbti" />}
+          </TraitCard>
 
-            {/* Holland ---------------------------------------------------- */}
-            <TraitCard title="Holland">
-              {hollCode ? (
-                <>
-                  <Header code={hollCode} intro={hollandIntro} />
-
-                  <TraitGrid
-                    traits={hTraits}
-                    strengths={hStrengths}
-                    weaknesses={hWeaknesses}
-                    improvements={hImprovements}
-                    careers={hCareers}
-                  />
-
-                  {hollandRadar.length > 0 && (
-                    <div className="mt-6">
-                      <HollandRadar data={hollandRadar} />
+          {/* ── Holland ───────────────────────────────────────── */}
+          <TraitCard title="Holland" className="col-span-full xl:col-span-2">
+            {hollCode ? (
+              <>
+                {hollandSections.map(({ code, info }) => (
+                  info && (
+                    <div key={code} className="mb-8 first:mt-0">
+                      <Header code={code} intro={info.intro} />
+                      <TraitGrid
+                        traits={info.traits}
+                        strengths={info.strengths}
+                        weaknesses={info.weaknesses}
+                        improvements={info.improvements}
+                        careers={info.careers}
+                      />
                     </div>
-                  )}
-                </>
-              ) : (
-                <EmptyLink label="Holland" href="/holland" />
-              )}
-            </TraitCard>
-          </section>
+                  )
+                ))}
 
-          {/* Knowdell ----------------------------------------------------- */}
-          <TraitCard title="Tóm tắt Knowdell" className="md:col-span-2">
+                {hollandRadar.length > 0 && (
+                  <div className="mt-6">
+                    <HollandRadar data={hollandRadar} />
+                  </div>
+                )}
+              </>
+            ) : <EmptyLink label="Holland" href="/holland" />}
+          </TraitCard>
+
+          {/* ── Knowdell ──────────────────────────────────────── */}
+          <TraitCard title="Knowdell">
             {valuesVI.length || skillsVI.length || interestsVI.length ? (
               <TraitGrid
-                traits={[]}
                 strengths={valuesVI}
                 weaknesses={skillsVI}
-                improvements={[]}
                 careers={interestsVI}
-                labels={["💎 Giá trị cốt lõi", "🛠 Kỹ năng động lực", "🎈 Sở thích nổi bật"]}
+                labels={[
+                  "💎 Giá trị cốt lõi",
+                  "🛠 Kỹ năng động lực",
+                  "🎈 Sở thích nổi bật",
+                ]}
               />
-            ) : (
-              <EmptyLink label="Knowdell" href="/knowdell" />
-            )}
+            ) : <EmptyLink label="Knowdell" href="/knowdell" />}
           </TraitCard>
-        </>
+        </section>
       )}
 
-      {/* TAB 2, 3, 4 giữ nguyên logic gốc */}
+      {/* TAB 2, 3, 4 – logic gốc (không đổi) */}
       {step === "options" && (
-        canAnalyse ? (
-          <OptionsTab
-            mbti={mbtiCode}
-            holland={hollCode}
-            knowdell={profile.knowdell_summary}
-            initialJobs={profile.suggested_jobs ?? []}
-          />
-        ) : <Paywall />
+        canAnalyse
+          ? <OptionsTab
+              mbti={mbtiCode}
+              holland={hollCode}
+              knowdell={profile.knowdell_summary}
+              initialJobs={profile.suggested_jobs ?? []}
+            />
+          : <Paywall />
       )}
-
       {step === "focus" && <FocusTab existingGoal={goal ?? null} />}
       {step === "plan"  && <PlanTab  actions={actions ?? []} />}
     </div>
   );
 }
 
-/* ---------- Re-usable blocks ---------- */
-
-function TraitCard({
-  title,
-  children,
-  className = "",
-}: React.PropsWithChildren<{ title: string; className?: string }>) {
+/* ---------- Tiện ích hiển thị ---------- */
+function TraitCard({ title, children, className = "" }: React.PropsWithChildren<{ title: string; className?: string }>) {
   return (
-    <div className={`space-y-2 rounded-lg border bg-white p-5 shadow-sm ${className}`}>
+    <div className={`space-y-3 rounded-lg border bg-white p-6 shadow ${className}`}>
       <h2 className="text-xl font-semibold">{title}</h2>
       {children}
     </div>
@@ -219,47 +190,47 @@ function TraitCard({
 function Header({ code, intro }: { code: string; intro?: string }) {
   return (
     <>
-      <p className="text-2xl font-bold">{code}</p>
+      <p className="text-2xl font-bold mb-1">{code}</p>
       {intro && <p className="text-sm leading-relaxed">{intro}</p>}
     </>
   );
 }
 
-/** hiển thị 1-3 cột list – nhãn tự động hoặc tuỳ truyền qua props */
+/** hiển thị các list – sắp dọc theo thứ tự labels */
 function TraitGrid({
-  traits, strengths, weaknesses, improvements, careers,
+  traits,
+  strengths,
+  weaknesses,
+  improvements,
+  careers,
   labels = ["🔎 Đặc trưng", "💪 Thế mạnh", "⚠️ Điểm yếu", "🛠 Cần cải thiện", "🎯 Nghề phù hợp"],
 }: {
-  traits?: string[]; strengths?: string[]; weaknesses?: string[];
-  improvements?: string[]; careers?: string[];
+  traits?: string[];
+  strengths?: string[];
+  weaknesses?: string[];
+  improvements?: string[];
+  careers?: string[];
   labels?: string[];
 }) {
-  const cols = [
-    { title: labels[0], list: traits        },
-    { title: labels[1], list: strengths     },
-    { title: labels[2], list: weaknesses    },
-    { title: labels[3], list: improvements  },
-    { title: labels[4], list: careers       },
-  ].filter(c => c.list && c.list.length);
-
-  if (cols.length === 0) return null;
-
   return (
-    <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 text-[15px] leading-relaxed">
-      {cols.map(c => (
-        <Block key={c.title} title={c.title} list={c.list!} />
-      ))}
-    </div>
-  );
-}
-
-function Block({ title, list }: { title: string; list: string[] }) {
-  return (
-    <div>
-      <h3 className="mb-1 font-semibold flex items-center gap-1">{title}</h3>
-      <ul className="list-disc list-inside">
-        {list.map(s => <li key={s}>{s}</li>)}
-      </ul>
+    <div className="space-y-6">
+      {[
+        traits,
+        strengths,
+        weaknesses,
+        improvements,
+        careers,
+      ].map(
+        (items, i) =>
+          items?.length && (
+            <div key={i}>
+              <h4 className="mb-1 font-semibold">{labels[i]}</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
+                {items.map(t => <li key={t}>{t}</li>)}
+              </ul>
+            </div>
+          )
+      )}
     </div>
   );
 }
@@ -267,7 +238,10 @@ function Block({ title, list }: { title: string; list: string[] }) {
 function EmptyLink({ label, href }: { label: string; href: string }) {
   return (
     <p className="italic text-gray-500">
-      Chưa làm <Link href={href} className="text-indigo-600 underline">{label}</Link>
+      Chưa làm{" "}
+      <Link href={href} className="text-indigo-600 underline">
+        {label}
+      </Link>
     </p>
   );
 }
