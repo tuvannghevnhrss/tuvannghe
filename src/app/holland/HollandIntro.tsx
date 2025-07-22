@@ -1,13 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+
+type Props = {
+  hasPaid:   boolean;   // đã thanh toán gói Holland?
+  hasResult: boolean;   // đã hoàn thành & có kết quả?
+};
 
 const PRICE = 20_000;
-const STAT = [
-  { value: '54',  label: 'Câu hỏi' },
+const STAT  = [
+  { value: '54',  label: 'Câu hỏi'      },
   { value: '2',   label: 'Lựa chọn/câu' },
-  { value: '20K', label: 'Phí' },
+  { value: '20K', label: 'Phí'          },
 ];
 
 const StatBox = ({ value, label }: { value: string; label: string }) => (
@@ -17,39 +21,22 @@ const StatBox = ({ value, label }: { value: string; label: string }) => (
   </div>
 );
 
-export default function HollandIntro() {
+export default function HollandIntro({ hasPaid, hasResult }: Props) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [paid,    setPaid]    = useState(false);
-  const [code,    setCode]    = useState<string|null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res  = await fetch('/api/holland/status');
-        const data = await res.json();          // {paid, finished, code}
-        setPaid(!!data.paid);
-        setCode(data.finished ? data.code : null);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const handle = () => {
-    if (code) router.push('/profile?step=trait');
-    else if (paid) router.push('/holland/quiz?start=1');
-    else router.push('/payment?product=holland');
+  /* --------------------------------- nút hành động */
+  const onClick = () => {
+    if (hasResult)          router.push('/profile?step=trait');      // xem lại
+    else if (hasPaid)       router.push('/holland/quiz?start=1');    // bắt đầu làm
+    else                    router.push('/payment?product=holland'); // thanh toán
   };
 
-  const label = loading
-    ? 'Đang kiểm tra…'
-    : code
-      ? 'Xem lại kết quả'
-      : paid
-        ? 'Bắt đầu Quiz Holland'
-        : `Thanh toán ${PRICE.toLocaleString()} đ`;
+  const label =
+    hasResult ? 'Xem lại kết quả'
+    : hasPaid ? 'Bắt đầu Quiz Holland'
+    : `Thanh toán ${PRICE.toLocaleString()} đ`;
 
+  /* --------------------------------- render */
   return (
     <section className="max-w-3xl mx-auto px-4 py-12 text-center space-y-10">
       <header className="space-y-2">
@@ -59,26 +46,25 @@ export default function HollandIntro() {
         </p>
       </header>
 
-      {/* stats */}
+      {/* Thống kê */}
       <div className="grid grid-cols-3 gap-4">
         {STAT.map(s => <StatBox key={s.label} {...s} />)}
       </div>
 
-      {/* quy trình */}
+      {/* Quy trình */}
       <div className="border border-dashed rounded-2xl p-6 text-left leading-6 inline-block">
         <p className="font-semibold mb-2">Quy trình:</p>
         <ol className="list-decimal list-inside space-y-1">
-          <li><b>Thanh&nbsp;toán</b> {PRICE.toLocaleString()} đ (QR trên trang thanh toán)</li>
+          <li><b>Thanh toán</b> {PRICE.toLocaleString()} đ (QR ở trang thanh toán)</li>
           <li><b>Hoàn thành</b> 54 câu hỏi – chọn đáp án đúng nhất với bạn</li>
-          <li><b>Kết quả</b> sẽ gửi email &amp; hiển thị chatbot của bạn</li>
+          <li><b>Kết quả</b> sẽ gửi email &amp; hiển thị trong Hồ sơ</li>
         </ol>
       </div>
 
       <button
-        disabled={loading}
-        onClick={handle}
+        onClick={onClick}
         className="w-full max-w-md border rounded-xl py-4 font-semibold
-                   hover:bg-blue-600 hover:text-white transition disabled:opacity-60"
+                   hover:bg-blue-600 hover:text-white transition"
       >
         {label}
       </button>

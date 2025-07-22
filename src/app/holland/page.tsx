@@ -1,45 +1,39 @@
-// ⬅️ KHÔNG “use client”
-export const dynamic = "force-dynamic";
+/* Holland Intro – SERVER component (không “use client”) */
+export const dynamic = 'force-dynamic';
 
-import HollandIntro from "./HollandIntro";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { STATUS } from "@/lib/constants";
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { STATUS } from '@/lib/constants';
 
-export default async function HollandPage() {
+import HollandIntro from './HollandIntro';
+
+export default async function HollandIntroPage() {
+  /* 1. Auth --------------------------------------------------------- */
   const supabase = createServerComponentClient({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login?redirectedFrom=/holland');
 
-  /* 1. Lấy user */
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  /* 2. Đã thanh toán? – payments ----------------------------------- */
+  const { data: payment } = await supabase
+    .from('payments')
+    .select('status')
+    .eq('user_id', user.id)
+    .eq('product', 'holland')
+    .eq('status', STATUS.PAID)
+    .maybeSingle();
 
-  /* 2. Kiểm tra:
-        - đã có kết quả?   (bảng holland_results)
-        - đã thanh toán?   (bảng payments, product = 'holland', status = 'paid')
-  */
-  let hasPaid = false;
-  let hasResult = false;
+  const hasPaid = !!payment;
 
-  if (user) {
-    const { data: pay } = await supabase
-      .from("payments")
-      .select("status")
-      .eq("user_id", user.id)
-      .eq("product", "holland")
-      .eq("status", STATUS.PAID)
-      .single();
+  /* 3. Đã có kết quả? – holland_results ---------------------------- */
+  const { data: result } = await supabase
+    .from('holland_results')
+    .select('code')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-    hasPaid = !!pay;
+  const hasResult = !!result?.code;
 
-    const { data: result } = await supabase
-      .from("holland_results")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    hasResult = !!result;
-  }
-
+  /* 4. Render ------------------------------------------------------- */
   return <HollandIntro hasPaid={hasPaid} hasResult={hasResult} />;
 }
