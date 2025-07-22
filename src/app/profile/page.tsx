@@ -118,67 +118,69 @@ export default async function Profile({
 
       {/* TAB 1 – Đặc tính */}
       {step === "trait" && (
-        <section className="space-y-8">
-          {/* ── MBTI ─────────────────────────────────────────────── */}
-          <TraitCard title="MBTI">
-            {mbtiCode ? (
-              <>
-                <Header code={mbtiCode} intro={mbtiInfo?.intro} />
-                <TraitGrid
-                  traits={[]}
-                  strengths={mbtiInfo?.strengths}
-                  weaknesses={mbtiInfo?.flaws}
-                  careers={mbtiInfo?.careers}
-                  improvements={[]}
-                  labels={["💪 Thế mạnh", "⚠️ Điểm yếu", "🎯 Nghề phù hợp"]}
-                />
-              </>
-            ) : (
-              <EmptyLink label="MBTI" href="/mbti" />
-            )}
-          </TraitCard>
+        <>
+          {/* MBTI + Holland */}
+          <section className="grid gap-8 md:grid-cols-2">
+            {/* MBTI ------------------------------------------------------- */}
+            <TraitCard title="MBTI">
+              {mbtiCode ? (
+                <>
+                  <Header code={mbtiCode} intro={mbtiInfo?.intro} />
+                  <TraitGrid
+                    traits={mbtiInfo?.strengths}
+                    strengths={mbtiInfo?.strengths}
+                    weaknesses={mbtiInfo?.flaws}
+                    improvements={[]}
+                    careers={mbtiInfo?.careers}
+                  />
+                </>
+              ) : (
+                <EmptyLink label="MBTI" href="/mbti" />
+              )}
+            </TraitCard>
 
-          {/* ── Holland ─────────────────────────────────────────── */}
-          <TraitCard title="Holland">
-            {hollCode ? (
-              <>
-                <Header code={hollCode} intro={hollandIntro} />
-                <TraitGrid
-                  traits={hTraits}
-                  strengths={hStrengths}
-                  weaknesses={hWeaknesses}
-                  improvements={hImprovements}
-                  careers={hCareers}
-                />
-                {hollandRadar.length > 0 && (
-                  <div className="mt-6">
-                    <HollandRadar data={hollandRadar} />
-                  </div>
-                )}
-              </>
-            ) : (
-              <EmptyLink label="Holland" href="/holland" />
-            )}
-          </TraitCard>
+            {/* Holland ---------------------------------------------------- */}
+            <TraitCard title="Holland">
+              {hollCode ? (
+                <>
+                  <Header code={hollCode} intro={hollandIntro} />
 
-          {/* ── Knowdell ─────────────────────────────────────────── */}
-          <TraitCard title="Knowdell">
+                  <TraitGrid
+                    traits={hTraits}
+                    strengths={hStrengths}
+                    weaknesses={hWeaknesses}
+                    improvements={hImprovements}
+                    careers={hCareers}
+                  />
+
+                  {hollandRadar.length > 0 && (
+                    <div className="mt-6">
+                      <HollandRadar data={hollandRadar} />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <EmptyLink label="Holland" href="/holland" />
+              )}
+            </TraitCard>
+          </section>
+
+          {/* Knowdell ----------------------------------------------------- */}
+          <TraitCard title="Tóm tắt Knowdell" className="md:col-span-2">
             {valuesVI.length || skillsVI.length || interestsVI.length ? (
               <TraitGrid
+                traits={[]}
                 strengths={valuesVI}
                 weaknesses={skillsVI}
+                improvements={[]}
                 careers={interestsVI}
-                labels={[
-                  "💎 Giá trị cốt lõi",
-                  "🛠 Kỹ năng động lực",
-                  "🎈 Sở thích nổi bật",
-                ]}
+                labels={["💎 Giá trị cốt lõi", "🛠 Kỹ năng động lực", "🎈 Sở thích nổi bật"]}
               />
             ) : (
               <EmptyLink label="Knowdell" href="/knowdell" />
             )}
           </TraitCard>
-        </section>
+        </>
       )}
 
       {/* TAB 2, 3, 4 giữ nguyên logic gốc */}
@@ -223,50 +225,30 @@ function Header({ code, intro }: { code: string; intro?: string }) {
   );
 }
 
-/** hiển thị list – nhãn tự động hoặc tuỳ truyền qua props */
+/** hiển thị 1-3 cột list – nhãn tự động hoặc tuỳ truyền qua props */
 function TraitGrid({
-  traits,
-  strengths,
-  weaknesses,
-  improvements,
-  careers,
-  labels = [
-    "🔎 Đặc trưng",
-    "💪 Thế mạnh",
-    "⚠️ Điểm yếu",
-    "🛠 Cần cải thiện",
-    "🎯 Nghề phù hợp",
-  ],
+  traits, strengths, weaknesses, improvements, careers,
+  labels = ["🔎 Đặc trưng", "💪 Thế mạnh", "⚠️ Điểm yếu", "🛠 Cần cải thiện", "🎯 Nghề phù hợp"],
 }: {
-  traits?: string[];
-  strengths?: string[];
-  weaknesses?: string[];
-  improvements?: string[];
-  careers?: string[];
+  traits?: string[]; strengths?: string[]; weaknesses?: string[];
+  improvements?: string[]; careers?: string[];
   labels?: string[];
 }) {
-  /** bỏ “grid grid-cols-3” → đổi thành khối dọc */
+  const cols = [
+    { title: labels[0], list: traits        },
+    { title: labels[1], list: strengths     },
+    { title: labels[2], list: weaknesses    },
+    { title: labels[3], list: improvements  },
+    { title: labels[4], list: careers       },
+  ].filter(c => c.list && c.list.length);
+
+  if (cols.length === 0) return null;
+
   return (
-    <div className="space-y-6">                           {/* 👈 thay đổi duy nhất */}
-      {[
-        traits,
-        strengths,
-        weaknesses,
-        improvements,
-        careers,
-      ].map(
-        (items, i) =>
-          items?.length && (
-            <div key={i}>
-              <h4 className="font-semibold mb-1">{labels[i]}</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
-                {items.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </div>
-          )
-      )}
+    <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 text-[15px] leading-relaxed">
+      {cols.map(c => (
+        <Block key={c.title} title={c.title} list={c.list!} />
+      ))}
     </div>
   );
 }
