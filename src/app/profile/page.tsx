@@ -20,13 +20,18 @@ export const dynamic = "force-dynamic";
 /* ────────── TIỆN ÍCH NHỎ ────────── */
 /** Chuyển mảng `string | object` ➜ mảng chuỗi hiển thị */
 function toText(arr?: any[]): string[] {
-  return (arr ?? []).map((it) =>
-    typeof it === "string"
-      ? it
-      : "value_vi" in it
-      ? it.value_vi
-      : it.value ?? JSON.stringify(it)
-  );
+  return (arr ?? []).map((it) => {
+    if (typeof it === "string") return it;                 // đã là text
+    // ưu tiên trường tiếng-Việt nếu có
+    if (typeof it.value_vi  === "string") return it.value_vi;
+    if (typeof it.name_vi   === "string") return it.name_vi;
+    // fallback tiếng-Anh
+    if (typeof it.value_key === "string") return it.value_key;
+    if (typeof it.value     === "string") return it.value;
+    // cuối cùng: lấy giá trị string đầu tiên trong object
+    const first = Object.values(it).find((v) => typeof v === "string");
+    return typeof first === "string" ? first : JSON.stringify(it);
+  });
 }
 
 /* ────────── PAGE ────────── */
