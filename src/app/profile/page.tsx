@@ -223,30 +223,50 @@ function Header({ code, intro }: { code: string; intro?: string }) {
   );
 }
 
-/** hiển thị 1-3 cột list – nhãn tự động hoặc tuỳ truyền qua props */
+/** hiển thị list – nhãn tự động hoặc tuỳ truyền qua props */
 function TraitGrid({
-  traits, strengths, weaknesses, improvements, careers,
-  labels = ["🔎 Đặc trưng", "💪 Thế mạnh", "⚠️ Điểm yếu", "🛠 Cần cải thiện", "🎯 Nghề phù hợp"],
+  traits,
+  strengths,
+  weaknesses,
+  improvements,
+  careers,
+  labels = [
+    "🔎 Đặc trưng",
+    "💪 Thế mạnh",
+    "⚠️ Điểm yếu",
+    "🛠 Cần cải thiện",
+    "🎯 Nghề phù hợp",
+  ],
 }: {
-  traits?: string[]; strengths?: string[]; weaknesses?: string[];
-  improvements?: string[]; careers?: string[];
+  traits?: string[];
+  strengths?: string[];
+  weaknesses?: string[];
+  improvements?: string[];
+  careers?: string[];
   labels?: string[];
 }) {
-  const cols = [
-    { title: labels[0], list: traits        },
-    { title: labels[1], list: strengths     },
-    { title: labels[2], list: weaknesses    },
-    { title: labels[3], list: improvements  },
-    { title: labels[4], list: careers       },
-  ].filter(c => c.list && c.list.length);
-
-  if (cols.length === 0) return null;
-
+  /** bỏ “grid grid-cols-3” → đổi thành khối dọc */
   return (
-    <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 text-[15px] leading-relaxed">
-      {cols.map(c => (
-        <Block key={c.title} title={c.title} list={c.list!} />
-      ))}
+    <div className="space-y-6">                           {/* 👈 thay đổi duy nhất */}
+      {[
+        traits,
+        strengths,
+        weaknesses,
+        improvements,
+        careers,
+      ].map(
+        (items, i) =>
+          items?.length && (
+            <div key={i}>
+              <h4 className="font-semibold mb-1">{labels[i]}</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
+                {items.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )
+      )}
     </div>
   );
 }
