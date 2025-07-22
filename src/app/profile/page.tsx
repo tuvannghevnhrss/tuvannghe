@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// src/app/profile/page.tsx  ← thay thế nguyên file cũ
+// src/app/profile/page.tsx
 // -----------------------------------------------------------------------------
 import { cookies } from "next/headers";
 import Link        from "next/link";
@@ -17,24 +17,55 @@ import type { Database }               from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
-/* ────────── TIỆN ÍCH NHỎ ────────── */
-/** Chuyển mảng `string | object` ➜ mảng chuỗi hiển thị */
-function toText(arr?: any[]): string[] {
-  return (arr ?? []).map((it) => {
-    if (typeof it === "string") return it;                 // đã là text
-    // ưu tiên trường tiếng-Việt nếu có
-    if (typeof it.value_vi  === "string") return it.value_vi;
-    if (typeof it.name_vi   === "string") return it.name_vi;
-    // fallback tiếng-Anh
-    if (typeof it.value_key === "string") return it.value_key;
-    if (typeof it.value     === "string") return it.value;
-    // cuối cùng: lấy giá trị string đầu tiên trong object
-    const first = Object.values(it).find((v) => typeof v === "string");
-    return typeof first === "string" ? first : JSON.stringify(it);
-  });
+/* ────────────────────────────────────────────────────────────────── */
+/** Trả object tra cứu: { key: "vi" } */
+function toDict<T extends { [k: string]: any }>(
+  rows: T[] | null,
+  keyField: keyof T,
+) {
+  return Object.fromEntries(
+    (rows ?? []).map((r) => [r[keyField] as string, r.vi as string]),
+  );
 }
 
-/* ────────── PAGE ────────── */
+/** Chuyển item Knowdell → chuỗi hiển thị, ưu tiên tra dict */
+function toText(
+  arr: any[] | undefined,
+  dicts: Record<string, string>[],
+): string[] {
+  const out: string[] = [];
+
+  (arr ?? []).forEach((it) => {
+    if (typeof it === "string") return out.push(it);
+
+    /* tra theo các field thường gặp */
+    for (const k of [
+      "value_key",
+      "skill_key",
+      "interest_key",
+      "value",
+      "name_vi",
+    ]) {
+      if (it[k]) {
+        const key = it[k] as string;
+        const vi =
+          dicts.reduce<string | undefined>(
+            (acc, d) => acc ?? d[key],
+            undefined,
+          ) ?? key; // fallback chính key
+        return out.push(vi);
+      }
+    }
+
+    /* cuối cùng: lấy string đầu tiên */
+    const first = Object.values(it).find((v) => typeof v === "string");
+    out.push(typeof first === "string" ? first : JSON.stringify(it));
+  });
+
+  return Array.from(new Set(out)); // loại trùng
+}
+/* ────────────────────────────────────────────────────────────────── */
+
 export default async function Profile({
   searchParams,
 }: {
@@ -55,7 +86,7 @@ export default async function Profile({
        holland_profile,
        knowdell_summary,
        knowdell,
-       suggested_jobs`
+       suggested_jobs`,
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -67,10 +98,9 @@ export default async function Profile({
     .select("product")
     .eq("user_id", user.id)
     .eq("status", "paid");
-
   const paidSet    = new Set((payments ?? []).map((p) => p.product));
   const canAnalyse = ["mbti", "holland", "knowdell"].every((p) =>
-    paidSet.has(p)
+    paidSet.has(p),
   );
 
   /* 4 ▸ Mục tiêu, hành động ------------------------------------------------ */
@@ -87,25 +117,35 @@ export default async function Profile({
       .order("deadline", { ascending: true }),
   ]);
 
-  /* 5 ▸ Knowdell ----------------------------------------------------------- */
+  /* 5 ▸ Lookup dicts (values / skills / interests) ------------------------ */
+  const [valRows, skillRows, intRows] = await Promise.all([
+    supabase.from("lookup_values")   .select("value_key, vi"),
+    supabase.from("lookup_skills")   .select("skill_key , vi"),
+    supabase.from("lookup_interests").select("interest_key, vi"),
+  ]);
+  const VALUE_DICT    = toDict(valRows.data,   "value_key");
+  const SKILL_DICT    = toDict(skillRows.data, "skill_key");
+  const INTEREST_DICT = toDict(intRows.data,   "interest_key");
+
+  /* 6 ▸ Knowdell ----------------------------------------------------------- */
   const kb =
     profile.knowdell_summary ??
-    // @ts-expect-error – Supabase typers may not know this field
+    // @ts-expect-error – Supabase types chưa có cột knowdell
     profile.knowdell ??
     {};
 
-  const valuesVI    = toText(kb.values);
-  const skillsVI    = toText(kb.skills);
-  const interestsVI = toText(kb.interests);
+  const valuesVI    = toText(kb.values,    [VALUE_DICT]);
+  const skillsVI    = toText(kb.skills,    [SKILL_DICT]);
+  const interestsVI = toText(kb.interests, [INTEREST_DICT]);
 
-  /* 6 ▸ Holland ------------------------------------------------------------ */
+  /* 7 ▸ Holland ------------------------------------------------------------ */
   type Radar = { name: string; score: number };
   const hollandRadar: Radar[] = [];
   let hollCode: string | null = null;
 
   if (profile.holland_profile) {
     Object.entries(profile.holland_profile).forEach(([name, score]) =>
-      hollandRadar.push({ name, score: score as number })
+      hollandRadar.push({ name, score: score as number }),
     );
     hollCode = hollandRadar
       .sort((a, b) => b.score - a.score)
@@ -121,7 +161,7 @@ export default async function Profile({
       }))
     : [];
 
-  /* 7 ▸ MBTI -------------------------------------------------------------- */
+  /* 8 ▸ MBTI -------------------------------------------------------------- */
   const mbtiCode: string | null = profile.mbti_type ?? null;
   const mbtiInfo =
     mbtiCode && MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP];
@@ -144,11 +184,7 @@ export default async function Profile({
                   strengths={mbtiInfo?.strengths}
                   weaknesses={mbtiInfo?.flaws}
                   careers={mbtiInfo?.careers}
-                  labels={[
-                    "💪 Thế mạnh",
-                    "⚠️ Điểm yếu",
-                    "🎯 Nghề phù hợp",
-                  ]}
+                  labels={["💪 Thế mạnh", "⚠️ Điểm yếu", "🎯 Nghề phù hợp"]}
                 />
               </>
             ) : (
@@ -173,7 +209,7 @@ export default async function Profile({
                           careers={info.careers}
                         />
                       </div>
-                    )
+                    ),
                 )}
 
                 {hollandRadar.length > 0 && (
@@ -246,22 +282,34 @@ function Header({ code, intro }: { code: string; intro?: string }) {
   );
 }
 
-/** Hiển thị các list – xếp dọc */
+/** Hiển thị list theo chiều dọc */
 function TraitGrid({
-  traits, strengths, weaknesses, improvements, careers,
-  labels = ["🔎 Đặc trưng","💪 Thế mạnh","⚠️ Điểm yếu","🛠 Cần cải thiện","🎯 Nghề phù hợp"],
+  traits,
+  strengths,
+  weaknesses,
+  improvements,
+  careers,
+  labels = [
+    "🔎 Đặc trưng",
+    "💪 Thế mạnh",
+    "⚠️ Điểm yếu",
+    "🛠 Cần cải thiện",
+    "🎯 Nghề phù hợp",
+  ],
 }: {
-  traits?: any[]; strengths?: any[]; weaknesses?: any[];
-  improvements?: any[]; careers?: any[];
+  traits?: any[];
+  strengths?: any[];
+  weaknesses?: any[];
+  improvements?: any[];
+  careers?: any[];
   labels?: string[];
 }) {
-  /* bóc chuỗi trước khi render */
   const lists = [
-    toText(traits),
-    toText(strengths),
-    toText(weaknesses),
-    toText(improvements),
-    toText(careers),
+    toText(traits,      []),
+    toText(strengths,   []),
+    toText(weaknesses,  []),
+    toText(improvements,[]),
+    toText(careers,     []),
   ];
 
   return (
@@ -277,7 +325,7 @@ function TraitGrid({
                 ))}
               </ul>
             </div>
-          )
+          ),
       )}
     </div>
   );
