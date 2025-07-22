@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------------
-// src/app/profile/page.tsx
-// -----------------------------------------------------------------------------
+// src/app/profile/page.tsx – sửa lỗi "Cannot read properties of undefined (reading 'map')"
+// ----------------------------------------------------------------------------
 import { cookies } from "next/headers";
 import Link from "next/link";
 import StepTabs from "@/components/StepTabs";
@@ -31,14 +31,14 @@ export default async function Profile({
 }) {
   const step = searchParams?.step ?? "trait"; // trait | options | focus | plan
 
-  // 1. Auth
+  /* ──────────── 1. Auth ──────────── */
   const supabase = createServerComponentClient<Database>({ cookies });
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Vui lòng đăng nhập.</p>;
 
-  // 2. Lấy hồ sơ từ career_profiles
+  /* ──────────── 2. Hồ sơ ──────────── */
   const { data: profile } = await supabase
     .from("career_profiles")
     .select("mbti_type, holland_profile, knowdell_summary, suggested_jobs")
@@ -46,7 +46,7 @@ export default async function Profile({
     .maybeSingle();
   if (!profile) return <p className="p-6">Chưa có dữ liệu hồ sơ.</p>;
 
-  // 3. Kiểm tra thanh toán: cần ba gói mbti, holland, knowdell đã paid
+  /* ──────────── 3. Thanh toán ──────────── */
   const { data: payments } = await supabase
     .from("payments")
     .select("product, status")
@@ -57,7 +57,7 @@ export default async function Profile({
     paidSet.has(pkg)
   );
 
-  // 4. Lấy mục tiêu & hành động
+  /* ──────────── 4. Mục tiêu & Hành động ──────────── */
   const [{ data: goal }, { data: actions }] = await Promise.all([
     supabase
       .from("career_goals")
@@ -71,13 +71,13 @@ export default async function Profile({
       .order("deadline", { ascending: true }),
   ]);
 
-  // 5. Tóm tắt Knowdell (đã có JSON keys)
+  /* ──────────── 5. Knowdell tóm tắt ──────────── */
   const kb = profile.knowdell_summary ?? {};
-  const valuesVI = kb.values ?? [];
-  const skillsVI = kb.skills ?? [];
-  const interestsVI = kb.interests ?? [];
+  const valuesVI: string[] = kb.values ?? [];
+  const skillsVI: string[] = kb.skills ?? [];
+  const interestsVI: string[] = kb.interests ?? [];
 
-  // 6. Tính radar Holland + mã TOP-3
+  /* ──────────── 6. Holland ──────────── */
   let hollandRadar: { name: string; score: number }[] = [];
   let hollCode: string | null = null;
   if (profile.holland_profile) {
@@ -94,15 +94,24 @@ export default async function Profile({
       .join("");
   }
 
-  // 7. MBTI code
-  const mbtiCode = profile.mbti_type ?? null;
+  /* ──────────── 7. MBTI ──────────── */
+  const mbtiCode: string | null = profile.mbti_type ?? null;
+  const mbtiInfo = mbtiCode ? MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP] : undefined;
+  // Các mảng mặc định rỗng giúp tránh lỗi .map của undefined
+  const strengths: string[] = Array.isArray(mbtiInfo?.strengths)
+    ? mbtiInfo!.strengths
+    : [];
+  const flaws: string[] = Array.isArray(mbtiInfo?.flaws) ? mbtiInfo!.flaws : [];
+  const careers: string[] = Array.isArray(mbtiInfo?.careers)
+    ? mbtiInfo!.careers
+    : [];
 
-  // ─────────── RENDER ───────────
+  /* ──────────── RENDER ──────────── */
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-20">
       <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề nghiệp</h1>
 
-      {/* Bật tab hiện tại */}
+      {/* Tabs */}
       <StepTabs current={step} />
 
       {/* TAB 1 – Đặc tính */}
@@ -116,52 +125,58 @@ export default async function Profile({
               {mbtiCode ? (
                 <>
                   <p className="text-2xl font-bold">{mbtiCode}</p>
-                  <p>{MBTI_MAP[mbtiCode]?.intro ?? "Đang cập nhật mô tả."}</p>
+                  <p>{mbtiInfo?.intro ?? "Đang cập nhật mô tả."}</p>
 
                   {/* strengths – flaws – careers */}
-                  {MBTI_MAP[mbtiCode] && (
+                  {(strengths.length || flaws.length || careers.length) > 0 && (
                     <div className="mt-4 grid gap-6 sm:grid-cols-3 text-[15px] leading-relaxed">
                       {/* strengths */}
-                      <div>
-                        <h3 className="mb-1 font-semibold flex items-center gap-1">
-                          <span>💪</span> Thế mạnh
-                        </h3>
-                        <ul className="list-disc list-inside">
-                          {MBTI_MAP[mbtiCode]!.strengths.map((s) => (
-                            <li key={s}>{s}</li>
-                          ))}
-                        </ul>
-                      </div>
+                      {strengths.length > 0 && (
+                        <div>
+                          <h3 className="mb-1 font-semibold flex items-center gap-1">
+                            <span>💪</span> Thế mạnh
+                          </h3>
+                          <ul className="list-disc list-inside">
+                            {strengths.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
                       {/* flaws */}
-                      <div>
-                        <h3 className="mb-1 font-semibold flex items-center gap-1">
-                          <span>⚠️</span> Điểm yếu
-                        </h3>
-                        <ul className="list-disc list-inside">
-                          {MBTI_MAP[mbtiCode]!.flaws.map((s) => (
-                            <li key={s}>{s}</li>
-                          ))}
-                        </ul>
-                      </div>
+                      {flaws.length > 0 && (
+                        <div>
+                          <h3 className="mb-1 font-semibold flex items-center gap-1">
+                            <span>⚠️</span> Điểm yếu
+                          </h3>
+                          <ul className="list-disc list-inside">
+                            {flaws.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
                       {/* careers */}
-                      <div>
-                        <h3 className="mb-1 font-semibold flex items-center gap-1">
-                          <span>🎯</span> Nghề phù hợp
-                        </h3>
-                        <ul className="list-disc list-inside">
-                          {MBTI_MAP[mbtiCode]!.careers.map((s) => (
-                            <li key={s}>{s}</li>
-                          ))}
-                        </ul>
-                      </div>
+                      {careers.length > 0 && (
+                        <div>
+                          <h3 className="mb-1 font-semibold flex items-center gap-1">
+                            <span>🎯</span> Nghề phù hợp
+                          </h3>
+                          <ul className="list-disc list-inside">
+                            {careers.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
               ) : (
                 <p className="italic text-gray-500">
-                  Chưa làm{" "}
+                  Chưa làm {" "}
                   <Link href="/mbti" className="text-indigo-600 underline">
                     MBTI
                   </Link>
@@ -186,7 +201,7 @@ export default async function Profile({
                 </>
               ) : (
                 <p className="italic text-gray-500">
-                  Chưa làm{" "}
+                  Chưa làm {" "}
                   <Link href="/holland" className="text-indigo-600 underline">
                     Holland
                   </Link>
