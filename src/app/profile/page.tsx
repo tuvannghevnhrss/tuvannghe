@@ -118,7 +118,7 @@ export default async function Profile({
 
       {/* TAB 1 – Đặc tính */}
       {step === "trait" && (
-        <section className="grid gap-8 md:grid-cols-3">
+        <section className="space-y-8">
           {/* ── MBTI ─────────────────────────────────────────────── */}
           <TraitCard title="MBTI">
             {mbtiCode ? (
