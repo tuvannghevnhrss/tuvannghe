@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// src/app/profile/page.tsx
+// src/app/profile/page.tsx  ← thay thế nguyên file cũ
 // -----------------------------------------------------------------------------
 import { cookies } from "next/headers";
 import Link        from "next/link";
@@ -17,7 +17,19 @@ import type { Database }               from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
-/* ───────────── PAGE ───────────── */
+/* ────────── TIỆN ÍCH NHỎ ────────── */
+/** Chuyển mảng `string | object` ➜ mảng chuỗi hiển thị */
+function toText(arr?: any[]): string[] {
+  return (arr ?? []).map((it) =>
+    typeof it === "string"
+      ? it
+      : "value_vi" in it
+      ? it.value_vi
+      : it.value ?? JSON.stringify(it)
+  );
+}
+
+/* ────────── PAGE ────────── */
 export default async function Profile({
   searchParams,
 }: {
@@ -27,22 +39,18 @@ export default async function Profile({
 
   /* 1 ▸ Auth --------------------------------------------------------------- */
   const supabase = createServerComponentClient<Database>({ cookies });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Vui lòng đăng nhập.</p>;
 
   /* 2 ▸ Hồ sơ -------------------------------------------------------------- */
   const { data: profile } = await supabase
     .from("career_profiles")
     .select(
-      `
-      mbti_type,
-      holland_profile,
-      knowdell_summary,
-      knowdell,
-      suggested_jobs
-    `
+      `mbti_type,
+       holland_profile,
+       knowdell_summary,
+       knowdell,
+       suggested_jobs`
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -75,16 +83,15 @@ export default async function Profile({
   ]);
 
   /* 5 ▸ Knowdell ----------------------------------------------------------- */
-  // Ưu tiên cột cũ (`knowdell_summary`) – nếu chưa có thì dùng cột mới (`knowdell`)
   const kb =
     profile.knowdell_summary ??
     // @ts-expect-error – Supabase typers may not know this field
     profile.knowdell ??
     {};
 
-  const valuesVI   : string[] = kb.values ?? [];
-  const skillsVI   : string[] = kb.skills ?? [];
-  const interestsVI: string[] = kb.interests ?? [];
+  const valuesVI    = toText(kb.values);
+  const skillsVI    = toText(kb.skills);
+  const interestsVI = toText(kb.interests);
 
   /* 6 ▸ Holland ------------------------------------------------------------ */
   type Radar = { name: string; score: number };
@@ -114,7 +121,7 @@ export default async function Profile({
   const mbtiInfo =
     mbtiCode && MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP];
 
-  /* ───────────── RENDER ───────────── */
+  /* ────────── RENDER ────────── */
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-20">
       <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề nghiệp</h1>
@@ -123,7 +130,7 @@ export default async function Profile({
       {/* TAB 1 – Đặc tính */}
       {step === "trait" && (
         <section className="space-y-6">
-          {/* ── MBTI ───────────────────────────────────────────── */}
+          {/* MBTI */}
           <TraitCard title="MBTI">
             {mbtiCode ? (
               <>
@@ -144,7 +151,7 @@ export default async function Profile({
             )}
           </TraitCard>
 
-          {/* ── Holland ────────────────────────────────────────── */}
+          {/* Holland */}
           <TraitCard title="Holland">
             {hollCode ? (
               <>
@@ -175,7 +182,7 @@ export default async function Profile({
             )}
           </TraitCard>
 
-          {/* ── Knowdell ──────────────────────────────────────── */}
+          {/* Knowdell */}
           <TraitCard title="Knowdell">
             {valuesVI.length || skillsVI.length || interestsVI.length ? (
               <TraitGrid
@@ -195,7 +202,7 @@ export default async function Profile({
         </section>
       )}
 
-      {/* TAB 2, 3, 4 – giữ nguyên logic gốc */}
+      {/* TAB 2, 3, 4 – giữ nguyên */}
       {step === "options" && (canAnalyse ? (
         <OptionsTab
           mbti={mbtiCode}
@@ -234,39 +241,29 @@ function Header({ code, intro }: { code: string; intro?: string }) {
   );
 }
 
-/** Hiển thị các list – xếp dọc theo labels */
+/** Hiển thị các list – xếp dọc */
 function TraitGrid({
-  traits,
-  strengths,
-  weaknesses,
-  improvements,
-  careers,
-  labels = [
-    "🔎 Đặc trưng",
-    "💪 Thế mạnh",
-    "⚠️ Điểm yếu",
-    "🛠 Cần cải thiện",
-    "🎯 Nghề phù hợp",
-  ],
+  traits, strengths, weaknesses, improvements, careers,
+  labels = ["🔎 Đặc trưng","💪 Thế mạnh","⚠️ Điểm yếu","🛠 Cần cải thiện","🎯 Nghề phù hợp"],
 }: {
-  traits?: string[];
-  strengths?: string[];
-  weaknesses?: string[];
-  improvements?: string[];
-  careers?: string[];
+  traits?: any[]; strengths?: any[]; weaknesses?: any[];
+  improvements?: any[]; careers?: any[];
   labels?: string[];
 }) {
+  /* bóc chuỗi trước khi render */
+  const lists = [
+    toText(traits),
+    toText(strengths),
+    toText(weaknesses),
+    toText(improvements),
+    toText(careers),
+  ];
+
   return (
     <div className="space-y-6">
-      {[
-        traits,
-        strengths,
-        weaknesses,
-        improvements,
-        careers,
-      ].map(
+      {lists.map(
         (items, i) =>
-          items?.length && (
+          items.length > 0 && (
             <div key={i}>
               <h4 className="mb-1 font-semibold">{labels[i]}</h4>
               <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
