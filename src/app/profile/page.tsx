@@ -18,18 +18,32 @@ import type { Database }               from "@/types/supabase";
 export const dynamic = "force-dynamic";
 
 /* ───────────── PAGE ───────────── */
-export default async function Profile({ searchParams }: { searchParams?: { step?: string } }) {
+export default async function Profile({
+  searchParams,
+}: {
+  searchParams?: { step?: string };
+}) {
   const step = searchParams?.step ?? "trait";
 
   /* 1 ▸ Auth --------------------------------------------------------------- */
   const supabase = createServerComponentClient<Database>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Vui lòng đăng nhập.</p>;
 
   /* 2 ▸ Hồ sơ -------------------------------------------------------------- */
   const { data: profile } = await supabase
     .from("career_profiles")
-    .select("mbti_type, holland_profile, knowdell_summary, suggested_jobs")
+    .select(
+      `
+      mbti_type,
+      holland_profile,
+      knowdell_summary,
+      knowdell,
+      suggested_jobs
+    `
+    )
     .eq("user_id", user.id)
     .maybeSingle();
   if (!profile) return <p className="p-6">Chưa có dữ liệu hồ sơ.</p>;
@@ -41,54 +55,64 @@ export default async function Profile({ searchParams }: { searchParams?: { step?
     .eq("user_id", user.id)
     .eq("status", "paid");
 
-  const paidSet    = new Set((payments ?? []).map(p => p.product));
-  const canAnalyse = ["mbti", "holland", "knowdell"].every(p => paidSet.has(p));
+  const paidSet    = new Set((payments ?? []).map((p) => p.product));
+  const canAnalyse = ["mbti", "holland", "knowdell"].every((p) =>
+    paidSet.has(p)
+  );
 
   /* 4 ▸ Mục tiêu, hành động ------------------------------------------------ */
   const [{ data: goal }, { data: actions }] = await Promise.all([
-    supabase.from("career_goals")
+    supabase
+      .from("career_goals")
       .select("what, why")
       .eq("user_id", user.id)
       .maybeSingle(),
-    supabase.from("career_actions")
+    supabase
+      .from("career_actions")
       .select("*")
       .eq("user_id", user.id)
       .order("deadline", { ascending: true }),
   ]);
 
   /* 5 ▸ Knowdell ----------------------------------------------------------- */
-  const kb          = profile.knowdell_summary ?? {};
-  const valuesVI    = kb.values    ?? [];
-  const skillsVI    = kb.skills    ?? [];
-  const interestsVI = kb.interests ?? [];
+  // Ưu tiên cột cũ (`knowdell_summary`) – nếu chưa có thì dùng cột mới (`knowdell`)
+  const kb =
+    profile.knowdell_summary ??
+    // @ts-expect-error – Supabase typers may not know this field
+    profile.knowdell ??
+    {};
+
+  const valuesVI   : string[] = kb.values ?? [];
+  const skillsVI   : string[] = kb.skills ?? [];
+  const interestsVI: string[] = kb.interests ?? [];
 
   /* 6 ▸ Holland ------------------------------------------------------------ */
   type Radar = { name: string; score: number };
-  const hollandRadar : Radar[]   = [];
-  let   hollCode     : string | null = null;
+  const hollandRadar: Radar[] = [];
+  let hollCode: string | null = null;
 
   if (profile.holland_profile) {
-    Object.entries(profile.holland_profile).forEach(
-      ([name, score]) => hollandRadar.push({ name, score: score as number })
+    Object.entries(profile.holland_profile).forEach(([name, score]) =>
+      hollandRadar.push({ name, score: score as number })
     );
     hollCode = hollandRadar
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
-      .map(o => o.name)
+      .map((o) => o.name)
       .join("");
   }
 
-  /* Tách riêng từng chữ cái & load mô tả */
   const hollandSections = hollCode
-    ? hollCode.split("").map(l => ({
-        code : l,
-        info : HOLLAND_MAP[l as keyof typeof HOLLAND_MAP],
+    ? hollCode.split("").map((l) => ({
+        code: l,
+        info: HOLLAND_MAP[l as keyof typeof HOLLAND_MAP],
       }))
     : [];
 
   /* 7 ▸ MBTI -------------------------------------------------------------- */
-  const mbtiCode : string | null = profile.mbti_type ?? null;
-  const mbtiInfo = mbtiCode ? MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP] : undefined;
+  const mbtiCode: string | null = profile.mbti_type ?? null;
+  const mbtiInfo =
+    mbtiCode && MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP];
 
   /* ───────────── RENDER ───────────── */
   return (
@@ -98,7 +122,7 @@ export default async function Profile({ searchParams }: { searchParams?: { step?
 
       {/* TAB 1 – Đặc tính */}
       {step === "trait" && (
-        <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <section className="space-y-6">
           {/* ── MBTI ───────────────────────────────────────────── */}
           <TraitCard title="MBTI">
             {mbtiCode ? (
@@ -108,30 +132,37 @@ export default async function Profile({ searchParams }: { searchParams?: { step?
                   strengths={mbtiInfo?.strengths}
                   weaknesses={mbtiInfo?.flaws}
                   careers={mbtiInfo?.careers}
-                  labels={["💪 Thế mạnh", "⚠️ Điểm yếu", "🎯 Nghề phù hợp"]}
+                  labels={[
+                    "💪 Thế mạnh",
+                    "⚠️ Điểm yếu",
+                    "🎯 Nghề phù hợp",
+                  ]}
                 />
               </>
-            ) : <EmptyLink label="MBTI" href="/mbti" />}
+            ) : (
+              <EmptyLink label="MBTI" href="/mbti" />
+            )}
           </TraitCard>
 
-          {/* ── Holland ───────────────────────────────────────── */}
-          <TraitCard title="Holland" className="col-span-full xl:col-span-2">
+          {/* ── Holland ────────────────────────────────────────── */}
+          <TraitCard title="Holland">
             {hollCode ? (
               <>
-                {hollandSections.map(({ code, info }) => (
-                  info && (
-                    <div key={code} className="mb-8 first:mt-0">
-                      <Header code={code} intro={info.intro} />
-                      <TraitGrid
-                        traits={info.traits}
-                        strengths={info.strengths}
-                        weaknesses={info.weaknesses}
-                        improvements={info.improvements}
-                        careers={info.careers}
-                      />
-                    </div>
-                  )
-                ))}
+                {hollandSections.map(
+                  ({ code, info }) =>
+                    info && (
+                      <div key={code} className="mb-8 first:mt-0">
+                        <Header code={code} intro={info.intro} />
+                        <TraitGrid
+                          traits={info.traits}
+                          strengths={info.strengths}
+                          weaknesses={info.weaknesses}
+                          improvements={info.improvements}
+                          careers={info.careers}
+                        />
+                      </div>
+                    )
+                )}
 
                 {hollandRadar.length > 0 && (
                   <div className="mt-6">
@@ -139,7 +170,9 @@ export default async function Profile({ searchParams }: { searchParams?: { step?
                   </div>
                 )}
               </>
-            ) : <EmptyLink label="Holland" href="/holland" />}
+            ) : (
+              <EmptyLink label="Holland" href="/holland" />
+            )}
           </TraitCard>
 
           {/* ── Knowdell ──────────────────────────────────────── */}
@@ -155,32 +188,37 @@ export default async function Profile({ searchParams }: { searchParams?: { step?
                   "🎈 Sở thích nổi bật",
                 ]}
               />
-            ) : <EmptyLink label="Knowdell" href="/knowdell" />}
+            ) : (
+              <EmptyLink label="Knowdell" href="/knowdell" />
+            )}
           </TraitCard>
         </section>
       )}
 
-      {/* TAB 2, 3, 4 – logic gốc (không đổi) */}
-      {step === "options" && (
-        canAnalyse
-          ? <OptionsTab
-              mbti={mbtiCode}
-              holland={hollCode}
-              knowdell={profile.knowdell_summary}
-              initialJobs={profile.suggested_jobs ?? []}
-            />
-          : <Paywall />
-      )}
+      {/* TAB 2, 3, 4 – giữ nguyên logic gốc */}
+      {step === "options" && (canAnalyse ? (
+        <OptionsTab
+          mbti={mbtiCode}
+          holland={hollCode}
+          knowdell={kb}
+          initialJobs={profile.suggested_jobs ?? []}
+        />
+      ) : (
+        <Paywall />
+      ))}
       {step === "focus" && <FocusTab existingGoal={goal ?? null} />}
-      {step === "plan"  && <PlanTab  actions={actions ?? []} />}
+      {step === "plan" && <PlanTab actions={actions ?? []} />}
     </div>
   );
 }
 
 /* ---------- Tiện ích hiển thị ---------- */
-function TraitCard({ title, children, className = "" }: React.PropsWithChildren<{ title: string; className?: string }>) {
+function TraitCard({
+  title,
+  children,
+}: React.PropsWithChildren<{ title: string }>) {
   return (
-    <div className={`space-y-3 rounded-lg border bg-white p-6 shadow ${className}`}>
+    <div className="space-y-3 rounded-lg border bg-white p-6 shadow">
       <h2 className="text-xl font-semibold">{title}</h2>
       {children}
     </div>
@@ -196,14 +234,20 @@ function Header({ code, intro }: { code: string; intro?: string }) {
   );
 }
 
-/** hiển thị các list – sắp dọc theo thứ tự labels */
+/** Hiển thị các list – xếp dọc theo labels */
 function TraitGrid({
   traits,
   strengths,
   weaknesses,
   improvements,
   careers,
-  labels = ["🔎 Đặc trưng", "💪 Thế mạnh", "⚠️ Điểm yếu", "🛠 Cần cải thiện", "🎯 Nghề phù hợp"],
+  labels = [
+    "🔎 Đặc trưng",
+    "💪 Thế mạnh",
+    "⚠️ Điểm yếu",
+    "🛠 Cần cải thiện",
+    "🎯 Nghề phù hợp",
+  ],
 }: {
   traits?: string[];
   strengths?: string[];
@@ -226,7 +270,9 @@ function TraitGrid({
             <div key={i}>
               <h4 className="mb-1 font-semibold">{labels[i]}</h4>
               <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
-                {items.map(t => <li key={t}>{t}</li>)}
+                {items.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
               </ul>
             </div>
           )
@@ -253,9 +299,9 @@ function Paywall() {
         Bạn cần hoàn tất thanh toán 3 gói dưới để sử dụng phân tích kết hợp:
       </p>
       <ul className="list-disc list-inside text-left mx-auto max-w-md">
-        <li>MBTI (10K)</li>
-        <li>Holland (20K)</li>
-        <li>Knowdell (100K)</li>
+        <li>MBTI (10 K)</li>
+        <li>Holland (20 K)</li>
+        <li>Knowdell (100 K)</li>
       </ul>
       <Link
         href="/checkout?product=combo"
