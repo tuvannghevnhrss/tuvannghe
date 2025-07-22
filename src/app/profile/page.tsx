@@ -118,69 +118,67 @@ export default async function Profile({
 
       {/* TAB 1 – Đặc tính */}
       {step === "trait" && (
-        <>
-          {/* MBTI + Holland */}
-          <section className="grid gap-8 md:grid-cols-2">
-            {/* MBTI ------------------------------------------------------- */}
-            <TraitCard title="MBTI">
-              {mbtiCode ? (
-                <>
-                  <Header code={mbtiCode} intro={mbtiInfo?.intro} />
-                  <TraitGrid
-                    traits={mbtiInfo?.strengths}
-                    strengths={mbtiInfo?.strengths}
-                    weaknesses={mbtiInfo?.flaws}
-                    improvements={[]}
-                    careers={mbtiInfo?.careers}
-                  />
-                </>
-              ) : (
-                <EmptyLink label="MBTI" href="/mbti" />
-              )}
-            </TraitCard>
+        <section className="grid gap-8 md:grid-cols-3">
+          {/* ── MBTI ─────────────────────────────────────────────── */}
+          <TraitCard title="MBTI">
+            {mbtiCode ? (
+              <>
+                <Header code={mbtiCode} intro={mbtiInfo?.intro} />
+                <TraitGrid
+                  traits={[]}
+                  strengths={mbtiInfo?.strengths}
+                  weaknesses={mbtiInfo?.flaws}
+                  careers={mbtiInfo?.careers}
+                  improvements={[]}
+                  labels={["💪 Thế mạnh", "⚠️ Điểm yếu", "🎯 Nghề phù hợp"]}
+                />
+              </>
+            ) : (
+              <EmptyLink label="MBTI" href="/mbti" />
+            )}
+          </TraitCard>
 
-            {/* Holland ---------------------------------------------------- */}
-            <TraitCard title="Holland">
-              {hollCode ? (
-                <>
-                  <Header code={hollCode} intro={hollandIntro} />
+          {/* ── Holland ─────────────────────────────────────────── */}
+          <TraitCard title="Holland">
+            {hollCode ? (
+              <>
+                <Header code={hollCode} intro={hollandIntro} />
+                <TraitGrid
+                  traits={hTraits}
+                  strengths={hStrengths}
+                  weaknesses={hWeaknesses}
+                  improvements={hImprovements}
+                  careers={hCareers}
+                />
+                {hollandRadar.length > 0 && (
+                  <div className="mt-6">
+                    <HollandRadar data={hollandRadar} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <EmptyLink label="Holland" href="/holland" />
+            )}
+          </TraitCard>
 
-                  <TraitGrid
-                    traits={hTraits}
-                    strengths={hStrengths}
-                    weaknesses={hWeaknesses}
-                    improvements={hImprovements}
-                    careers={hCareers}
-                  />
-
-                  {hollandRadar.length > 0 && (
-                    <div className="mt-6">
-                      <HollandRadar data={hollandRadar} />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <EmptyLink label="Holland" href="/holland" />
-              )}
-            </TraitCard>
-          </section>
-
-          {/* Knowdell ----------------------------------------------------- */}
-          <TraitCard title="Tóm tắt Knowdell" className="md:col-span-2">
+          {/* ── Knowdell ─────────────────────────────────────────── */}
+          <TraitCard title="Knowdell">
             {valuesVI.length || skillsVI.length || interestsVI.length ? (
               <TraitGrid
-                traits={[]}
                 strengths={valuesVI}
                 weaknesses={skillsVI}
-                improvements={[]}
                 careers={interestsVI}
-                labels={["💎 Giá trị cốt lõi", "🛠 Kỹ năng động lực", "🎈 Sở thích nổi bật"]}
+                labels={[
+                  "💎 Giá trị cốt lõi",
+                  "🛠 Kỹ năng động lực",
+                  "🎈 Sở thích nổi bật",
+                ]}
               />
             ) : (
               <EmptyLink label="Knowdell" href="/knowdell" />
             )}
           </TraitCard>
-        </>
+        </section>
       )}
 
       {/* TAB 2, 3, 4 giữ nguyên logic gốc */}
