@@ -99,9 +99,9 @@ export default async function Profile({
     .eq("user_id", user.id)
     .eq("status", "paid");
   const paidSet    = new Set((payments ?? []).map((p) => p.product));
-  const canAnalyse = ["mbti", "holland", "knowdell"].every((p) =>
-    paidSet.has(p),
-  );
+  const hasResult     = !!profile.holland_profile && !!kb.interests;
+  const hasPaidCombo  = ["holland", "knowdell"].every((p) => paidSet.has(p));
+  const canAnalyse    = hasResult || hasPaidCombo;
 
   /* 4 ▸ Mục tiêu, hành động ------------------------------------------------ */
   const [{ data: goal }, { data: actions }] = await Promise.all([
@@ -348,7 +348,7 @@ function Paywall() {
   return (
     <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-6 text-center space-y-4">
       <p className="text-lg font-medium">
-        Bạn cần hoàn tất thanh toán 3 gói dưới để sử dụng phân tích kết hợp:
+        Bạn cần hoàn tất thanh toán 2 gói dưới để sử dụng phân tích kết hợp:
       </p>
       <ul className="list-disc list-inside text-left mx-auto max-w-md">
         <li>MBTI (10 K)</li>
