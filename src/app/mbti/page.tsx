@@ -1,28 +1,25 @@
-// ⬅️ KHÔNG “use client”
-export const dynamic = 'force-dynamic';
+/* MBTI Intro – server component (không “use client”) */
+export const dynamic = "force-dynamic";
 
-import { cookies } from 'next/headers';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { STATUS } from '@/lib/constants';
-import MbtiIntro from './MbtiIntro';
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
-export default async function MbtiPage() {
+import MbtiIntro from "./MbtiIntro";
+
+export default async function MbtiIntroPage() {
+  /* 1 – Auth --------------------------------------------------------- */
   const supabase = createServerComponentClient({ cookies });
-
-  /* 1. Lấy user – MBTI miễn phí nên không check payment */
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login?redirectedFrom=/mbti");
 
-  /* 2. Kiểm tra đã làm & đã có kết quả */
-  let hasResult = false;
-  if (user) {
-    const { data: r } = await supabase
-      .from('mbti_results')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-    hasResult = !!r;
-  }
+  /* 2 – đã có kết quả?  --------------------------------------------- */
+  const { data: profile } = await supabase
+    .from("career_profiles")
+    .select("mbti_type")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  /* 3. Render Intro */
-  return <MbtiIntro hasResult={hasResult} />;
+  /* 3 – render ------------------------------------------------------- */
+  return <MbtiIntro hasResult={!!profile?.mbti_type} />;
 }
