@@ -235,6 +235,7 @@ export default async function Profile({
                   "🛠 Kỹ năng động lực",
                   "🎈 Sở thích nổi bật",
 		  "",
+		  "",
                 ]}
               />
             ) : (
