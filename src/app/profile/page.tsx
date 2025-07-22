@@ -76,7 +76,6 @@ export default async function Profile({
     hollandRadar = Object.entries(profile.holland_profile).map(
       ([name, score]) => ({ name, score: score as number })
     );
-
     hollCode = hollandRadar
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
@@ -84,16 +83,27 @@ export default async function Profile({
       .join("");
   }
 
-  const hollandInfo =
-    hollCode && HOLLAND_MAP[hollCode as keyof typeof HOLLAND_MAP];
+  /* ✅ NEW ✔  gộp mô tả & list cho cả mã đơn lẫn mã ghép */
+  function merge<T extends string>(getter: (k: keyof typeof HOLLAND_MAP) => T[] | undefined) {
+    if (!hollCode) return [];
+    return [...new Set(
+      hollCode
+        .split("")
+        .flatMap((c) => getter(c as keyof typeof HOLLAND_MAP) ?? [])
+    )];
+  }
 
-  const hTraits       = hollandInfo?.traits       ?? [];
-  const hStrengths    = hollandInfo?.strengths    ?? [];
-  const hWeaknesses   = hollandInfo?.weaknesses   // mới đặt lại theo file của bạn
-                    ?? hollandInfo?.flaws
-                    ?? [];
-  const hImprovements = hollandInfo?.improvements ?? [];
-  const hCareers      = hollandInfo?.careers      ?? [];
+  const hollandIntro =
+    hollCode?.split("")
+      .map((c) => HOLLAND_MAP[c as keyof typeof HOLLAND_MAP]?.intro)
+      .filter(Boolean)
+      .join(" | ") ?? "";
+
+  const hTraits       = merge((k) => HOLLAND_MAP[k]?.traits);
+  const hStrengths    = merge((k) => HOLLAND_MAP[k]?.strengths);
+  const hWeaknesses   = merge((k) => HOLLAND_MAP[k]?.weaknesses);
+  const hImprovements = merge((k) => HOLLAND_MAP[k]?.improvements);
+  const hCareers      = merge((k) => HOLLAND_MAP[k]?.careers);
 
   /* 7 ▸ MBTI -------------------------------------------------------------- */
   const mbtiCode : string | null = profile.mbti_type ?? null;
@@ -192,7 +202,25 @@ export default async function Profile({
           </section>
 
           {/* Knowdell & các phần khác giữ nguyên */}
-          {/* ... */}
+          <div className="space-y-2 rounded-lg border bg-white p-5 shadow-sm md:col-span-2">
+            <h2 className="text-xl font-semibold">Tóm tắt Knowdell</h2>
+
+            {valuesVI.length || skillsVI.length || interestsVI.length ? (
+              <div className="grid gap-6 lg:grid-cols-3 text-[15px] leading-relaxed">
+                {valuesVI.length > 0 && (
+                  <Block title="💎 Giá trị cốt lõi" list={valuesVI} />
+                )}
+                {skillsVI.length > 0 && (
+                  <Block title="🛠 Kỹ năng động lực" list={skillsVI} />
+                )}
+                {interestsVI.length > 0 && (
+                  <Block title="🎈 Sở thích nổi bật" list={interestsVI} />
+                )}
+              </div>
+            ) : (
+              <EmptyLink label="Knowdell" href="/knowdell" />
+            )}
+          </div>
         </>
       )}
 
