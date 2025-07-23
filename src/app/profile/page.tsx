@@ -238,31 +238,45 @@ export default async function Profile({
 }
 
 /* ---------- view helpers ---------- */
-function TraitCard({title,children}:React.PropsWithChildren<{title:string}>){
-  return <div className="space-y-3 rounded-lg border bg-white p-6 shadow">
-    <h2 className="text-xl font-semibold">{title}</h2>{children}
-  </div>;
+function TraitCard({ title, children }: React.PropsWithChildren<{ title: string }>) {
+  return (
+    <div className="space-y-3 rounded-lg border bg-white p-6 shadow">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      {children}
+    </div>
+  );
 }
-function Header({code,intro}:{code:string;intro?:string}){
-  return <>
-    <p className="text-2xl font-bold mb-1">{code}</p>
-    {intro && <p className="text-sm leading-relaxed">{intro}</p>}
-  </>;
+function Header({ code, intro }: { code: string; intro?: string }) {
+  return (
+    <>
+      <p className="text-2xl font-bold mb-1">{code}</p>
+      {intro && <p className="text-sm leading-relaxed">{intro}</p>}
+    </>
+  );
 }
+
+/** Hiển thị 1-5 danh sách theo chiều dọc - labels tự động hoặc tuỳ truyền */
 function TraitGrid({
   traits,
   strengths,
   weaknesses,
   improvements,
   careers,
-  labels,
+  labels = [
+    "🔎 Đặc trưng",
+    "💪 Thế mạnh",
+    "⚠️ Điểm yếu",
+    "🛠 Cần cải thiện",
+    "🎯 Nghề phù hợp",
+  ],
 }: {
   traits?: any[];
   strengths?: any[];
   weaknesses?: any[];
   improvements?: any[];
   careers?: any[];
-  labels: string[];
+  /** cho phép KHÔNG truyền – đã có giá trị mặc định */
+  labels?: string[];
 }) {
   const lists = [
     toText(traits, []),
@@ -278,7 +292,6 @@ function TraitGrid({
         (items, i) =>
           items.length > 0 && (
             <div key={i}>
-              {/* dùng nhãn an-toàn ngay cả khi labels thiếu phần tử */}
               <h4 className="mb-1 font-semibold">{labels[i] ?? ""}</h4>
               <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
                 {items.map((t) => (
@@ -289,6 +302,17 @@ function TraitGrid({
           ),
       )}
     </div>
+  );
+}
+
+function EmptyLink({ label, href }: { label: string; href: string }) {
+  return (
+    <p className="italic text-gray-500">
+      Chưa làm{" "}
+      <Link href={href} className="text-indigo-600 underline">
+        {label}
+      </Link>
+    </p>
   );
 }
 function EmptyLink({label,href}:{label:string;href:string}){
