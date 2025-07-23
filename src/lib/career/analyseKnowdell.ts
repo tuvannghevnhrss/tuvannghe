@@ -1,58 +1,63 @@
-/* -------------------------------------------------------------------------- *
-   GPT helper – Holland + Knowdell ➜ JSON kết quả đầy đủ                      *
- * -------------------------------------------------------------------------- */
 import OpenAI from "openai";
 
-/* ===== type gửi GPT ===== */
+/* ---------- Kiểu tham số truyền cho GPT ---------- */
 export interface AnalyseArgs {
-  holland   : string;       // “ERS”, “CSE”, …
-  values    : any[];
-  skills    : any[];
-  interests : string[];     // list nghề ưa thích
-  model?    : string;
+  mbti: string;               // không bắt buộc
+  holland: string;            // VD "ERS"
+  values: any[];
+  skills: any[];
+  interests: any[];           // phải ≠ 0 trước khi gọi GPT
+  selectedTitles: string[];   // <= 20 nghề ưa thích
+  model?: string;
 }
 
-/* ===== Prompt ===== */
+/* ---------- Prompt ---------- */
 function buildPrompt(a: AnalyseArgs) {
-  const first = (arr:any[], n:number, bullet="•") => arr
-      .slice(0,n)
-      .map((v:any,i:number)=>`${bullet} ${typeof v==="string"
-        ? v : v.vi ?? v.value_key ?? v.skill_key ?? v}`)
-      .join("\n");
+  const valList = a.values.slice(0, 10)
+    .map((v: any, i) => `${i + 1}. ${v.vi || v.value_key || v}`)
+    .join("\n");
+
+  const skillList = a.skills.slice(0, 20)
+    .map((s: any) =>
+      `• ${s.skill_key || s} – đam mê ${s.love ?? 0}/5, thành thạo ${s.pro ?? 0}/5`,
+    )
+    .join("\n");
+
+  const careers = a.selectedTitles.slice(0, 20)
+    .map((c, i) => `${i + 1}. ${c}`)
+    .join("\n");
 
   return `
 Bạn là chuyên gia hướng nghiệp 10+ năm kinh nghiệm, thành thạo RIASEC (Holland) và Knowdell.
 
 ## Hồ sơ khách hàng
-RIASEC (TOP-3): ${a.holland}
+RIASEC: ${a.holland}
 
-### Giá trị nghề nghiệp
-${first(a.values,10)}
+### Giá trị nghề nghiệp (TOP 10)
+${valList}
 
-### Kỹ năng động lực
-${first(a.skills ,20)}
+### Kỹ năng động lực nổi bật
+${skillList}
 
-### Nghề khách hàng hứng thú
-${first(a.interests,20)}
+### 20 nghề khách hàng hứng thú
+${careers}
 
 ## Yêu cầu
 1. Tóm tắt khung tính cách (≤ 120 chữ).
-2. Đánh giá mức phù hợp cho từng nghề ưa thích (Rất phù hợp / Phù hợp / Ít phù hợp) + lý do ngắn (trích dẫn RIASEC / Value / Skill).
-3. Bảng TOP 5 nghề điểm cao nhất gồm:
-   • lương khởi điểm (triệu VND/tháng, median)  
-   • lộ trình 3 giai đoạn  
-   • kỹ năng / chứng chỉ nên bổ sung.
+2. Đánh giá mức phù hợp cho từng nghề  + lý do ngắn (trích dẫn RIASEC / Value / Skill).
+3. Bảng TOP 5 nghề (điểm cao nhất) gồm: lương khởi điểm (triệu VND/tháng, median),
+   lộ trình 3 giai đoạn và kỹ năng / chứng chỉ nên bổ sung.
 
-Trả đúng **JSON duy nhất** (không thêm Markdown):
+### Định dạng trả lời
+Trả đúng JSON duy nhất – KHÔNG thêm Markdown:
 {
-  "summary":"",
+  "summary": "",
   "careerRatings":[
-    {"career":"","fitLevel":"","reason":""}
+    {"career":"", "fitLevel":"", "reason":""}
   ],
   "topCareers":[
     {
-      "career":"",
-      "salaryMedian":0,
+      "career":"", "salaryMedian":0,
       "roadmap":[
         {"stage":"Junior","skills":""},
         {"stage":"Mid","skills":""},
@@ -64,51 +69,27 @@ Trả đúng **JSON duy nhất** (không thêm Markdown):
 `.trim();
 }
 
-/* ===== Gọi GPT ===== */
-const openai = new OpenAI({ timeout:60_000 });
+/* ---------- Hàm gọi GPT ---------- */
+const openai = new OpenAI({ timeout: 60_000 });
 
-export async function analyseKnowdell(a:AnalyseArgs){
+export async function callGPT(args: AnalyseArgs) {
+  const prompt     = buildPrompt(args);
+  const model      = args.model || process.env.OPENAI_MODEL || "gpt-3.5-turbo";
+
   const resp = await openai.chat.completions.create({
-    model : a.model || process.env.OPENAI_MODEL || "gpt-3.5-turbo",
-    temperature:0.3,
-    max_tokens :900,
-    messages:[
-      {role:"system",content:"Bạn luôn trả về **một** JSON hợp lệ duy nhất."},
-      {role:"user"  ,content:buildPrompt(a)}
-    ]
+    model,
+    temperature: 0.35,
+    max_tokens : 900,
+    messages   : [
+      { role: "system", content: "Bạn luôn trả về JSON hợp lệ duy nhất." },
+      { role: "user",   content: prompt },
+    ],
   });
 
-  const txt   = resp.choices[0].message.content ?? "";
-  const json  = txt.slice(txt.indexOf("{"), txt.lastIndexOf("}")+1);
-  return JSON.parse(json);
-}
+  const txt   = resp.choices[0].message.content?.trim() || "";
+  const start = txt.indexOf("{");
+  const end   = txt.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error("Không tìm thấy JSON.");
 
-/* -------------------------------------------------------------------------- *
-   Alias analyseCareer (dùng trong Route)                                     *
- * -------------------------------------------------------------------------- */
-interface RawProfile {
-  holland_profile : Record<string,number>|null;
-  knowdell_summary: { values?:any[]; skills?:any[]; interests?:any[] }|null;
-}
-
-export async function analyseCareer(p:RawProfile){
-  if(!p.holland_profile) throw new Error("Thiếu Holland profile");
-
-  const values  = p.knowdell_summary?.values  ?? [];
-  const skills  = p.knowdell_summary?.skills  ?? [];
-  let   inter   = p.knowdell_summary?.interests ?? [];
-
-  if(inter.length===0) inter = values.slice(0,3);           // fallback nhẹ
-  inter = inter.map((it:any)=>
-      typeof it==="string"
-        ? it
-        : it.interest_key||it.value_key||it.skill_key||it.vi||it.en||""
-    ).filter(Boolean);
-
-  if(inter.length===0) throw new Error("Thiếu sở thích nghề nghiệp");
-
-  const holland = Object.entries(p.holland_profile)
-    .sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>k).join("");
-
-  return await analyseKnowdell({ holland, values, skills, interests:inter });
+  return JSON.parse(txt.slice(start, end + 1));
 }
