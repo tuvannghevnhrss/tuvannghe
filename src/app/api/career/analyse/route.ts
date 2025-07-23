@@ -53,15 +53,22 @@ export async function POST() {
     };
 
     /* 6 ▸ GPT phân tích */
-    const suggestions = await analyseCareer(profile); // mảng 5 nghề
+    const analysis = await analyseCareer(profile);           // full JSON
+     const suggestions = (analysis.topCareers ?? [])
+       .slice(0, 5)
+       .map((c: any) => String(c.career || "").trim())
+       .filter(Boolean);
 
     /* 7 ▸ lưu & trả về */
     await supabase
       .from("career_profiles")
-      .update({ suggested_jobs: suggestions })
-      .eq("user_id", user.id);
+      .update({
+         suggested_jobs:    suggestions,
+         suggested_details: analysis          // ‼️ thêm cột JSON (text) nếu chưa có
+       })
+      .eq("user_id", (await supabase.auth.getUser()).data.user?.id);
 
-    return NextResponse.json({ jobs: suggestions });
+    return NextResponse.json({ jobs: suggestions, analysis });
   } catch (err: any) {
     console.error("analyse error:", err);
     return NextResponse.json(

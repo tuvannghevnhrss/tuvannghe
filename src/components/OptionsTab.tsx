@@ -13,18 +13,21 @@ interface Props {
     interests: string[];
   };
   canAnalyse  : boolean;
-  initialJobs : string[];
+  initialDetails?: {
+     summary?: string;
+     careerRatings?: { career: string; fitLevel: string; reason: string }[];
+   };
 }
 
 export default function OptionsTab({
   holland,
   knowdell,
   canAnalyse,
-  initialJobs,
+  initialDetails,
 }: Props) {
   /* ---------- state ---------- */
   const [loading, setLoading] = useState(false);
-  const [jobs,    setJobs]    = useState<string[]>(initialJobs);
+  const [details, setDetails]  = useState(initialDetails || null);
   const [error,   setError]   = useState<string | null>(null);
 
   /* ---------- handlers ---------- */
@@ -48,14 +51,14 @@ export default function OptionsTab({
       if (!res.ok) throw new Error(await res.text());
   
       /* API có thể trả { jobs } hoặc { suggestions } */
-      const data = await res.json();
+      const data = await res.json();   // { jobs, analysis }
       const list: string[] =
         data.jobs ??
         data.suggestions ??
         (Array.isArray(data) ? data : []);
 
       setJobs(list);
-      if (list.length === 0) setError("Chưa tìm thấy gợi ý phù hợp.");
+      if (data.analysis) setDetails(data.analysis);
     } catch (err) {
       console.error(err);
       setError("Phân tích thất bại, vui lòng thử lại.");
@@ -89,6 +92,26 @@ export default function OptionsTab({
 
       {jobs.length > 0 && (
         <ul className="list-disc list-inside space-y-1 text-sm">
+        )}
+     {details?.summary && (
+         <div className="space-y-2 border-t pt-4">
+           <p className="font-semibold">Tóm tắt</p>
+           <p className="text-sm leading-relaxed">{details.summary}</p>
+         </div>
+       )}
+ 
+       {details?.careerRatings?.length && (
+         <div className="space-y-2">
+           <p className="font-semibold">Đánh giá chi tiết</p>
+           <ul className="space-y-1 text-sm">
+             {details.careerRatings.map((r, idx) => (
+               <li key={idx}>
+                 <strong>{r.career}</strong> – {r.fitLevel} ({r.reason})
+               </li>
+             ))}
+          </ul>
+         </div>
+       )}
           {jobs.map((j) => (
             <li key={j}>{j}</li>
           ))}

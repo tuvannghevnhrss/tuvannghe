@@ -162,4 +162,5 @@ export async function analyseCareer(profile: RawProfile) {
     .slice(0, 5)
     .map((c: any) => String(c.career || "").trim())
     .filter(Boolean);
+  return result;
 }
