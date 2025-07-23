@@ -118,29 +118,35 @@ interface RawProfile {
   } | null;
 }
 
-/**
- * Hàm alias để route `/api/career/analyse` import.
- * Nhận object thô từ Supabase và chuyển thành `AnalyseArgs`
- */
 export async function analyseCareer(profile: RawProfile) {
-  if (!profile.holland_profilee || !interests?.length) {
+  /* ----- validate đầu vào -------------------------------------- */
+  const interests = profile.knowdell_summary?.interests ?? [];
+  if (!profile.holland_profile || interests.length === 0) {
     throw new Error("Thiếu Holland profile hoặc sở thích nghề nghiệp");
   }
 
-  /* Lấy TOP-3 điểm Holland */
+  /* ----- lấy TOP-3 mã Holland (VD: “ERS”) ----------------------- */
   const hollandTop3 = Object.entries(profile.holland_profile)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([k]) => k)
     .join("");
 
+  /* ----- gọi hàm GPT chính ------------------------------------- */
   const args: AnalyseArgs = {
+    mbti: "",                        // MBTI không còn bắt buộc
     holland: hollandTop3,
     values: profile.knowdell_summary?.values ?? [],
     skills: profile.knowdell_summary?.skills ?? [],
-    interests: profile.knowdell_summary?.interests ?? [],
-    selectedTitles: [],        // route không truyền → để rỗng
+    interests,
+    selectedTitles: [],              // có thể truyền 0-20 nghề yêu thích nếu muốn
   };
 
-  return analyseKnowdell(args);
+  const result = await analyseKnowdell(args);
+
+  /* API chỉ cần mảng 5 nghề đầu (lương cao) */
+  return (result.topCareers ?? [])
+    .slice(0, 5)
+    .map((c: any) => String(c.career || "").trim())
+    .filter(Boolean);
 }
