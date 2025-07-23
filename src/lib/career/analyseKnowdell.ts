@@ -3,18 +3,19 @@
 // -----------------------------------------------------------------------------
 import OpenAI from "openai";
 
-/* ──────────────── KIỂU ĐẦU VÀO GỐC – bạn đã dùng ──────────────── */
+/* ────────────────────── KIỂU THAM SỐ GỐC ────────────────────── */
 export interface AnalyseArgs {
-  mbti: string;          // "INTJ"
-  holland: string;       // "SCE"
+  mbti: string;          // "INTJ" – hiện không bắt buộc
+  holland: string;       // "SCE", "ERS"…
   values: any[];
   skills: any[];
   interests: any[];
+  /** tối đa 20 nghề khách hàng đã tick “rất hứng thú” (có thể rỗng) */
   selectedTitles: string[];
-  model?: string;        // optional custom model
+  model?: string;
 }
 
-/* ──────────────── PROMPT BUILDER GIỮ NGUYÊN ──────────────── */
+/* ────────────────────── BUILD PROMPT ────────────────────── */
 function buildPrompt(a: AnalyseArgs) {
   const valList = (a.values ?? [])
     .slice(0, 10)
@@ -25,11 +26,11 @@ function buildPrompt(a: AnalyseArgs) {
     .slice(0, 20)
     .map(
       (s: any) =>
-        `• ${s.skill_key} – đam mê ${s.love ?? 0}/5, thành thạo ${s.pro ?? 0}/5`
+        `• ${s.skill_key} – đam mê ${s.love ?? 0}/5, thành thạo ${s.pro ?? 0}/5`,
     )
     .join("\n");
 
-  const careers = a.selectedTitles
+  const careers = (a.selectedTitles ?? [])
     .slice(0, 20)
     .map((c, i) => `${i + 1}. ${c}`)
     .join("\n");
@@ -55,7 +56,7 @@ ${careers}
 3. Bảng TOP 5 nghề (điểm cao nhất) gồm: lương khởi điểm (triệu VND/tháng, median), lộ trình 3 giai đoạn và kỹ năng/chứng chỉ nên bổ sung.
 
 ### Định dạng trả lời
-Trả đúng JSON duy nhất như sau – KHÔNG thêm Markdown:
+Trả đúng JSON duy nhất – KHÔNG thêm Markdown:
 {
   "summary": "",
   "careerRatings":[
@@ -63,8 +64,7 @@ Trả đúng JSON duy nhất như sau – KHÔNG thêm Markdown:
   ],
   "topCareers":[
     {
-      "career":"",
-      "salaryMedian": 0,
+      "career":"", "salaryMedian":0,
       "roadmap":[
         {"stage":"Junior","skills":""},
         {"stage":"Mid","skills":""},
@@ -76,13 +76,11 @@ Trả đúng JSON duy nhất như sau – KHÔNG thêm Markdown:
 `.trim();
 }
 
-/* ──────────────── HÀM GỐC – KHÔNG THAY ĐỔI ──────────────── */
+/* ────────────────────── HÀM GỌI GPT ────────────────────── */
 const openai = new OpenAI({ timeout: 60_000 });
 
 export async function analyseKnowdell(args: AnalyseArgs) {
-  const model =
-    args.model || process.env.OPENAI_MODEL || "gpt-3.5-turbo";
-
+  const model = args.model || process.env.OPENAI_MODEL || "gpt-3.5-turbo";
   const prompt = buildPrompt(args);
 
   const resp = await openai.chat.completions.create({
@@ -105,46 +103,59 @@ export async function analyseKnowdell(args: AnalyseArgs) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Wrapper cho route API – TẠO ALIAS `analyseCareer`                          */
+/*  ALIAS analyseCareer  – dùng trong route API                               */
 /* -------------------------------------------------------------------------- */
 
-/** Kiểu đơn giản khớp record từ bảng `career_profiles` */
+/** Kiểu khớp record từ bảng `career_profiles` */
 interface RawProfile {
   holland_profile: Record<string, number> | null;
   knowdell_summary: {
     values?: any[];
     skills?: any[];
     interests?: any[];
+    /** có dự án cũ lưu dưới field ‘careers’ */
+    careers?: any[];
   } | null;
 }
 
+/**
+ * Trả về mảng gợi ý nghề (tối đa 5) dùng cho front-end.
+ * Hàm **không** ném lỗi khi chỉ thiếu interests – thay vào đó trả mảng rỗng
+ * để route API có thể xử lý hợp lệ.
+ */
 export async function analyseCareer(profile: RawProfile) {
-  /* ----- validate đầu vào -------------------------------------- */
-  const interests = profile.knowdell_summary?.interests ?? [];
-  if (!profile.holland_profile || interests.length === 0) {
-    throw new Error("Thiếu Holland profile hoặc sở thích nghề nghiệp");
-  }
+  /* ---------- Lấy 3 chữ Holland mạnh nhất ---------- */
+  if (!profile.holland_profile)
+    throw new Error("Thiếu Holland profile");
 
-  /* ----- lấy TOP-3 mã Holland (VD: “ERS”) ----------------------- */
   const hollandTop3 = Object.entries(profile.holland_profile)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([k]) => k)
     .join("");
 
-  /* ----- gọi hàm GPT chính ------------------------------------- */
-  const args: AnalyseArgs = {
-    mbti: "",                        // MBTI không còn bắt buộc
-    holland: hollandTop3,
-    values: profile.knowdell_summary?.values ?? [],
-    skills: profile.knowdell_summary?.skills ?? [],
-    interests,
-    selectedTitles: [],              // có thể truyền 0-20 nghề yêu thích nếu muốn
-  };
+  /* ---------- Lấy interests ---------- */
+  const raw = profile.knowdell_summary ?? {};
+  const interests =
+    raw.interests && raw.interests.length
+      ? raw.interests
+      : raw.careers && raw.careers.length
+        ? raw.careers
+        : [];
 
-  const result = await analyseKnowdell(args);
+  if (interests.length === 0)
+    throw new Error("Thiếu sở thích nghề nghiệp");
 
-  /* API chỉ cần mảng 5 nghề đầu (lương cao) */
+  /* ---------- Gọi GPT ---------- */
+  const result = await analyseKnowdell({
+    mbti:      "", // MBTI không bắt buộc
+    holland:   hollandTop3,
+    values:    raw.values  ?? [],
+    skills:    raw.skills  ?? [],
+    interests,             // luôn ≥1 phần tử ở bước trên
+    selectedTitles: interests.slice(0, 20),
+  });
+
   return (result.topCareers ?? [])
     .slice(0, 5)
     .map((c: any) => String(c.career || "").trim())
