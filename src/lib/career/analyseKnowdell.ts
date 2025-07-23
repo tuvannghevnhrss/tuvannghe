@@ -113,49 +113,51 @@ interface RawProfile {
     values?: any[];
     skills?: any[];
     interests?: any[];
-    /** có dự án cũ lưu dưới field ‘careers’ */
-    careers?: any[];
   } | null;
 }
 
-/**
- * Trả về mảng gợi ý nghề (tối đa 5) dùng cho front-end.
- * Hàm **không** ném lỗi khi chỉ thiếu interests – thay vào đó trả mảng rỗng
- * để route API có thể xử lý hợp lệ.
- */
 export async function analyseCareer(profile: RawProfile) {
-  /* ---------- Lấy 3 chữ Holland mạnh nhất ---------- */
-  if (!profile.holland_profile)
+  /* ----- bắt buộc phải có Holland ---------------------------------- */
+  if (!profile.holland_profile) {
     throw new Error("Thiếu Holland profile");
+  }
 
+  /* ----- interests: nếu chưa có, vẫn cho phép chạy ----------------- */
+  let interests = profile.knowdell_summary?.interests ?? [];
+
+  /* fallback: lấy TOP-3 giá trị hoặc kỹ năng làm “sở thích” tạm        */
+  if (interests.length === 0) {
+    const tmp =
+      profile.knowdell_summary?.values ??
+      profile.knowdell_summary?.skills ??
+      [];
+    interests = tmp.slice(0, 3).map((v: any) => ({
+      interest_key: typeof v === "string" ? v : v.value_key || v.skill_key,
+    }));
+  }
+
+  /* ----- lấy TOP-3 mã Holland (VD: “ERS”) --------------------------- */
   const hollandTop3 = Object.entries(profile.holland_profile)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([k]) => k)
     .join("");
 
-  /* ---------- Lấy interests ---------- */
-  const raw = profile.knowdell_summary ?? {};
-  const interests =
-    raw.interests && raw.interests.length
-      ? raw.interests
-      : raw.careers && raw.careers.length
-        ? raw.careers
-        : [];
+  /* ----- gọi hàm GPT ----------------------------------------------- */
+  const args: AnalyseArgs = {
+    mbti: "",                          // MBTI không bắt buộc
+    holland: hollandTop3,
+    values: profile.knowdell_summary?.values ?? [],
+    skills: profile.knowdell_summary?.skills ?? [],
+    interests,                         // đã chắc chắn KHÔNG rỗng
+    selectedTitles: interests          // dùng chính interests làm “gợi ý nghề”
+      .slice(0, 20)
+      .map((i: any) => i.interest_key || String(i)),
+  };
 
-  if (interests.length === 0)
-    throw new Error("Thiếu sở thích nghề nghiệp");
+  const result = await analyseKnowdell(args);
 
-  /* ---------- Gọi GPT ---------- */
-  const result = await analyseKnowdell({
-    mbti:      "", // MBTI không bắt buộc
-    holland:   hollandTop3,
-    values:    raw.values  ?? [],
-    skills:    raw.skills  ?? [],
-    interests,             // luôn ≥1 phần tử ở bước trên
-    selectedTitles: interests.slice(0, 20),
-  });
-
+  /* API chỉ trả mảng 5 nghề đầu (lương cao) */
   return (result.topCareers ?? [])
     .slice(0, 5)
     .map((c: any) => String(c.career || "").trim())
