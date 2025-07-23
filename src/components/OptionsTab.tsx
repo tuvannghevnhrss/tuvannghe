@@ -1,101 +1,89 @@
+/* -------------------------------------------------------------------------
+   src/components/OptionsTab.tsx          ⟵ thay thế nguyên file cũ
+   ------------------------------------------------------------------------- */
 "use client";
 
 import { useState } from "react";
 
-/** Hàm bóc dữ liệu gợi ý nghề từ response bất kỳ */
-function pickJobs(payload: any): any[] {
-  if (!payload) return [];
-  if (Array.isArray(payload))        return payload;              // API -> []
-  if (Array.isArray(payload.jobs))   return payload.jobs;         // { jobs: [] }
-  if (Array.isArray(payload.data))   return payload.data;         // { data: [] }
-  if (Array.isArray(payload?.data?.jobs)) return payload.data.jobs;
-  return [];
+interface Props {
+  holland     : string | null;
+  knowdell    : Record<string, any>;
+  canAnalyse  : boolean;
+  initialJobs : string[];
 }
 
 export default function OptionsTab({
   holland,
   knowdell,
-  initialJobs,
   canAnalyse,
-}: {
-  holland    : string | null;
-  knowdell   : any;           // full object (kể cả interests / skills)
-  initialJobs: any[];
-  canAnalyse : boolean;
-}) {
+  initialJobs,
+}: Props) {
+  /* ---------- state ---------- */
   const [loading, setLoading] = useState(false);
-  const [jobs,    setJobs]    = useState(initialJobs);
+  const [jobs,    setJobs]    = useState<string[]>(initialJobs);
   const [error,   setError]   = useState<string | null>(null);
 
-  const analyse = async () => {
-    setLoading(true);
-    setError(null);
+  /* ---------- handlers ---------- */
+  const handleAnalyse = async () => {
+    if (!canAnalyse || loading) return;
+    setLoading(true); setError(null);
+
     try {
-      const res = await fetch("/api/career/analyse", { method: "POST" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const next = pickJobs(data);
-      setJobs(next);
-      if (next.length === 0) setError("Chưa tìm thấy gợi ý phù hợp.");
-    } catch (e:any) {
-      console.error(e);
-      setError("Có lỗi khi phân tích – thử lại sau.");
+      /* Gọi Edge-Function AI – server sẽ:
+         1) phân tích Holland & Knowdell
+         2) lọc nghề thu nhập cao
+         3) trả tối đa 5 gợi ý  */
+      const res = await fetch("/api/career/analyse", {
+        method : "POST",
+        headers: { "Content-Type": "application/json" },
+        body   : JSON.stringify({
+          holland,            // "ECR" | null
+          knowdell,           // object values/skills/interests
+          topN   : 5,         // chỉ cần 5 nghề
+          salary : "high",    // tiêu chí thu nhập tốt
+        }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const data: { jobs: string[] } = await res.json();
+
+      setJobs(data.jobs);
+      if (data.jobs.length === 0) setError("Chưa tìm thấy gợi ý phù hợp.");
+    } catch (err: any) {
+      console.error(err);
+      setError("Phân tích thất bại, vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* tiện ích hiển thị ---------------------------------------------------- */
-  const Missing = ({ label }: { label: string }) => (
-    <li>
-      Hoàn thành&nbsp;
-      <span className="font-medium text-indigo-600">{label}</span>
-      &nbsp;và thanh toán
-    </li>
-  );
+  /* ---------- render ---------- */
+  if (!canAnalyse)
+    return (
+      <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-6 text-center">
+        <p>
+          Bạn cần hoàn tất <strong>Holland</strong> &amp;{" "}
+          <strong>Knowdell</strong> để sử dụng tính năng phân tích nghề nghiệp.
+        </p>
+      </div>
+    );
 
   return (
-    <div className="space-y-6">
-      {/* nút hoặc thông báo chưa đủ dữ liệu */}
-      {canAnalyse ? (
-        <button
-          onClick={analyse}
-          disabled={loading}
-          className="rounded bg-indigo-600 px-6 py-3 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
-        </button>
-      ) : (
-        <div className="rounded border border-yellow-400 bg-yellow-50 p-4 text-sm leading-relaxed">
-          <p className="font-medium">Bạn chưa hoàn tất các đánh giá cần thiết:</p>
-          <ul className="ml-5 list-disc space-y-1">
-            {!holland  && <Missing label="Holland" />}
-            {!knowdell && <Missing label="Knowdell" />}
-          </ul>
-          <p className="mt-2">
-            Khi đã có&nbsp;
-            <b>Holland</b>&nbsp;và&nbsp;<b>Knowdell</b>, nhấn
-            &nbsp;<em>“Phân tích kết hợp”</em>&nbsp;để nhận gợi&nbsp;ý nghề nghiệp.
-          </p>
-        </div>
-      )}
+    <div className="space-y-4">
+      <button
+        onClick={handleAnalyse}
+        disabled={loading}
+        className="rounded bg-indigo-600 px-6 py-2 text-white disabled:opacity-50"
+      >
+        {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
+      </button>
 
-      {/* thông báo lỗi nếu có */}
       {error && <p className="text-red-600">{error}</p>}
 
-      {/* danh sách gợi ý nghề */}
       {jobs.length > 0 && (
-        <ul className="space-y-3">
-          {jobs.map((j: any) => (
-            <li
-              key={j.id ?? j.title}
-              className="rounded border bg-white p-4 shadow-sm"
-            >
-              <h3 className="font-semibold">{j.title}</h3>
-              {j.snippet && (
-                <p className="mt-1 text-sm text-gray-600">{j.snippet}</p>
-              )}
-            </li>
+        <ul className="list-disc list-inside space-y-1 text-sm">
+          {jobs.map((j) => (
+            <li key={j}>{j}</li>
           ))}
         </ul>
       )}
