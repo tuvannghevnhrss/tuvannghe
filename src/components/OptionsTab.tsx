@@ -26,30 +26,33 @@ export default function OptionsTab({
   /* ---------- handlers ---------- */
   const handleAnalyse = async () => {
     if (!canAnalyse || loading) return;
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
 
     try {
-      /* Gọi Edge-Function AI – server sẽ:
-         1) phân tích Holland & Knowdell
-         2) lọc nghề thu nhập cao
-         3) trả tối đa 5 gợi ý  */
       const res = await fetch("/api/career/analyse", {
-        method : "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({
-          holland,            // "ECR" | null
-          knowdell,           // object values/skills/interests
-          topN   : 5,         // chỉ cần 5 nghề
-          salary : "high",    // tiêu chí thu nhập tốt
+        body: JSON.stringify({
+          holland,
+          knowdell,
+          topN: 5,
+          salary: "high",
         }),
       });
 
       if (!res.ok) throw new Error(await res.text());
-      const data: { jobs: string[] } = await res.json();
+  
+      /* API có thể trả { jobs } hoặc { suggestions } */
+      const data = await res.json();
+      const list: string[] =
+        data.jobs ??
+        data.suggestions ??
+        (Array.isArray(data) ? data : []);
 
-      setJobs(data.jobs);
-      if (data.jobs.length === 0) setError("Chưa tìm thấy gợi ý phù hợp.");
-    } catch (err: any) {
+      setJobs(list);
+      if (list.length === 0) setError("Chưa tìm thấy gợi ý phù hợp.");
+    } catch (err) {
       console.error(err);
       setError("Phân tích thất bại, vui lòng thử lại.");
     } finally {
