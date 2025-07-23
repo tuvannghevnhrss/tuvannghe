@@ -28,22 +28,41 @@ function toDict<T extends { [k: string]: any }>(
   );
 }
 /** item Knowdell → text (ưu tiên tra từ điển) */
-function toText(arr: any[] | undefined, dicts: Record<string,string>[]) {
+function toText(
+  arr: any[] | any | undefined,
+  dicts: Record<string, string>[],
+) {
   const out: string[] = [];
-  (arr ?? []).forEach((it) => {
+
+  /* bảo đảm luôn lặp trên mảng */
+  const items = Array.isArray(arr) ? arr : arr ? [arr] : [];
+
+  items.forEach((it) => {
     if (typeof it === "string") return out.push(it);
 
-    for (const k of ["value_key","skill_key","interest_key","value","name_vi"]) {
-      if (it[k]) {
+    for (const k of [
+      "value_key",
+      "skill_key",
+      "interest_key",
+      "value",
+      "name_vi",
+    ]) {
+      if (it && it[k]) {
         const key = it[k] as string;
         const vi =
-          dicts.reduce<string|undefined>((acc,d)=>acc ?? d[key],undefined) ?? key;
+          dicts.reduce<string | undefined>(
+            (acc, d) => acc ?? d[key],
+            undefined,
+          ) ?? key;
         return out.push(vi);
       }
     }
-    const first = Object.values(it).find(v => typeof v === "string");
-    out.push(typeof first === "string" ? first : JSON.stringify(it));
+
+    /* fallback an-toàn, tránh JSON.stringify gây lỗi */
+    const first = it && Object.values(it).find((v) => typeof v === "string");
+    out.push(typeof first === "string" ? first : String(it));
   });
+
   return Array.from(new Set(out));
 }
 
@@ -230,27 +249,45 @@ function Header({code,intro}:{code:string;intro?:string}){
     {intro && <p className="text-sm leading-relaxed">{intro}</p>}
   </>;
 }
-function TraitGrid({traits,strengths,weaknesses,improvements,careers,labels}:{
-  traits?:any[]; strengths?:any[]; weaknesses?:any[]; improvements?:any[]; careers?:any[];
-  labels:string[];
-}){
+function TraitGrid({
+  traits,
+  strengths,
+  weaknesses,
+  improvements,
+  careers,
+  labels,
+}: {
+  traits?: any[];
+  strengths?: any[];
+  weaknesses?: any[];
+  improvements?: any[];
+  careers?: any[];
+  labels: string[];
+}) {
   const lists = [
-    toText(traits,[]),
-    toText(strengths,[]),
-    toText(weaknesses,[]),
-    toText(improvements,[]),
-    toText(careers,[]),
+    toText(traits, []),
+    toText(strengths, []),
+    toText(weaknesses, []),
+    toText(improvements, []),
+    toText(careers, []),
   ];
+
   return (
     <div className="space-y-6">
-      {lists.map((items,i)=>items.length>0 && (
-        <div key={i}>
-          <h4 className="mb-1 font-semibold">{labels[i]}</h4>
-          <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
-            {items.map(t=><li key={t}>{t}</li>)}
-          </ul>
-        </div>
-      ))}
+      {lists.map(
+        (items, i) =>
+          items.length > 0 && (
+            <div key={i}>
+              {/* dùng nhãn an-toàn ngay cả khi labels thiếu phần tử */}
+              <h4 className="mb-1 font-semibold">{labels[i] ?? ""}</h4>
+              <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
+                {items.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          ),
+      )}
     </div>
   );
 }
