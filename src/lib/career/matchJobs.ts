@@ -33,7 +33,7 @@ export async function suggestJobs(p: Profile) {
 
       /* MBTI khớp (30đ) */
       if (j.mbti_types?.includes(p.mbti)) {
-        score += 30;
+        score += 0;
         reasons.push(`MBTI trùng nhóm **${p.mbti}**`);
       }
 

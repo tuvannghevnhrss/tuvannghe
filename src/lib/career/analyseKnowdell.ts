@@ -35,10 +35,9 @@ function buildPrompt(a: AnalyseArgs) {
     .join("\n");
 
   return `
-Bạn là chuyên gia hướng nghiệp 10+ năm kinh nghiệm, thành thạo MBTI, RIASEC (Holland) và Knowdell.
+Bạn là chuyên gia hướng nghiệp 10+ năm kinh nghiệm, thành thạo RIASEC (Holland) và Knowdell.
 
 ## Hồ sơ khách hàng
-MBTI: ${a.mbti}
 RIASEC: ${a.holland}
 
 ### Giá trị nghề nghiệp (TOP 10)
@@ -52,7 +51,7 @@ ${careers}
 
 ## Yêu cầu
 1. Tóm tắt khung tính cách (≤120 chữ).
-2. Đánh giá mức phù hợp cho từng nghề (Rất phù hợp/Phù hợp/Ít phù hợp) + lý do ngắn (trích dẫn MBTI/RIASEC/Value/Skill).
+2. Đánh giá mức phù hợp cho từng nghề (Rất phù hợp/Phù hợp/Ít phù hợp) + lý do ngắn (trích dẫn RIASEC/Value/Skill).
 3. Bảng TOP 5 nghề (điểm cao nhất) gồm: lương khởi điểm (triệu VND/tháng, median), lộ trình 3 giai đoạn và kỹ năng/chứng chỉ nên bổ sung.
 
 ### Định dạng trả lời
@@ -111,7 +110,6 @@ export async function analyseKnowdell(args: AnalyseArgs) {
 
 /** Kiểu đơn giản khớp record từ bảng `career_profiles` */
 interface RawProfile {
-  mbti_type: string | null;
   holland_profile: Record<string, number> | null;
   knowdell_summary: {
     values?: any[];
@@ -125,8 +123,8 @@ interface RawProfile {
  * Nhận object thô từ Supabase và chuyển thành `AnalyseArgs`
  */
 export async function analyseCareer(profile: RawProfile) {
-  if (!profile.mbti_type || !profile.holland_profile) {
-    throw new Error("Thiếu MBTI hoặc Holland profile");
+  if (!profile.holland_profilee || !interests?.length) {
+    throw new Error("Thiếu Holland profile hoặc sở thích nghề nghiệp");
   }
 
   /* Lấy TOP-3 điểm Holland */
@@ -137,7 +135,6 @@ export async function analyseCareer(profile: RawProfile) {
     .join("");
 
   const args: AnalyseArgs = {
-    mbti: profile.mbti_type,
     holland: hollandTop3,
     values: profile.knowdell_summary?.values ?? [],
     skills: profile.knowdell_summary?.skills ?? [],
