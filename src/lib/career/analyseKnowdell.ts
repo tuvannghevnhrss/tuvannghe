@@ -107,8 +107,11 @@ export async function analyseKnowdell(args: AnalyseArgs) {
 /* -------------------------------------------------------------------------- */
 
 /** Kiểu khớp record từ bảng `career_profiles` */
+/* -------------------------------------------------------------------------- */
+/*  ALIAS analyseCareer – dùng trong route API                                */
+/* -------------------------------------------------------------------------- */
 interface RawProfile {
-  holland_profile: Record<string, number> | null;
+  holland_profile : Record<string, number> | null;
   knowdell_summary: {
     values?: any[];
     skills?: any[];
@@ -117,50 +120,51 @@ interface RawProfile {
 }
 
 export async function analyseCareer(profile: RawProfile) {
-  /* ----- bắt buộc phải có Holland ---------------------------------- */
-  if (!profile.holland_profile) {
+  /* ----- lấy dữ liệu gốc -------------------------------------------------- */
+  const hollandProfile = profile.holland_profile;
+  const values         = profile.knowdell_summary?.values     ?? [];
+  const skills         = profile.knowdell_summary?.skills     ?? [];
+  const rawInterests   = profile.knowdell_summary?.interests  ?? [];
+
+  if (!hollandProfile) {
     throw new Error("Thiếu Holland profile");
   }
 
-  /* ----- interests: nếu chưa có, vẫn cho phép chạy ----------------- */
-  let interests = profile.knowdell_summary?.interests ?? [];
+  /* ----- bảo đảm có danh sách “interests” --------------------------------- */
+  const interests = (rawInterests.length > 0 ? rawInterests : values.slice(0, 3))
+    .map((it: any) =>
+      typeof it === "string"
+        ? it
+        : it.interest_key || it.value_key || it.skill_key || it.vi || it.en || "",
+    )
+    .filter(Boolean);
 
-  /* fallback: lấy TOP-3 giá trị hoặc kỹ năng làm “sở thích” tạm        */
   if (interests.length === 0) {
-    const tmp =
-      profile.knowdell_summary?.values ??
-      profile.knowdell_summary?.skills ??
-      [];
-    interests = tmp.slice(0, 3).map((v: any) => ({
-      interest_key: typeof v === "string" ? v : v.value_key || v.skill_key,
-    }));
+    throw new Error("Thiếu sở thích nghề nghiệp");
   }
 
-  /* ----- lấy TOP-3 mã Holland (VD: “ERS”) --------------------------- */
-  const hollandTop3 = Object.entries(profile.holland_profile)
+  /* ----- TOP-3 Holland, VD: “ERS” ----------------------------------------- */
+  const hollandTop3 = Object.entries(hollandProfile)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([k]) => k)
     .join("");
 
-  /* ----- gọi hàm GPT ----------------------------------------------- */
+  /* ----- gọi GPT ---------------------------------------------------------- */
   const args: AnalyseArgs = {
-    mbti: "",                          // MBTI không bắt buộc
-    holland: hollandTop3,
-    values: profile.knowdell_summary?.values ?? [],
-    skills: profile.knowdell_summary?.skills ?? [],
-    interests,                         // đã chắc chắn KHÔNG rỗng
-    selectedTitles: interests          // dùng chính interests làm “gợi ý nghề”
-      .slice(0, 20)
-      .map((i: any) => i.interest_key || String(i)),
+    mbti: "",             // MBTI không bắt buộc
+    holland : hollandTop3,
+    values,
+    skills,
+    interests,
+    selectedTitles: interests.slice(0, 20),  // truyền chính list nghề ưa thích
   };
 
   const result = await analyseKnowdell(args);
 
-  /* API chỉ trả mảng 5 nghề đầu (lương cao) */
+  /* ----- rút gọn 5 nghề & trả về ----------------------------------------- */
   return (result.topCareers ?? [])
     .slice(0, 5)
     .map((c: any) => String(c.career || "").trim())
     .filter(Boolean);
-  return result;
 }
