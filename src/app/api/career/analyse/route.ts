@@ -1,47 +1,65 @@
 /* ------------------------------------------------------------------------- *
    API  POST /api/career/analyse
- * ------------------------------------------------------------------------- */
+   ------------------------------------------------------------------------- */
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import type { Database } from "@/types/supabase";
 import { analyseCareer } from "@/lib/career/analyseKnowdell";
 
-export const runtime  = "edge";          // khai báo đúng 1 lần
+export const runtime  = "edge";          // khai báo 1 lần duy nhất
 export const dynamic  = "force-dynamic";
 
+/* -------------------------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
-    /* ---------- tham số tuỳ chọn từ client ---------- */
-    const { topN = 5 } = (await req.json().catch(() => ({}))) as {
-      topN?: number;
-    };
+    /* 1 ▸ khởi tạo Supabase (Edge không có cookies → truyền mảng rỗng) */
+    const supabase = createRouteHandlerClient<Database>({ cookies: [] });
 
-    /* ---------- Supabase ---------- */
-    const supabase = createRouteHandlerClient<Database>({ cookies });
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user)
-      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+    /* 2 ▸ kiểm tra đăng nhập */
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const { data: profile } = await supabase
+    /* 3 ▸ truy xuất hồ sơ gốc: chỉ cần holland_profile + knowdell_summary */
+    const { data: rawProfile, error } = await supabase
       .from("career_profiles")
       .select("holland_profile, knowdell_summary")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!profile)
-      return NextResponse.json(
-        { error: "Chưa có dữ liệu hồ sơ" },
-        { status: 400 },
-      );
+    if (error) throw error;
+    if (!rawProfile) {
+      return NextResponse.json({ error: "Chưa có dữ liệu hồ sơ." }, { status: 404 });
+    }
 
-    /* ---------- Gọi hàm GPT ---------- */
-    let suggestions = await analyseCareer(profile);
-    if (topN > 0) suggestions = suggestions.slice(0, topN);
+    /* 4 ▸ đảm bảo có danh sách SỞ THÍCH (knowdell_interests) ------------- */
+    let interests = rawProfile.knowdell_summary?.interests ?? [];
 
-    /* ---------- Lưu lại DB ---------- */
+    if (interests.length === 0) {
+      /* lấy TOP sở thích đã lưu ở bảng knowdell_interests (nếu có) */
+      const { data: intRows } = await supabase
+        .from("knowdell_interests")
+        .select("interest_key")
+        .eq("user_id", user.id)
+        .order("rank", { ascending: true });
+
+      interests = (intRows ?? []).map((r) => ({ interest_key: r.interest_key }));
+    }
+
+    /* 5 ▸ ráp profile tối thiểu để phân tích ----------------------------- */
+    const profile = {
+      holland_profile   : rawProfile.holland_profile,
+      knowdell_summary  : {
+        ...(rawProfile.knowdell_summary ?? {}),
+        interests,                           // đã đảm bảo ≠ []
+      },
+    };
+
+    /* 6 ▸ gọi GPT phân tích (chỉ dựa trên Holland + Knowdell) ------------ */
+    const suggestions = await analyseCareer(profile);
+
+    /* 7 ▸ lưu lại gợi ý & phản hồi cho client ---------------------------- */
     await supabase
       .from("career_profiles")
       .update({ suggested_jobs: suggestions })
