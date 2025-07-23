@@ -2,49 +2,87 @@
    API  POST /api/career/analyse
  * ------------------------------------------------------------------------- */
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import type { Database } from "@/types/supabase";
 import { analyseCareer } from "@/lib/career/analyseKnowdell";
 
-export const runtime = "edge";           // ❗ chỉ Khai báo 1 lần, tránh lỗi build
-export const dynamic = "force-dynamic";  // (có thể giữ, không ảnh hưởng)
+export const runtime  = "edge";          // ❗ chỉ KHAI BÁO 1 lần
+export const dynamic  = "force-dynamic";
 
+/* ------------------------------------------------------------------------- */
 export async function POST(req: Request) {
   try {
-    /* ----------- Lấy body ----------- */
-    const { holland, knowdell, topN = 5, salary = "high" } = await req.json();
+    /* ---------- 1. Lấy body ---------- */
+    const body = await req.json();
+    const {
+      holland: hollandCodeOrNull,        // chuỗi 3-ký-tự hoặc null
+      knowdell = {},
+      topN   = 5,
+      salary = "high",
+    } = body;
 
-    /** ❶ Validate tối thiểu – chỉ cần Holland & danh sách HỨNG THÚ  */
-    const interests =
-      knowdell?.interests ??
-      knowdell?.careers ??           // phòng trường hợp mảng tên careers
+    /* ---------- 2. Lấy Supabase + user ---------- */
+    const supabase = createRouteHandlerClient<Database>({ cookies });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    /* ---------- 3. Lấy holland_profile (object điểm) ---------- */
+    let hollandProfile: Record<string, number> | null = null;
+
+    // 3.1  Nếu client đã gửi object hoàn chỉnh
+    if (
+      hollandCodeOrNull &&
+      typeof hollandCodeOrNull === "object" &&
+      Object.values(hollandCodeOrNull).every((v) => typeof v === "number")
+    ) {
+      hollandProfile = hollandCodeOrNull;
+    }
+
+    // 3.2  Nếu client chỉ gửi chuỗi (ECR …) → tra DB lấy profile
+    if (!hollandProfile) {
+      const { data: profile } = await supabase
+        .from("career_profiles")
+        .select("holland_profile")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      hollandProfile = profile?.holland_profile ?? null;
+    }
+
+    /* ---------- 4. Lấy interests ---------- */
+    const interests: string[] =
+      knowdell.interests ??
+      knowdell.careers ??     // fallback khi client đặt tên careers
       [];
 
-    if (!holland || interests.length === 0)
-      /* thông điệp ngắn gọn để client hiển thị */
+    /* ---------- 5. Ràng buộc tối thiểu ---------- */
+    if (!hollandProfile || interests.length === 0) {
       return NextResponse.json(
-        { error: "Thiếu Holland hoặc sở thích nghề nghiệp." },
+        { error: "Thiếu Holland profile hoặc sở thích nghề nghiệp." },
         { status: 400 },
       );
+    }
 
-    /* ----------- Gọi hàm phân tích ----------- */
+    /* ---------- 6. Phân tích ---------- */
     const suggestions = await analyseCareer({
-      holland,            // chuỗi 3-ký-tự (ECR, ISR…)
-      knowdell: {         // chỉ truyền 3 nhóm cần thiết
-        values:     knowdell.values     ?? [],
-        skills:     knowdell.skills     ?? [],
-        interests,                         // vừa lấy ở trên
+      holland: hollandProfile,   // ✅ truyền object điểm
+      knowdell: {
+        values:     knowdell.values ?? [],
+        skills:     knowdell.skills ?? [],
+        interests,
       },
       topN,
       salary,
     });
 
-    /* ----------- Lưu & trả kết quả ----------- */
-    const supabase = createRouteHandlerClient<Database>({ cookies: [] });
+    /* ---------- 7. Lưu & trả kết quả ---------- */
     await supabase
       .from("career_profiles")
       .update({ suggested_jobs: suggestions })
-      .eq("user_id", (await supabase.auth.getUser()).data.user?.id);
+      .eq("user_id", user.id);
 
     return NextResponse.json({ jobs: suggestions });
   } catch (err: any) {
