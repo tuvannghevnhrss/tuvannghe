@@ -82,14 +82,14 @@ const openai = new OpenAI({ timeout: 60_000 });
 
 export async function analyseKnowdell(args: AnalyseArgs) {
   const model =
-    args.model || process.env.OPENAI_MODEL || "gpt-4o-mini";
+    args.model || process.env.OPENAI_MODEL || "gpt-3.5-turbo";
 
   const prompt = buildPrompt(args);
 
   const resp = await openai.chat.completions.create({
     model,
-    temperature: 0.7,
-    max_tokens: 1200,
+    temperature: 0.3,
+    max_tokens: 800,
     messages: [
       { role: "system", content: "Bạn luôn trả về JSON hợp lệ duy nhất." },
       { role: "user",   content: prompt },
