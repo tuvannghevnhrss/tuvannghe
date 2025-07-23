@@ -7,7 +7,11 @@ import { useState } from "react";
 
 interface Props {
   holland     : string | null;
-  knowdell    : Record<string, any>;
+  knowdell    : {
+    values: string[];
+    skills: string[];
+    interests: string[];
+  };
   canAnalyse  : boolean;
   initialJobs : string[];
 }

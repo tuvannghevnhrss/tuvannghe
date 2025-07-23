@@ -109,6 +109,13 @@ export default async function Profile({
   const valuesVI    = toText(kb.values,    [VALUE_DICT]);
   const skillsVI    = toText(kb.skills,    [SKILL_DICT]);
   const interestsVI = toText(kb.interests, [INTEREST_DICT]);
+  
+  const knowdellClean = {
+    values:     valuesVI,
+    skills:     skillsVI,
+    interests:  interestsVI,
+  };	
+
 
   /* 5 ▸ Holland */
   type Radar = { name: string; score: number };
@@ -242,7 +249,7 @@ export default async function Profile({
       {step === "options" && (
         <OptionsTab
           holland={hollCode}
-          knowdell={kb}
+          knowdell={knowdellClean}
           canAnalyse={canAnalyse}
           initialJobs={profile.suggested_jobs ?? []}
         />
