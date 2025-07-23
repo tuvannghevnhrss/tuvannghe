@@ -27,14 +27,13 @@ function toDict<T extends { [k: string]: any }>(
     (rows ?? []).map((r) => [r[keyField] as string, r.vi as string]),
   );
 }
+
 /** item Knowdell → text (ưu tiên tra từ điển) */
 function toText(
   arr: any[] | any | undefined,
   dicts: Record<string, string>[],
 ) {
   const out: string[] = [];
-
-  /* bảo đảm luôn lặp trên mảng */
   const items = Array.isArray(arr) ? arr : arr ? [arr] : [];
 
   items.forEach((it) => {
@@ -57,8 +56,6 @@ function toText(
         return out.push(vi);
       }
     }
-
-    /* fallback an-toàn, tránh JSON.stringify gây lỗi */
     const first = it && Object.values(it).find((v) => typeof v === "string");
     out.push(typeof first === "string" ? first : String(it));
   });
@@ -69,12 +66,14 @@ function toText(
 /* ────────── PAGE ────────── */
 export default async function Profile({
   searchParams,
-}:{searchParams?:{ step?: string }}) {
+}: {
+  searchParams?: { step?: string };
+}) {
   const step = searchParams?.step ?? "trait";
 
   /* 1 ▸ auth */
   const supabase = createServerComponentClient<Database>({ cookies });
-  const { data:{ user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Vui lòng đăng nhập.</p>;
 
   /* 2 ▸ hồ sơ */
@@ -91,10 +90,10 @@ export default async function Profile({
     .maybeSingle();
   if (!profile) return <p className="p-6">Chưa có dữ liệu hồ sơ.</p>;
 
-  /* 3 ▸ lookup dict (Knowdell) – luôn load 1 lần để dùng cho tab 1 + 2 */
+  /* 3 ▸ lookup dict (Knowdell) */
   const [valRows, skillRows, intRows] = await Promise.all([
-    supabase.from("lookup_values")   .select("value_key, vi"),
-    supabase.from("lookup_skills")   .select("skill_key , vi"),
+    supabase.from("lookup_values").select("value_key, vi"),
+    supabase.from("lookup_skills").select("skill_key , vi"),
     supabase.from("lookup_interests").select("interest_key, vi"),
   ]);
   const VALUE_DICT    = toDict(valRows.data,   "value_key");
@@ -112,22 +111,28 @@ export default async function Profile({
   const interestsVI = toText(kb.interests, [INTEREST_DICT]);
 
   /* 5 ▸ Holland */
-  type Radar = { name:string; score:number };
-  const hollandRadar:Radar[] = [];
-  let hollCode:string|null = null;
+  type Radar = { name: string; score: number };
+  const hollandRadar: Radar[] = [];
+  let hollCode: string | null = null;
   if (profile.holland_profile) {
-    Object.entries(profile.holland_profile).forEach(([n,s]) =>
-      hollandRadar.push({ name:n, score:s as number })
+    Object.entries(profile.holland_profile).forEach(([n, s]) =>
+      hollandRadar.push({ name: n, score: s as number }),
     );
     hollCode = hollandRadar
-      .sort((a,b)=>b.score-a.score).slice(0,3).map(o=>o.name).join("");
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((o) => o.name)
+      .join("");
   }
   const hollandSections = hollCode
-    ? hollCode.split("").map(l=>({ code:l, info:HOLLAND_MAP[l as keyof typeof HOLLAND_MAP] }))
+    ? hollCode.split("").map((l) => ({
+        code: l,
+        info: HOLLAND_MAP[l as keyof typeof HOLLAND_MAP],
+      }))
     : [];
 
-  /* 6 ▸ MBTI (chỉ cho tab 1, không bắt buộc cho phân tích) */
-  const mbtiCode:string|null = profile.mbti_type ?? null;
+  /* 6 ▸ MBTI */
+  const mbtiCode: string | null = profile.mbti_type ?? null;
   const mbtiInfo = mbtiCode && MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP];
 
   /* 7 ▸ thanh toán & quyền dùng tab Options */
@@ -136,13 +141,13 @@ export default async function Profile({
     .select("product")
     .eq("user_id", user.id)
     .eq("status", "paid");
-  const paidSet = new Set((payments ?? []).map(p=>p.product));
+  const paidSet       = new Set((payments ?? []).map((p) => p.product));
   const haveResult    = !!profile.holland_profile && !!kb.interests;
-  const havePaidCombo = ["holland","knowdell"].every(p=>paidSet.has(p));
+  const havePaidCombo = ["holland", "knowdell"].every((p) => paidSet.has(p));
   const canAnalyse    = haveResult || havePaidCombo;
 
-  /* 8 ▸ mục tiêu, hành động (tabs 3-4) */
-  const [{ data: goal },{ data: actions }] = await Promise.all([
+  /* 8 ▸ mục tiêu, hành động */
+  const [{ data: goal }, { data: actions }] = await Promise.all([
     supabase
       .from("career_goals")
       .select("what, why")
@@ -152,7 +157,7 @@ export default async function Profile({
       .from("career_actions")
       .select("*")
       .eq("user_id", user.id)
-      .order("deadline",{ ascending:true }),
+      .order("deadline", { ascending: true }),
   ]);
 
   /* ────────── render ────────── */
@@ -162,49 +167,58 @@ export default async function Profile({
       <StepTabs current={step} />
 
       {/* TAB 1 – Đặc tính */}
-      {step==="trait" && (
+      {step === "trait" && (
         <section className="space-y-6">
-          {/* MBTI ───────────────────── */}
+          {/* MBTI */}
           <TraitCard title="MBTI">
             {mbtiCode ? (
               <>
-                <Header code={mbtiCode} intro={mbtiInfo?.intro}/>
+                <Header code={mbtiCode} intro={mbtiInfo?.intro} />
                 <TraitGrid
                   strengths={mbtiInfo?.strengths}
                   weaknesses={mbtiInfo?.flaws}
                   careers={mbtiInfo?.careers}
-                  labels={["💪 Thế mạnh","⚠️ Điểm yếu","🎯 Nghề phù hợp"]}
+                  labels={["💪 Thế mạnh", "⚠️ Điểm yếu", "🎯 Nghề phù hợp"]}
                 />
               </>
-            ) : <EmptyLink label="MBTI" href="/mbti"/>}
+            ) : (
+              <EmptyLink label="MBTI" href="/mbti" />
+            )}
           </TraitCard>
 
-          {/* Holland ────────────────── */}
+          {/* Holland */}
           <TraitCard title="Holland">
             {hollCode ? (
               <>
-                {hollandSections.map(({code,info})=>info && (
-                  <div key={code} className="mb-8 first:mt-0">
-                    <Header code={code} intro={info.intro}/>
-                    <TraitGrid
-                      traits={info.traits}
-                      strengths={info.strengths}
-                      weaknesses={info.weaknesses}
-                      improvements={info.improvements}
-                      careers={info.careers}
-                    />
+                {hollandSections.map(
+                  ({ code, info }) =>
+                    info && (
+                      <div key={code} className="mb-8 first:mt-0">
+                        <Header code={code} intro={info.intro} />
+                        <TraitGrid
+                          traits={info.traits}
+                          strengths={info.strengths}
+                          weaknesses={info.weaknesses}
+                          improvements={info.improvements}
+                          careers={info.careers}
+                        />
+                      </div>
+                    ),
+                )}
+                {hollandRadar.length > 0 && (
+                  <div className="mt-6">
+                    <HollandRadar data={hollandRadar} />
                   </div>
-                ))}
-                {hollandRadar.length>0 && (
-                  <div className="mt-6"><HollandRadar data={hollandRadar}/></div>
                 )}
               </>
-            ) : <EmptyLink label="Holland" href="/holland"/>}
+            ) : (
+              <EmptyLink label="Holland" href="/holland" />
+            )}
           </TraitCard>
 
-          {/* Knowdell ───────────────── */}
+          {/* Knowdell */}
           <TraitCard title="Knowdell">
-            {valuesVI.length||skillsVI.length||interestsVI.length ? (
+            {valuesVI.length || skillsVI.length || interestsVI.length ? (
               <TraitGrid
                 strengths={valuesVI}
                 weaknesses={skillsVI}
@@ -215,13 +229,15 @@ export default async function Profile({
                   "🎈 Sở thích nghề nghiệp",
                 ]}
               />
-            ):<EmptyLink label="Knowdell" href="/knowdell"/>}
+            ) : (
+              <EmptyLink label="Knowdell" href="/knowdell" />
+            )}
           </TraitCard>
         </section>
       )}
 
       {/* TAB 2 – Lựa chọn nghề */}
-      {step==="options" && (
+      {step === "options" && (
         <OptionsTab
           holland={hollCode}
           knowdell={kb}
@@ -230,15 +246,18 @@ export default async function Profile({
         />
       )}
 
-      {/* TAB 3,4 – giữ nguyên */}
-      {step==="focus" && <FocusTab existingGoal={goal ?? null}/>}
-      {step==="plan"  && <PlanTab  actions={actions ?? []}/> }
+      {/* TAB 3 & 4 */}
+      {step === "focus" && <FocusTab existingGoal={goal ?? null} />}
+      {step === "plan" && <PlanTab actions={actions ?? []} />}
     </div>
   );
 }
 
 /* ---------- view helpers ---------- */
-function TraitCard({ title, children }: React.PropsWithChildren<{ title: string }>) {
+function TraitCard({
+  title,
+  children,
+}: React.PropsWithChildren<{ title: string }>) {
   return (
     <div className="space-y-3 rounded-lg border bg-white p-6 shadow">
       <h2 className="text-xl font-semibold">{title}</h2>
@@ -255,7 +274,7 @@ function Header({ code, intro }: { code: string; intro?: string }) {
   );
 }
 
-/** Hiển thị 1-5 danh sách theo chiều dọc - labels tự động hoặc tuỳ truyền */
+/** Hiển thị 1-5 danh sách theo chiều dọc */
 function TraitGrid({
   traits,
   strengths,
@@ -275,7 +294,6 @@ function TraitGrid({
   weaknesses?: any[];
   improvements?: any[];
   careers?: any[];
-  /** cho phép KHÔNG truyền – đã có giá trị mặc định */
   labels?: string[];
 }) {
   const lists = [
@@ -314,9 +332,4 @@ function EmptyLink({ label, href }: { label: string; href: string }) {
       </Link>
     </p>
   );
-}
-function EmptyLink({label,href}:{label:string;href:string}){
-  return <p className="italic text-gray-500">
-    Chưa làm <Link href={href} className="text-indigo-600 underline">{label}</Link>
-  </p>;
 }
