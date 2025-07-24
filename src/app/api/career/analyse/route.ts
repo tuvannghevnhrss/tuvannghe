@@ -1,87 +1,71 @@
 /* -------------------------------------------------------------------------
-   POST /api/career/analyse       (Edge Runtime)
+   POST /api/career/analyse            Edge Runtime
    ------------------------------------------------------------------------ */
 import { NextResponse } from "next/server";
-import { callGPT, AnalyseArgs } from "@/lib/career/analyseKnowdell";
+import { analyseCareer } from "@/lib/career/analyseKnowdell";
 import type { Database } from "@/types/supabase";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
-/* ---------- Helper tạo Supabase – gọi TRONG handler ---------- */
-async function getServiceClient() {
-  /* dynamic import để tránh chạy khi build */
-  const { createClient } = await import("@supabase/supabase-js");
-
-  const url  = process.env.SUPABASE_URL;
-  const key  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    throw new Error(
-      "Thiếu SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trong biến môi trường"
-    );
+/* ------------------------------------------------------------------ */
+async function safeJson(req: Request) {
+  if (req.headers.get("content-type")?.includes("application/json")) {
+    const text = await req.text();
+    if (text.trim().length) return JSON.parse(text);
   }
-
-  return createClient<Database>(url, key, {
-    auth: { persistSession: false },
-  });
+  return null;               // body rỗng hoặc sai header
 }
+/* ------------------------------------------------------------------ */
 
-/* ---------- Route handler ---------- */
 export async function POST(req: Request) {
   try {
-    /* 1 ⟩ Lấy dữ liệu body */
-    const { holland, knowdell = {}, topN = 5 } = await req.json();
-
-    const interests = knowdell.interests ?? [];
-    if (!holland || holland.length < 3 || interests.length === 0) {
+    /* 1 ⟩ Parse */
+    const payload = await safeJson(req);
+    if (!payload) {
       return NextResponse.json(
-        { error: "Thiếu Holland hoặc danh sách nghề hứng thú." },
+        { error: "Request body must be JSON." },
         { status: 400 },
       );
     }
 
-    /* 2 ⟩ Chuẩn hoá tham số & gọi GPT */
-    const args: AnalyseArgs = {
-      mbti  : "",
-      holland: holland.slice(0, 3).toUpperCase(),
-      values:  knowdell.values  ?? [],
-      skills:  knowdell.skills  ?? [],
-      interests,
-      selectedTitles: interests
-        .slice(0, 20)
-        .map((it: any) => it.interest_key || it.value_key || it),
-    };
+    /* 2 ⟩ Lấy dữ liệu & validate */
+    const { holland, knowdell = {} } = payload;
+    if (!holland || !knowdell.interests?.length) {
+      return NextResponse.json(
+        { error: "Thiếu Holland hoặc Knowdell.interests" },
+        { status: 400 },
+      );
+    }
 
-    const gpt = await callGPT(args);
+    /* 3 ⟩ Gọi hàm phân tích */
+    const suggestions = await analyseCareer({
+      holland_profile: { [holland[0]]: 1, [holland[1]]: 1, [holland[2]]: 1 },
+      knowdell_summary: knowdell,
+    });
 
-    /* 3 ⟩ Lấy TOP-N nghề */
-    const jobs = (gpt.topCareers ?? [])
-      .slice(0, topN)
-      .map((c: any) => String(c.career || "").trim())
-      .filter(Boolean);
+    /* 4 ⟩ Lưu vào Supabase (nếu user đã login) */
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient<Database>(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } },
+    );
 
-    /* 4 ⟩ Ghi lại suggested_jobs  */
-    const supabase = await getServiceClient();
     const { data: { user } } = await supabase.auth.getUser();
-
     if (user) {
       await supabase
         .from("career_profiles")
-        .update({ suggested_jobs: jobs })
+        .update({ suggested_jobs: suggestions })
         .eq("user_id", user.id);
     }
 
-    /* 5 ⟩ Trả kết quả đầy đủ về client */
-    return NextResponse.json({
-      summary       : gpt.summary,
-      careerRatings : gpt.careerRatings,
-      topCareers    : jobs,
-    });
+    /* 5 ⟩ Trả kết quả */
+    return NextResponse.json({ jobs: suggestions });
   } catch (err: any) {
     console.error("analyse error:", err);
     return NextResponse.json(
-      { error: err?.message || "Analyse failed" },
+      { error: err.message || "Analyse failed" },
       { status: 500 },
     );
   }

@@ -21,16 +21,37 @@ export default function OptionsTab(){
   const [data   ,setData   ]   = useState<ResultJSON|null>(null);
   const [error  ,setError  ]   = useState<string|null>(null);
 
-  const run = async ()=>{
-    if(loading) return;
-    setLoading(true); setError(null);
-    try{
-      const r = await fetch("/api/career/analyse",{method:"POST"});
-      if(!r.ok) throw new Error(await r.text());
-      setData(await r.json());
-    }catch(e:any){
-      console.error(e); setError("Phân tích thất bại – thử lại sau.");
-    }finally{ setLoading(false); }
+  const run = async () => {
+    if (loading) return;
+
+    /* đảm bảo đã có dữ liệu Holland + Knowdell trước khi gọi */
+    if (!holland || !knowdell?.interests?.length) {
+      setError("Thiếu dữ liệu Holland / Knowdell");        // báo cho người dùng
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/career/analyse", {
+        method : "POST",
+        headers: { "Content-Type": "application/json" },
+        body   : JSON.stringify({
+          holland,      // chuỗi 3 ký tự, VD "ECS"
+          knowdell,     // { values, skills, interests }
+          topN: 5       // lấy 5 nghề lương cao nhất
+        })
+      });
+
+      if (!res.ok) throw new Error(await res.text());       // lỗi 4xx/5xx từ server
+      setData(await res.json());                            // { jobs: [...] }
+    } catch (err: any) {
+      console.error(err);
+      setError("Phân tích thất bại – thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return(
