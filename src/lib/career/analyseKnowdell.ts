@@ -113,8 +113,5 @@ export async function analyseCareer(profile: RawProfile) {
     selectedTitles: (profile.shortlist ?? []).map(j=>j.title),
   });
 
-  return (result.topCareers??[])
-    .slice(0,5)
-    .map((c:any)=>String(c.career||"").trim())
-    .filter(Boolean);
+  return result;
 }
