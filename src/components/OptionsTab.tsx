@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------- *
-   TAB 2 – LỰA CHỌN: GỌI GPT & HIỂN THỊ MARKDOWN
+   TAB 2 – LỰA CHỌN: GỌI GPT & HIỂN THỊ KẾT QUẢ
  * ------------------------------------------------------------------------- */
 "use client";
 
@@ -7,58 +7,66 @@ import { useState } from "react";
 import AnalysisCard from "./AnalysisCard";
 
 interface Props {
-  canAnalyse   : boolean;           // đã đủ dữ liệu Holland + Knowdell?
-  hasAnalysed  : boolean;           // profile.suggested_jobs != null
+  /** Đã có đủ Holland + Knowdell để cho phép phân tích hay chưa */
+  canAnalyse  : boolean;
+  /** Server đã tính & lưu gợi ý nghề (để hiển thị ngay) */
+  hasAnalysed : boolean;
 }
 
 export default function OptionsTab({ canAnalyse, hasAnalysed }: Props) {
   const [loading, setLoading] = useState(false);
-  const [err,     setErr]     = useState<string|null>(null);
+  const [error,   setError]   = useState<string | null>(null);
   const [show,    setShow]    = useState<boolean>(hasAnalysed);
 
-  /* ----- gọi API GPT ------------------------------------------------------- */
-  const runAnalyse = async () => {
+  /* --------------------------------------------------------------------- *
+     Gọi API /api/career/analyse     (không gửi body)
+   * --------------------------------------------------------------------- */
+  async function handleAnalyse() {
     if (!canAnalyse || loading) return;
 
     setLoading(true);
-    setErr(null);
+    setError(null);
 
     try {
       const res = await fetch("/api/career/analyse", { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
-      /* API đã lưu kết quả vào DB → chỉ cần re-render AnalysisCard */
+
+      /* API đã lưu kết quả vào DB, chỉ cần hiển thị */
       setShow(true);
-    } catch (e:any) {
+    } catch (e) {
       console.error(e);
-      setErr("Phân tích thất bại – thử lại sau.");
+      setError("Phân tích thất bại – thử lại sau.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  /* ----- UI --------------------------------------------------------------- */
-  if (!canAnalyse)
+  /* --------------------------------------------------------------------- *
+     UI
+   * --------------------------------------------------------------------- */
+  if (!canAnalyse) {
     return (
       <p className="rounded border bg-yellow-50 p-4 text-center">
-        Vui lòng hoàn tất <strong>Holland</strong> &nbsp;và&nbsp;
+        Vui lòng hoàn tất <strong>Holland</strong> và&nbsp;
         <strong>Knowdell</strong> để sử dụng tính năng phân tích.
       </p>
     );
+  }
 
   return (
     <div className="space-y-6">
       {/* nút gọi GPT */}
       <button
-        onClick={runAnalyse}
+        onClick={handleAnalyse}
         disabled={loading}
         className="rounded bg-indigo-600 px-6 py-2 text-white disabled:opacity-50"
       >
         {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
       </button>
 
-      {err && <p className="text-red-600">{err}</p>}
+      {error && <p className="text-red-600">{error}</p>}
 
-      {/* Kết quả (Markdown đã làm sạch) */}
+      {/* kết quả */}
       {show && <AnalysisCard />}
     </div>
   );

@@ -36,9 +36,9 @@ export default async function MbtiResultPage({ searchParams }: Props) {
 
       {desc && (
         <div className="grid gap-6 md:grid-cols-3 text-left">
-          <Section title="💪 Thế mạnh"     items={desc.strengths} />
-          <Section title="⚠️ Điểm yếu"     items={desc.flaws}     />
-          <Section title="🎯 Nghề phù hợp" items={desc.careers}   />
+          <Section title=""     items={desc.strengths} />
+          <Section title="💪 Thế mạnh"     items={desc.flaws}     />
+          <Section title="⚠️ Điểm yếu " items={desc.careers}   />
         </div>
       )}
 

@@ -1,43 +1,36 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServer';
-import { analyseKnowdell } from '@/lib/career/analyseKnowdell';
-import { matchJobs } from '@/lib/career/matchJobs';
+import { analyseKnowdell }           from '@/lib/career/analyseKnowdell';
+import { suggestJobs }               from '@/lib/career/matchJobs';   // Hàm đã export sẵn trong matchJobs.ts
 
-export const runtime = 'nodejs';         // tránh Edge để dễ debug
-// export const dynamic = 'force-dynamic'; // không cache (tùy chọn)
+export const runtime = 'edge';       // giữ nguyên nếu bạn đang chạy Edge-Function
 
 export async function POST(req: Request) {
-  let payload: any;
-
-  /* Đọc JSON an toàn ------------------------------------- */
-  try {
-    payload = await req.json();          // sẽ throw nếu body rỗng / không phải json
-  } catch {
-    return NextResponse.json(
-      { error: 'BODY_EMPTY_OR_INVALID' },
-      { status: 400 }
-    );
-  }
-
-  /* Kết nối Supabase ------------------------------------- */
   const supabase = createSupabaseServerClient();
 
-  /* Phân tích Knowdell + gợi ý nghề ----------------------- */
-  try {
-    const analysis = analyseKnowdell(payload);
-    const suggestions = await matchJobs(supabase, payload);
+  /* 1️⃣  lấy profile hiện tại */
+  const { data: profile, error } =
+    await supabase.from('profiles').select('*').single();
 
-    return NextResponse.json({ analysis, suggestions });
-  } catch (err) {
-    console.error('Analyse error:', err);
-    return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 });
-  }
-}
+  if (error || !profile)
+    return NextResponse.json({ error: 'PROFILE_NOT_FOUND' }, { status: 400 });
 
-/* Nếu có GET thì chỉ trả lời rằng route yêu cầu POST  */
-export async function GET() {
-  return NextResponse.json(
-    { error: 'METHOD_NOT_ALLOWED' },
-    { status: 405 }
-  );
+  /* 2️⃣  GPT phân tích Knowdell + gợi ý nghề */
+  const knowdellAnalysis = await analyseKnowdell(profile);
+  const jobsSuggestion   = await suggestJobs(profile);
+
+  /* 3️⃣  lưu lại DB */
+  const { error: upErr } = await supabase
+    .from('profiles')
+    .update({
+      knowdell_analysis: knowdellAnalysis,
+      suggested_jobs   : jobsSuggestion,
+    })
+    .eq('id', profile.id);
+
+  if (upErr)
+    return NextResponse.json({ error: 'DB_UPDATE_FAILED' }, { status: 500 });
+
+  /* 4️⃣  OK */
+  return NextResponse.json({ ok: true });
 }
