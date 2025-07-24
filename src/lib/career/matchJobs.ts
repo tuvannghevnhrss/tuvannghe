@@ -1,71 +1,44 @@
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
-type Profile = {
-  mbti: string;                 // "ESFJ"
-  holland: string;              // "SER"
-  values: string[];             // ["SOCIAL",...]
-  skills: { key: string; love: number; pro: number }[];
-  interests: string[];
-};
-
-/* ────────────────────────────────────────────────────────────── */
-/* Supabase client - dùng SERVICE ROLE để đọc bảng jobs          */
-const supa = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-/* ────────────────────────────────────────────────────────────── */
-/** Tính điểm và trả về 5 nghề + lý do phù hợp */
-export async function suggestJobs(p: Profile) {
-  const { data: jobs = [] } = await supa.from("jobs").select("*");
-
-  /* nếu bảng rỗng → trả mảng trống cho UI xử lý */
+export async function suggestJobs(profile: any) {
+  const supabase = createSupabaseServerClient();
+  const { data: jobs = [] } = await supabase.from('jobs').select('*');
   if (!jobs.length) return [];
 
   return jobs
     .map((j) => {
-      const reasons: string[] = [];
       let score = 0;
+      const reasons: string[] = [];
 
-      /* Holland khớp chữ cái đầu (40đ) */
-      if (p.holland && j.holland_codes?.includes(p.holland[0])) {
+      /* Holland ký tự đầu (40) */
+      if (profile.holland && j.holland_codes?.includes(profile.holland[0])) {
         score += 40;
-        reasons.push(`Holland trùng mã **${p.holland[0]}**`);
+        reasons.push(`Holland trùng **${profile.holland[0]}**`);
       }
 
-      /* MBTI khớp (30đ) */
-      if (j.mbti_types?.includes(p.mbti)) {
+      /* MBTI (30) */
+      if (j.mbti_types?.includes(profile.mbti)) {
         score += 30;
-        reasons.push(`MBTI trùng nhóm **${p.mbti}**`);
+        reasons.push(`MBTI trùng **${profile.mbti}**`);
       }
 
-      /* Value khớp (1đ mỗi value) */
-      const valMatch = (j.top_values ?? []).filter((v: string) =>
-        p.values.includes(v)
-      );
-      if (valMatch.length) {
-        score += valMatch.length;
-        reasons.push(`Giá trị: ${valMatch.join(", ")}`);
-      }
+      /* Values (1/ value) */
+      const matchVals =
+        j.top_values?.filter((v: string) => profile.values?.includes(v)) ?? [];
+      score += matchVals.length;
+      if (matchVals.length) reasons.push(`Giá trị: ${matchVals.join(', ')}`);
 
-      /* Skill khớp (love*pro) */
-      const skillScore = p.skills.reduce(
-        (s, k) =>
-          (j.top_skills ?? []).includes(k.key) ? s + k.love * k.pro : s,
-        0
-      );
-      if (skillScore) {
-        score += skillScore;
-        reasons.push("Kỹ năng thế mạnh phù hợp");
-      }
+      /* Skills (love*pro) */
+      const sScore = profile.skills?.reduce(
+        (s: number, k: any) =>
+          j.top_skills?.includes(k.key) ? s + k.love * k.pro : s,
+        0,
+      ) ?? 0;
+      score += sScore;
+      if (sScore) reasons.push('Kỹ năng thế mạnh phù hợp');
 
-      return { ...j, score, reason: reasons.join(" · ") };
+      return { ...j, score, reason: reasons.join(' · ') };
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 }
-
-/* ────────────────────────────────────────────────────────────── */
-/* Alias để API import { matchJobs } …                           */
-export { suggestJobs as matchJobs };
