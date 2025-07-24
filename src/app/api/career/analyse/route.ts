@@ -1,88 +1,61 @@
 /* ------------------------------------------------------------------------- *
-   API  POST /api/career/analyse
+   /api/career/analyse      GET  → lấy markdown đã phân tích
+                            POST → chạy GPT, lưu & trả về markdown mới
  * ------------------------------------------------------------------------- */
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerComponentClient } from "@/lib/supabaseServer";
+import { analyseKnowdell } from "@/lib/career/analyseKnowdell";
+import { matchJobs }       from "@/lib/career/matchJobs";
 
-import type { Database } from "@/types/supabase";
-import { analyseCareer /* alias của analyseKnowdell */ } from "@/lib/career/analyseKnowdell";
+export const dynamic = "force-dynamic";                 // luôn chạy server
 
-export const runtime  = "edge";
-export const dynamic  = "force-dynamic";
+/* ------------------------------------------------------------------ GET -- */
+export async function GET() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
+  const { data, error } = await supabase
+    .from("career_profiles")
+    .select("suggested_jobs")
+    .eq("user_id", user.id)
+    .single();
+
+  if (error)  return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data?.suggested_jobs)
+              return NextResponse.json({ markdown: null }, { status: 204 });
+
+  return NextResponse.json({ markdown: data.suggested_jobs });
+}
+
+/* ----------------------------------------------------------------- POST -- */
 export async function POST() {
-  try {
-    /* ---------- Supabase auth ---------- */
-    const sb = createRouteHandlerClient<Database>({ cookies });
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return NextResponse.json({ error: "401" }, { status: 401 });
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
-    /* ---------- 1. Lấy Holland + Knowdell ---------- */
-    const { data: profile } = await sb
-      .from("career_profiles")
-      .select("holland_profile, knowdell_summary")
-      .eq("user_id", user.id)
-      .maybeSingle();
+  /* Lấy Holland + Knowdell từ DB (đã lưu sau bước trắc nghiệm) */
+  const { data: profile, error } = await supabase
+    .from("career_profiles")
+    .select("holland, knowdell")
+    .eq("user_id", user.id)
+    .single();
 
-    if (!profile) {
-      return NextResponse.json({ error: "No profile" }, { status: 400 });
-    }
+  if (error)  return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!profile?.holland || !profile?.knowdell)
+    return NextResponse.json({ error: "insufficient_data" }, { status: 400 });
 
-    /* ---------- 2. Interests: bảng knowdell_interests ---------- */
-    const { data: intRows } = await sb
-      .from("knowdell_interests")
-      .select("interest_key")
-      .eq("user_id", user.id)
-      .eq("bucket", "very_interested")
-      .limit(20);
+  /* ------------------- Gọi GPT / hàm phân tích --------------------------- */
+  const analysisMd = await analyseKnowdell(profile.holland, profile.knowdell); // Markdown
+  const jobsMd     = await matchJobs(analysisMd);                              // Markdown TOP-5
 
-    const interests: string[] = (intRows ?? []).map(r => r.interest_key);
+  const markdown   = `${analysisMd}\n\n${jobsMd}`.trim();
 
-    /* ---------- 3. Short-list nghề: bảng jobs ---------- */
-    const top3Codes = Object.entries(profile.holland_profile ?? {})
-      .sort((a, b) => (b[1] as number) - (a[1] as number))
-      .slice(0, 3)
-      .map(([c]) => c);                                            // ["E","C","R"]
+  /* Lưu vào DB để lần sau GET đọc được ngay */
+  await supabase
+    .from("career_profiles")
+    .update({ suggested_jobs: markdown })
+    .eq("user_id", user.id);
 
-    const { data: jobRows } = await sb
-      .from("jobs")
-      .select("title, avg_salary, holland_codes")
-      .overlaps("holland_codes", top3Codes)
-      .limit(100);
-
-    const score = (row: any) =>
-      (interests.includes(row.title) ? 2 : 0) +
-      (row.holland_codes?.includes(top3Codes[0]) ? 1 : 0);
-
-    const shortlist = (jobRows ?? [])
-      .sort((a, b) => score(b) - score(a) || (b.avg_salary - a.avg_salary))
-      .slice(0, 20)
-      .map(r => ({
-        title:  r.title,
-        salary: r.avg_salary ?? 0,
-      }));
-
-    /* ---------- 4. Gọi GPT ---------- */
-    const gptResult = await analyseCareer({
-      holland_profile : profile.holland_profile,
-      knowdell_summary: profile.knowdell_summary,
-      interests,
-      shortlist,                                 // 20 nghề + lương median
-    });
-
-    /* ---------- 5. Lưu & trả ---------- */
-    await sb
-      .from("career_profiles")
-      .update({ suggested_jobs: gptResult })     // kiểu jsonb
-      .eq("user_id", user.id);
-
-    return NextResponse.json(gptResult);          // FE nhận toàn bộ JSON
-  } catch (e: any) {
-    console.error("analyse error:", e);
-    return NextResponse.json(
-      { error: e?.message ?? "500" },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({ markdown });
 }

@@ -8,12 +8,15 @@ type Profile = {
   interests: string[];
 };
 
+/* ────────────────────────────────────────────────────────────── */
+/* Supabase client - dùng SERVICE ROLE để đọc bảng jobs          */
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-/** Tính điểm và trả về 5 nghề + lý do */
+/* ────────────────────────────────────────────────────────────── */
+/** Tính điểm và trả về 5 nghề + lý do phù hợp */
 export async function suggestJobs(p: Profile) {
   const { data: jobs = [] } = await supa.from("jobs").select("*");
 
@@ -33,7 +36,7 @@ export async function suggestJobs(p: Profile) {
 
       /* MBTI khớp (30đ) */
       if (j.mbti_types?.includes(p.mbti)) {
-        score += 0;
+        score += 30;
         reasons.push(`MBTI trùng nhóm **${p.mbti}**`);
       }
 
@@ -62,3 +65,7 @@ export async function suggestJobs(p: Profile) {
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 }
+
+/* ────────────────────────────────────────────────────────────── */
+/* Alias để API import { matchJobs } …                           */
+export { suggestJobs as matchJobs };
