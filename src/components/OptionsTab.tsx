@@ -1,92 +1,53 @@
 /* ------------------------------------------------------------------------- *
-   src/components/OptionsTab.tsx
+   TAB 2 – LỰA CHỌN: GỌI GPT & HIỂN THỊ MARKDOWN
  * ------------------------------------------------------------------------- */
 "use client";
 
 import { useState } from "react";
-
-type TopCareer = {
-  career       : string;
-  salaryMedian : number;
-  roadmap      : { stage: string; skills: string }[];
-};
-
-type GPTResult = {
-  summary       : string;
-  careerRatings : { career: string; fitLevel: string; reason: string }[];
-  topCareers    : TopCareer[];
-};
+import AnalysisCard from "./AnalysisCard";
 
 interface Props {
-  canAnalyse  : boolean;
-  initialData : GPTResult | null;          // lấy từ profile.suggested_jobs
+  canAnalyse   : boolean;           // đã đủ dữ liệu Holland + Knowdell?
+  hasAnalysed  : boolean;           // profile.suggested_jobs != null
 }
 
-export default function OptionsTab({ canAnalyse, initialData }: Props) {
-  /* ---------- state ---------- */
-  const [loading, setLoading]   = useState(false);
-  const [error,   setError]     = useState<string | null>(null);
-  const [data,    setData]      = useState<GPTResult | null>(initialData);
+export default function OptionsTab({ canAnalyse, hasAnalysed }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [err,     setErr]     = useState<string|null>(null);
+  const [show,    setShow]    = useState<boolean>(hasAnalysed);
 
-  /* ---------- handlers ---------- */
+  /* ----- gọi API GPT ------------------------------------------------------- */
   const runAnalyse = async () => {
     if (!canAnalyse || loading) return;
+
     setLoading(true);
-    setError(null);
+    setErr(null);
 
     try {
       const res = await fetch("/api/career/analyse", { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
-      const json: GPTResult = await res.json();
-      setData(json);
-    } catch (e: any) {
+      /* API đã lưu kết quả vào DB → chỉ cần re-render AnalysisCard */
+      setShow(true);
+    } catch (e:any) {
       console.error(e);
-      setError("Phân tích thất bại – thử lại sau.");
+      setErr("Phân tích thất bại – thử lại sau.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------- render helper ---------- */
-  const Top5Table = ({ list }: { list: TopCareer[] }) => (
-    <table className="mt-4 w-full text-sm border">
-      <thead className="bg-gray-100">
-        <tr>
-          <th className="p-2 text-left">#</th>
-          <th className="p-2 text-left">Nghề</th>
-          <th className="p-2 text-right">Lương (triệu)</th>
-          <th className="p-2">Roadmap</th>
-        </tr>
-      </thead>
-      <tbody>
-        {list.map((c, i) => (
-          <tr key={c.career} className="border-t">
-            <td className="p-2">{i + 1}</td>
-            <td className="p-2">{c.career}</td>
-            <td className="p-2 text-right">
-              {Math.round(c.salaryMedian / 1_000_000)}
-            </td>
-            <td className="p-2 whitespace-pre-line">
-              {c.roadmap.map(r => `${r.stage}: ${r.skills}`).join("\n")}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-
-  /* ---------- UI ---------- */
-  if (!canAnalyse) {
+  /* ----- UI --------------------------------------------------------------- */
+  if (!canAnalyse)
     return (
       <p className="rounded border bg-yellow-50 p-4 text-center">
-        Vui lòng hoàn tất <strong>Holland</strong> &amp;{" "}
-        <strong>Knowdell</strong> để sử dụng tính năng phân tích nghề nghiệp.
+        Vui lòng hoàn tất <strong>Holland</strong> &nbsp;và&nbsp;
+        <strong>Knowdell</strong> để sử dụng tính năng phân tích.
       </p>
     );
-  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* nút gọi GPT */}
       <button
         onClick={runAnalyse}
         disabled={loading}
@@ -95,17 +56,10 @@ export default function OptionsTab({ canAnalyse, initialData }: Props) {
         {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
       </button>
 
-      {error && <p className="text-red-600">{error}</p>}
+      {err && <p className="text-red-600">{err}</p>}
 
-      {data && (
-        <>
-          {/* 1. Summary */}
-          <p className="rounded bg-gray-50 p-4 leading-relaxed">{data.summary}</p>
-
-          {/* 2. TOP-5 table */}
-          <Top5Table list={data.topCareers.slice(0, 5)} />
-        </>
-      )}
+      {/* Kết quả (Markdown đã làm sạch) */}
+      {show && <AnalysisCard />}
     </div>
   );
 }
