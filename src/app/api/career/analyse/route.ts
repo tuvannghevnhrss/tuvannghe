@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";   // ➜ lấy cookie runtime
+
 import type { Database } from "@/types/supabase";
 import { analyseCareer } from "@/lib/career/analyseKnowdell";
 
@@ -8,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   try {
-    const sb = createRouteHandlerClient<Database>({ cookies: [] });
+    const sb = createRouteHandlerClient<Database>({ cookies });
     const { data:{ user } } = await sb.auth.getUser();
     if(!user) return NextResponse.json({error:"401"}, {status:401});
 
