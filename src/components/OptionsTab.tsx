@@ -1,100 +1,71 @@
-/* ------------------------------------------------------------------------- *
-   OptionsTab – nút “Phân tích kết hợp” & hiển thị kết quả GPT               *
- * ------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------
+   Tab 2 – Lựa chọn: hiển thị / gọi phân tích nghề
+   ------------------------------------------------------------------------- */
 "use client";
 import { useState } from "react";
 
-interface TopCareer {
-  career       : string;
-  salaryMedian : number;
-  roadmap?     : { stage:string; skills:string }[];
+interface Props {
+  holland    : string | null;                      // “ERS”, “RIC” … – đã tính sẵn ở SSR
+  knowdell   : { values:any[]; skills:any[]; interests:any[] };
+  canAnalyse : boolean;                            // true khi user đã trả phí + có dữ liệu
+  initialJobs: string[];                           // suggested_jobs lưu trong DB (có sẵn/ rỗng)
 }
 
-interface ResultJSON {
-  summary       : string;
-  topCareers    : TopCareer[];
-  careerRatings?: { career:string; fitLevel:string; reason:string }[];
-}
+export default function OptionsTab({
+  holland, knowdell, canAnalyse, initialJobs
+}: Props) {
 
-export default function OptionsTab(){
-  const [loading,setLoading]   = useState(false);
-  const [data   ,setData   ]   = useState<ResultJSON|null>(null);
-  const [error  ,setError  ]   = useState<string|null>(null);
+  /* -------- state -------- */
+  const [jobs,    setJobs]    = useState<string[]>(initialJobs);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string|null>(null);
 
-  const run = async () => {
-    if (loading) return;
-
-    /* đảm bảo đã có dữ liệu Holland + Knowdell trước khi gọi */
-    if (!holland || !knowdell?.interests?.length) {
-      setError("Thiếu dữ liệu Holland / Knowdell");        // báo cho người dùng
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
+  /* -------- handlers -------- */
+  const analyse = async () => {
+    if (!canAnalyse || loading) return;
+    setLoading(true); setError(null);
 
     try {
       const res = await fetch("/api/career/analyse", {
         method : "POST",
-        headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({
-          holland,      // chuỗi 3 ký tự, VD "ECS"
-          knowdell,     // { values, skills, interests }
-          topN: 5       // lấy 5 nghề lương cao nhất
-        })
+        headers: { "Content-Type":"application/json" },
+        body   : JSON.stringify({ holland, knowdell, topN:5 })
       });
 
-      if (!res.ok) throw new Error(await res.text());       // lỗi 4xx/5xx từ server
-      setData(await res.json());                            // { jobs: [...] }
-    } catch (err: any) {
-      console.error(err);
-      setError("Phân tích thất bại – thử lại sau.");
-    } finally {
-      setLoading(false);
-    }
+      if (!res.ok) throw new Error(await res.text());
+      const { jobs: list } = await res.json();      // ← API trả { jobs:[…] }
+
+      setJobs(list);
+      if (list.length === 0) setError("Chưa tìm thấy gợi ý phù hợp.");
+    } catch (e:any) {
+      console.error(e);
+      setError(e?.message ?? "Phân tích thất bại – thử lại sau.");
+    } finally{ setLoading(false); }
   };
 
-  return(
-    <div className="space-y-6">
+  /* -------- UI -------- */
+  if (!canAnalyse)
+    return (
+      <p className="rounded border border-yellow-300 bg-yellow-50 p-4 text-center">
+        Cần hoàn tất <strong>Holland</strong> &amp; <strong>Knowdell</strong> để phân tích.
+      </p>
+    );
+
+  return (
+    <div className="space-y-4">
       <button
-        onClick={run}
-        disabled={loading}
+        onClick={analyse} disabled={loading}
         className="rounded bg-indigo-600 px-6 py-2 text-white disabled:opacity-50"
       >
-        {loading? "Đang phân tích…" : "Phân tích kết hợp"}
+        {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
       </button>
 
       {error && <p className="text-red-600">{error}</p>}
 
-      {data && (
-        <>
-          {/* 1. Summary */}
-          <p className="p-4 rounded bg-gray-50 border">{data.summary}</p>
-
-          {/* 3. TOP 5 nghề */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="p-2 text-left">Nghề</th>
-                  <th className="p-2 text-left whitespace-nowrap">Lương (triệu₫)</th>
-                  <th className="p-2 text-left">Roadmap (rút gọn)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.topCareers.map(c=>(
-                  <tr key={c.career} className="border-b">
-                    <td className="p-2">{c.career}</td>
-                    <td className="p-2">{c.salaryMedian}</td>
-                    <td className="p-2 text-xs">
-                      {c.roadmap?.map(r=>`${r.stage}: ${r.skills}`).join(" | ")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+      {jobs.length > 0 && (
+        <ul className="list-disc list-inside space-y-1 text-sm">
+          {jobs.map(j => <li key={j}>{j}</li>)}
+        </ul>
       )}
     </div>
   );
