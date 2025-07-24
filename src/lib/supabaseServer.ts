@@ -1,31 +1,22 @@
 // src/lib/supabaseServer.ts
-import { cookies } from 'next/headers';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/supabase';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';   // <-- nếu bạn có types; nếu không, bỏ dòng này
 
-/* -------------------------------------------------- */
-/* 1)  Client cho browser – dùng trong component "use client" */
-export function createBrowserClient(): SupabaseClient<Database> {
-  return createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+/**
+ * Trả về 1 Supabase **service role** client dùng trong API route
+ * (Node.js – KHÔNG dùng ở client vì có key bí mật).
+ */
+export function createSupabaseServerClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  return createClient<Database>(supabaseUrl, serviceKey);
 }
 
-/* -------------------------------------------------- */
-/* 2)  Client cho server-side (Route Handler / RSC)    */
-/*     – gắn cookie để giữ phiên đăng nhập            */
-export function createServerSupabase() {
-  return createServerComponentClient<Database>({ cookies });
-}
-
-/* -------------------------------------------------- */
-/* 3)  Client toàn quyền (SERVICE ROLE) – chỉ dùng    */
-/*     trong API Route nội bộ, KHÔNG dùng client-side */
-export function createAdminClient() {
-  return createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! // key có quyền insert/update ...
-  );
+/**
+ * Nếu cần một client “public” cho server components → dùng hàm này.
+ */
+export function createSupabaseAnonClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient<Database>(supabaseUrl, anonKey);
 }
