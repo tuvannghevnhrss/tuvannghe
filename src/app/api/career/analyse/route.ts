@@ -1,61 +1,57 @@
-/* ------------------------------------------------------------------------- *
-   /api/career/analyse      GET  → lấy markdown đã phân tích
-                            POST → chạy GPT, lưu & trả về markdown mới
- * ------------------------------------------------------------------------- */
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@/lib/supabaseServer";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabaseServer";
+
 import { analyseKnowdell } from "@/lib/career/analyseKnowdell";
-import { matchJobs }       from "@/lib/career/matchJobs";
+import { matchJobs }       from "@/lib/career/matchJobs";  // alias đã khai báo
 
-export const dynamic = "force-dynamic";                 // luôn chạy server
+/* ---------------------------------------------------------- *
+ *  POST /api/career/analyse
+ *  • Lấy hồ sơ (career_profiles) của user hiện tại
+ *  • Phân tích Knowdell  ➜  trả về summary + bảng markdown
+ *  • Gợi ý 5 nghề phù hợp ➜  matchJobs()
+ *  • Trả JSON cho OptionsTab hiển thị
+ * ---------------------------------------------------------- */
+export async function POST(req: NextRequest) {
+  try {
+    /* 1. Xác thực Supabase */
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-/* ------------------------------------------------------------------ GET -- */
-export async function GET() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
+    if (!user)
+      return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
-  const { data, error } = await supabase
-    .from("career_profiles")
-    .select("suggested_jobs")
-    .eq("user_id", user.id)
-    .single();
+    /* 2. Lấy hồ sơ nghề nghiệp */
+    const { data: profile, error } = await supabase
+      .from("career_profiles")
+      .select(
+        "mbti:type,holland:code,knowdell->values,knowdell->skills,knowdell->interests"
+      )
+      .eq("user_id", user.id)
+      .single();
 
-  if (error)  return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data?.suggested_jobs)
-              return NextResponse.json({ markdown: null }, { status: 204 });
+    if (error || !profile)
+      return NextResponse.json({ error: "PROFILE_NOT_FOUND" }, { status: 404 });
 
-  return NextResponse.json({ markdown: data.suggested_jobs });
+    /* 3. Phân tích & gợi ý nghề */
+    const analysis     = analyseKnowdell(profile);
+    const suggestedJob = await matchJobs(profile);
+
+    /* 4. OK */
+    return NextResponse.json(
+      {
+        ok: true,
+        analysis,
+        suggested_jobs: suggestedJob,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("analyse route:", err);
+    return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
+  }
 }
 
-/* ----------------------------------------------------------------- POST -- */
-export async function POST() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
-
-  /* Lấy Holland + Knowdell từ DB (đã lưu sau bước trắc nghiệm) */
-  const { data: profile, error } = await supabase
-    .from("career_profiles")
-    .select("holland, knowdell")
-    .eq("user_id", user.id)
-    .single();
-
-  if (error)  return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!profile?.holland || !profile?.knowdell)
-    return NextResponse.json({ error: "insufficient_data" }, { status: 400 });
-
-  /* ------------------- Gọi GPT / hàm phân tích --------------------------- */
-  const analysisMd = await analyseKnowdell(profile.holland, profile.knowdell); // Markdown
-  const jobsMd     = await matchJobs(analysisMd);                              // Markdown TOP-5
-
-  const markdown   = `${analysisMd}\n\n${jobsMd}`.trim();
-
-  /* Lưu vào DB để lần sau GET đọc được ngay */
-  await supabase
-    .from("career_profiles")
-    .update({ suggested_jobs: markdown })
-    .eq("user_id", user.id);
-
-  return NextResponse.json({ markdown });
-}
+/* chạy trên Edge Runtime để phản hồi nhanh hơn (tùy chọn) */
+export const runtime = "edge";
