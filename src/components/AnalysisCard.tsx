@@ -1,57 +1,90 @@
 /* ------------------------------------------------------------------------- *
-   HIỂN THỊ KẾT QUẢ GPT (Markdown) – ĐÃ LOẠI JSON
+   Phần hiển thị kết quả tab 2
  * ------------------------------------------------------------------------- */
 "use client";
 
-import { useEffect, useState } from "react";
-import ReactMarkdown          from "react-markdown";
-import remarkGfm              from "remark-gfm";
+import useSWR from "swr";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+const fetcher = (url: string) => fetch(url).then(r => {
+  if (!r.ok) throw new Error("API");
+  return r.json();
+});
 
 export default function AnalysisCard() {
-  const [md, setMd] = useState<string>();
+  /* poll mỗi 5s tới khi có dữ liệu */
+  const { data, error, isLoading } = useSWR(
+    "/api/career/analyse",
+    fetcher,
+    { refreshInterval: 5000 }      // <= polling
+  );
 
-  /* ----- lấy markdown từ API ------------------------------------------------ */
-  useEffect(() => {
-    fetch("/api/career/analyse")
-      .then(r => (r.ok ? r.json() : { markdown: "" }))
-      .then(d => setMd(d.markdown as string))
-      .catch(() => setMd(""));
-  }, []);
-
-  /* ----- đang chờ ----------------------------------------------------------- */
-  if (md === undefined)
+  if (isLoading) {
     return (
-      <div className="w-full rounded-lg border bg-gray-50 p-4 text-sm text-gray-600">
-        Đang phân tích 20 nghề bạn đã chọn…
-      </div>
+      <p className="italic text-gray-500">
+        Đang phân tích… (có thể 15 - 30 giây)
+      </p>
     );
+  }
 
-  /* ─── Làm SẠCH markdown ────────────────────────────────────────────────────
-     1. Bỏ hẳn code-block  ```…```  (kể cả ghi ```json)
-     2. Xóa phần JSON (tiêu đề & nội dung) – nhiều biến thể
-     3. Gom dòng trắng dư                                                     */
-  const cleaned = md
-    /* 1 */
-    .replace(/```[^]*?```/g, "")
-    /* 2 – xoá từ tiêu đề JSON → trước Markdown Table hoặc hết file */
-    .replace(
-      /(^\s*(#+\s*Kết quả.+JSON|a\.\s*JSON)[\s\S]*?)(^\s*(b\.|#+\s*))/im,
-      "$3"
-    )
-    .replace(/(^\s*(#+\s*Kết quả.+JSON|a\.\s*JSON)[\s\S]*)$/im, "")
-    /* 3 */
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  if (error) {
+    return (
+      <p className="text-red-600">
+        Lỗi tải kết quả – hãy F5 hoặc thử lại sau.
+      </p>
+    );
+  }
 
-  if (!cleaned) return null;            // nếu rỗng -> ẩn
+  /* API trả 404 PROFILE_NOT_READY trong lúc GPT chạy -> SWR vẫn tiếp tục poll */
+  if (!data?.knowdell_summary) {
+    return (
+      <p className="italic text-gray-500">
+        Chưa có dữ liệu, vui lòng đợi…
+      </p>
+    );
+  }
 
+  /* --------------------------- render kết quả --------------------------- */
   return (
-    <div className="w-full rounded-lg border bg-white shadow-sm p-4 sm:p-6
-                    max-h-[60vh] overflow-y-auto
-                    scrollbar-thin scrollbar-thumb-gray-300">
-      <article className="prose prose-sm sm:prose-base max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleaned}</ReactMarkdown>
+    <div className="space-y-8">
+      {/* 1. Phân tích Knowdell - markdown */}
+      <article className="prose max-w-none">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {data.knowdell_summary}
+        </ReactMarkdown>
       </article>
+
+      {/* 2. 5 nghề gợi ý */}
+      <section>
+        <h2 className="mb-2 text-lg font-semibold">
+          5 nghề phù hợp nhất
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full border">
+            <thead className="bg-gray-100 text-left text-sm">
+              <tr>
+                <th className="p-2">#</th>
+                <th className="p-2">Nghề</th>
+                <th className="p-2">Điểm</th>
+                <th className="p-2">Lý do</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {data.suggested_jobs?.map(
+                (j: any, idx: number) => (
+                  <tr key={j.id} className="border-t">
+                    <td className="p-2">{idx + 1}</td>
+                    <td className="p-2">{j.title}</td>
+                    <td className="p-2">{j.score}</td>
+                    <td className="p-2">{j.reason}</td>
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
