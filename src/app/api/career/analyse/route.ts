@@ -1,43 +1,71 @@
-// src/app/api/career/analyse/route.ts
-import { NextResponse } from 'next/server';
-import { createSupabaseRouteServerClient } from '@/lib/supabaseServer';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  createSupabaseRouteServerClient,
+  createSupabaseServerClient,
+} from '@/lib/supabaseServer';
 import { analyseKnowdell } from '@/lib/career/analyseKnowdell';
-import { suggestJobs     } from '@/lib/career/matchJobs';
+import { matchJobs }      from '@/lib/career/matchJobs';
 
-export async function POST() {
-  const supabase = createSupabaseRouteServerClient();
+export const dynamic = 'force-dynamic';           // tránh bị SSG
+
+/* -------------------------------------------------------------------------- */
+/*  POST  –  chạy GPT + tính 5 nghề, lưu DB & trả kết quả                      */
+/* -------------------------------------------------------------------------- */
+export async function POST(req: NextRequest) {
+  const sbRoute = createSupabaseRouteServerClient();
+
+  /* 1. Lấy user hiện tại --------------------------------------------------- */
   const {
     data: { user },
     error: authErr,
-  } = await supabase.auth.getUser();
+  } = await sbRoute.auth.getUser();
 
-  if (authErr || !user)
+  if (authErr || !user) {
     return NextResponse.json({ error: 'AUTH' }, { status: 401 });
+  }
 
-  /* ------------------------------------------------------------------ */
-  const { data: profile } = await supabase
+  /* 2. Lấy profile (MBTI, Holland, Knowdell) ------------------------------- */
+  const { data: profile } = await sbRoute
     .from('profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
+    .select('id, mbti, holland, values, skills, interests')
+    .eq('id', user.id)
+    .maybeSingle();
 
-  if (!profile)
+  if (!profile) {
     return NextResponse.json({ error: 'PROFILE_NOT_FOUND' }, { status: 400 });
+  }
 
-  /* 1. Phân tích Knowdell (GPT) -------------------------------------- */
+  /* 3. Gọi GPT + tính nghề ------------------------------------------------- */
   const markdown = await analyseKnowdell(profile);
+  const jobs     = await matchJobs(profile);
 
-  /* 2. Gợi ý 5 nghề --------------------------------------------------- */
-  const jobs = await suggestJobs(profile);
+  /* 4. Lưu kết quả (service-role để upsert) -------------------------------- */
+  const sbSrv = createSupabaseServerClient();
+  await sbSrv.from('career_analysis').upsert({
+    user_id : user.id,
+    markdown,
+    jobs,                // lưu dạng JSON
+    updated_at: new Date().toISOString(),
+  });
 
-  /* 3. Lưu lại vào bảng profiles ------------------------------------- */
-  await supabase
-    .from('profiles')
-    .update({
-      analysis_md   : markdown,
-      suggested_jobs: jobs,
-    })
-    .eq('user_id', user.id);
+  return NextResponse.json({ markdown, jobs });
+}
 
-  return NextResponse.json({ ok: true });
+/* -------------------------------------------------------------------------- */
+/*  GET  –  trả lại markdown đã lưu (dùng cho <AnalysisCard>)                 */
+/* -------------------------------------------------------------------------- */
+export async function GET(req: NextRequest) {
+  const sbRoute = createSupabaseRouteServerClient();
+  const { data: { user } } = await sbRoute.auth.getUser();
+  if (!user) return NextResponse.json({ markdown: '' });
+
+  const { data } = await sbRoute
+    .from('career_analysis')
+    .select('markdown')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return NextResponse.json({ markdown: data?.markdown ?? '' });
 }
