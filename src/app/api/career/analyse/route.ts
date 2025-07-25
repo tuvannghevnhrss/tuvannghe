@@ -1,17 +1,23 @@
-/* ------------------------------------------------------------------------- */
-/*  /api/career/analyse  –  Tính GPT + gợi ý nghề + lưu vào career_profiles  */
-/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- *
+   /api/career/analyse
+   POST → GPT phân tích + gợi ý nghề, lưu vào career_profiles
+   GET  → Client (SWR) lấy markdown + 5 nghề đã lưu
+ * ------------------------------------------------------------------------- */
 import { NextResponse } from 'next/server';
-import { cookies }            from 'next/headers';
-import { analyseKnowdell }    from '@/lib/career/analyseKnowdell';
-import { suggestJobs }        from '@/lib/career/matchJobs';
+import { cookies } from 'next/headers';
+
+import { analyseKnowdell } from '@/lib/career/analyseKnowdell';
+import { suggestJobs   }   from '@/lib/career/matchJobs';
 import { createSupabaseRouteServerClient } from '@/lib/supabaseServer';
 
-export const dynamic = 'force-dynamic';        // chạy trên Edge/Node tuỳ Vercel
-export const runtime  = 'nodejs';               // để dùng service role secret
+export const dynamic = 'force-dynamic';   // luôn chạy server-side
+export const runtime  = 'nodejs';         // để dùng service-role key
 
+/* ------------------------------------------------------------------ */
+/* 1. POST – chạy GPT, tính điểm, lưu DB                              */
+/* ------------------------------------------------------------------ */
 export async function POST() {
-  /* 1. Supabase – lấy user + các bảng liên quan --------------------------- */
+  /* 1.1 Supabase auth */
   const supabase = createSupabaseRouteServerClient(cookies);
   const {
     data: { session },
@@ -22,7 +28,7 @@ export async function POST() {
   }
   const uid = session.user.id;
 
-  /* 2. Tìm (hoặc tạo) career_profile của user ----------------------------- */
+  /* 1.2 Tìm (hoặc tạo) career_profile */
   let { data: profile } = await supabase
     .from('career_profiles')
     .select('*')
@@ -30,12 +36,23 @@ export async function POST() {
     .single();
 
   if (!profile) {
-    // ---- Lấy dữ liệu thô (MBTI, Holland, Knowdell) để tạo dòng mới ---- //
-    // Nếu một trong các bảng rỗng => trả 400 (yêu cầu làm test trước).
+    // Lấy dữ liệu gốc
     const [{ data: mbti }, { data: holland }, { data: knowdell }] =
       await Promise.all([
-        supabase.from('mbti_results').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(1).single(),
-        supabase.from('holland_results').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(1).single(),
+        supabase
+          .from('mbti_results')
+          .select('*')
+          .eq('user_id', uid)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single(),
+        supabase
+          .from('holland_results')
+          .select('*')
+          .eq('user_id', uid)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single(),
         supabase.from('knowdell_values').select('*').eq('user_id', uid),
       ]);
 
@@ -46,13 +63,13 @@ export async function POST() {
       );
     }
 
-    const { error: insertErr, data: inserted } = await supabase
+    const { data: inserted, error: insertErr } = await supabase
       .from('career_profiles')
       .insert({
-        user_id: uid,
-        mbti_code: mbti.type,
-        holland_profile: holland.profile,
-        knowdell_profile: { values: knowdell },   // lưu jsonb
+        user_id         : uid,
+        mbti_code       : mbti.type,
+        holland_profile : holland.profile,
+        knowdell_profile: { values: knowdell }, // jsonb
       })
       .select('*')
       .single();
@@ -64,16 +81,16 @@ export async function POST() {
     profile = inserted;
   }
 
-  /* 3. Phân tích Knowdell + gợi ý nghề ----------------------------------- */
+  /* 1.3 GPT & gợi ý nghề */
   const analysisMD = await analyseKnowdell(profile);
   const jobs       = await suggestJobs(profile);
 
-  /* 4. Lưu kết quả + trả OK ---------------------------------------------- */
+  /* 1.4 Lưu */
   const { error: upErr } = await supabase
     .from('career_profiles')
     .update({
       knowdell_summary: analysisMD,
-      suggested_jobs  : jobs,           // jsonb[ {id,score,reason} ]
+      suggested_jobs  : jobs,              // jsonb
       updated_at      : new Date().toISOString(),
     })
     .eq('user_id', uid);
@@ -84,4 +101,39 @@ export async function POST() {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. GET – front-end SWR lấy markdown + 5 nghề đã lưu                */
+/* ------------------------------------------------------------------ */
+export async function GET() {
+  const supabase = createSupabaseRouteServerClient(cookies);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.user) {
+    return NextResponse.json({ error: 'AUTH' }, { status: 401 });
+  }
+  const uid = session.user.id;
+
+  const { data: profile, error } = await supabase
+    .from('career_profiles')
+    .select('knowdell_summary, suggested_jobs')
+    .eq('user_id', uid)
+    .single();
+
+  if (error) {
+    console.error(error);
+    return NextResponse.json({ error: 'DB_READ' }, { status: 500 });
+  }
+
+  if (!profile?.knowdell_summary) {
+    return NextResponse.json(
+      { error: 'PROFILE_NOT_READY' },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json(profile); // { knowdell_summary, suggested_jobs }
 }
