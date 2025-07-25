@@ -1,52 +1,33 @@
-// -----------------------------------------------------------------------------
-// src/components/OptionsTab.tsx  ― <Tab 2 – Lựa chọn>
-// -----------------------------------------------------------------------------
+/* components/OptionsTab.tsx */
 "use client";
 import { useState } from "react";
 import AnalysisCard from "./AnalysisCard";
 
-type Knowdell = { values: string[]; skills: string[]; interests: string[] };
-
-export default function OptionsTab({
-  canAnalyse,
-  initialJobs,
-}: {
-  canAnalyse  : boolean;
-  initialJobs : any[];          // 5 nghề đã lưu (nếu có)
-}) {
+export default function OptionsTab({ canAnalyse, hasAnalysed }: { canAnalyse:boolean; hasAnalysed:boolean }) {
+  const [show, setShow] = useState(hasAnalysed);
   const [loading, setLoading] = useState(false);
-  const [error  , setError  ]  = useState<string | null>(null);
-  const [show   , setShow   ]  = useState(initialJobs.length > 0);
+  const [err, setErr] = useState<string|null>(null);
 
-  async function runAnalyse() {
+  const runAnalyse = async () => {
     if (!canAnalyse || loading) return;
-    setLoading(true); setError(null);
-
+    setLoading(true); setErr(null);
     const res = await fetch("/api/career/analyse", { method: "POST" });
-    if (!res.ok) {
-      const { error } = await res.json();
-      return setError(
-        error === "PROFILE_NOT_FOUND"
-          ? "Chưa có dữ liệu Holland & Knowdell."
-          : "Phân tích thất bại – thử lại sau.",
-      );
-    }
-    setShow(true);
+    if (!res.ok) setErr("Phân tích thất bại");
+    else setShow(true);
     setLoading(false);
-  }
+  };
+
+  if (!canAnalyse)
+    return <p className="rounded bg-yellow-50 p-4 text-center">Bạn cần hoàn tất Holland &amp; Knowdell trước.</p>;
 
   return (
-    <div className="space-y-6">
-      <button
-        onClick={runAnalyse}
-        disabled={loading || !canAnalyse}
-        className="rounded bg-indigo-600 px-5 py-2 text-white disabled:opacity-40"
-      >
+    <>
+      <button onClick={runAnalyse} disabled={loading}
+              className="rounded bg-indigo-600 px-6 py-2 text-white disabled:opacity-50">
         {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
       </button>
-
-      {error && <p className="text-red-600">{error}</p>}
-      {show  && <AnalysisCard />}
-    </div>
+      {err && <p className="text-red-600">{err}</p>}
+      {show && <AnalysisCard />}
+    </>
   );
 }
