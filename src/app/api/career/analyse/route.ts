@@ -1,51 +1,56 @@
-// src/app/api/career/analyse/route.ts
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/ssr";
-import { analyseKnowdell }  from "@/lib/career/analyseKnowdell";
-import { suggestJobs }      from "@/lib/career/matchJobs";
+// route.ts (API POST /api/career/analyse)
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { analyseKnowdell }            from '@/lib/career/analyseKnowdell';
+import { suggestJobs }                from '@/lib/career/matchJobs';
 
-export const runtime = "edge";   // vẫn chạy Edge
-
-export async function POST() {
-  /* 1. khởi tạo supabase với cookie của request */
-  const supabase = createRouteHandlerClient({ cookies });
-
-  /* 2. kiểm tra user */
+export const runtime = 'edge';          // nếu bạn muốn chạy Edge
+export const POST = async (req: Request) => {
+  /* 1. Auth & DB --------------------------------------------------------- */
+  const supabase = createRouteHandlerClient({ cookies });   // <—  helper mới
   const {
-    data: { user },
+    data: { session },
     error: authErr,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getSession();
 
-  if (authErr || !user)
-    return Response.json({ error: "AUTH" }, { status: 401 });
+  if (authErr || !session)
+    return Response.json({ error: 'AUTH' }, { status: 401 });
 
-  /* 3. lấy profile */
+  const { user } = session;
+
+  /* 2. Lấy profile ------------------------------------------------------- */
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", user.id)
+    .from('profiles')
+    .select(
+      `
+      id,
+      mbti,
+      holland,
+      values,
+      skills,
+      interests
+    `
+    )
+    .eq('id', user.id)
     .single();
 
   if (!profile)
-    return Response.json({ error: "PROFILE_NOT_FOUND" }, { status: 400 });
+    return Response.json({ error: 'PROFILE_NOT_FOUND' }, { status: 400 });
 
-  /* 4. GPT + gợi ý nghề */
-  const [analysis, jobs] = await Promise.all([
+  /* 3. Chạy GPT & gợi ý nghề -------------------------------------------- */
+  const [md, jobs] = await Promise.all([
     analyseKnowdell(profile),
     suggestJobs(profile),
   ]);
 
-  /* 5. update DB */
-  const { error: dbErr } = await supabase
-    .from("profiles")
+  /* 4. Lưu kết quả & trả OK --------------------------------------------- */
+  await supabase
+    .from('profiles')
     .update({
-      knowdell_analysis: analysis,
-      suggested_jobs: jobs,
+      analysis_markdown: md,
+      suggested_jobs:   jobs,
     })
-    .eq("id", profile.id);
-
-  if (dbErr)
-    return Response.json({ error: "DB_UPDATE" }, { status: 500 });
+    .eq('id', user.id);
 
   return Response.json({ ok: true });
-}
+};
