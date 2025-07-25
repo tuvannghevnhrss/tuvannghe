@@ -28,7 +28,11 @@ export default function OptionsTab({ canAnalyse, hasAnalysed }: Props) {
     setError(null);
 
     try {
-      const res = await fetch("/api/career/analyse", { method: "POST" });
+      const res = await fetch("/api/career/analyse", {
+        method: "POST",
+        credentials: "include",          // <-- gửi cookie auth
+      });
+
       if (!res.ok) throw new Error(await res.text());
 
       /* API đã lưu kết quả vào DB, chỉ cần hiển thị */
