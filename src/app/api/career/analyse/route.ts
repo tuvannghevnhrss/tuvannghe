@@ -1,71 +1,59 @@
-import { NextRequest, NextResponse } from 'next/server';
-import {
-  createSupabaseRouteServerClient,
-  createSupabaseServerClient,
-} from '@/lib/supabaseServer';
-import { analyseKnowdell } from '@/lib/career/analyseKnowdell';
-import { matchJobs }      from '@/lib/career/matchJobs';
+// -----------------------------------------------------------------------------
+// src/app/api/career/analyse/route.ts  (Edge Runtime = "auto")
+// -----------------------------------------------------------------------------
+import { NextResponse } from "next/server";
+import { analyseKnowdell } from "@/lib/career/analyseKnowdell";
+import { suggestJobs     } from "@/lib/career/matchJobs";
+import { createSupabaseRouteServerClient }
+        from "@/lib/supabaseServer";
 
-export const dynamic = 'force-dynamic';           // tránh bị SSG
+export async function POST() {
+  const supabase = createSupabaseRouteServerClient();
 
-/* -------------------------------------------------------------------------- */
-/*  POST  –  chạy GPT + tính 5 nghề, lưu DB & trả kết quả                      */
-/* -------------------------------------------------------------------------- */
-export async function POST(req: NextRequest) {
-  const sbRoute = createSupabaseRouteServerClient();
-
-  /* 1. Lấy user hiện tại --------------------------------------------------- */
+  /* 1️⃣  Lấy user + profile ------------------------------------------------- */
   const {
     data: { user },
     error: authErr,
-  } = await sbRoute.auth.getUser();
-
+  } = await supabase.auth.getUser();
   if (authErr || !user) {
-    return NextResponse.json({ error: 'AUTH' }, { status: 401 });
+    return NextResponse.json({ error: "AUTH" }, { status: 401 });
   }
 
-  /* 2. Lấy profile (MBTI, Holland, Knowdell) ------------------------------- */
-  const { data: profile } = await sbRoute
-    .from('profiles')
-    .select('id, mbti, holland, values, skills, interests')
-    .eq('id', user.id)
+  const { data: profile } = await supabase
+    .from("career_profiles")
+    .select(
+      "id, mbti_type, holland_profile, knowdell_summary, suggested_jobs",
+    )
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (!profile) {
-    return NextResponse.json({ error: 'PROFILE_NOT_FOUND' }, { status: 400 });
+    return NextResponse.json({ error: "PROFILE_NOT_FOUND" }, { status: 404 });
   }
 
-  /* 3. Gọi GPT + tính nghề ------------------------------------------------- */
-  const markdown = await analyseKnowdell(profile);
-  const jobs     = await matchJobs(profile);
+  /* 2️⃣  Ghép dữ liệu gọn gàng -------------------------------------------- */
+  const payload = {
+    mbti    : profile.mbti_type ?? null,
+    holland : profile.holland_profile
+      ? Object.entries(profile.holland_profile)
+          .sort((a, b) => (b[1] as number) - (a[1] as number))
+          .map((e) => e[0])
+          .join("")
+      : null,
+    ...(profile.knowdell_summary ?? { values: [], skills: [], interests: [] }),
+  };
 
-  /* 4. Lưu kết quả (service-role để upsert) -------------------------------- */
-  const sbSrv = createSupabaseServerClient();
-  await sbSrv.from('career_analysis').upsert({
-    user_id : user.id,
-    markdown,
-    jobs,                // lưu dạng JSON
-    updated_at: new Date().toISOString(),
-  });
+  /* 3️⃣  Gọi GPT (analyse) + match top 5 nghề ------------------------------ */
+  const [markdown, jobs] = await Promise.all([
+    analyseKnowdell(payload),
+    suggestJobs(payload),
+  ]);
 
-  return NextResponse.json({ markdown, jobs });
-}
+  /* 4️⃣  Lưu thẳng vào profile -> khi F5 không cần gọi GPT lại ------------- */
+  await supabase
+    .from("career_profiles")
+    .update({ knowdell_summary: payload, suggested_jobs: jobs, analysis_md: markdown })
+    .eq("id", profile.id);
 
-/* -------------------------------------------------------------------------- */
-/*  GET  –  trả lại markdown đã lưu (dùng cho <AnalysisCard>)                 */
-/* -------------------------------------------------------------------------- */
-export async function GET(req: NextRequest) {
-  const sbRoute = createSupabaseRouteServerClient();
-  const { data: { user } } = await sbRoute.auth.getUser();
-  if (!user) return NextResponse.json({ markdown: '' });
-
-  const { data } = await sbRoute
-    .from('career_analysis')
-    .select('markdown')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return NextResponse.json({ markdown: data?.markdown ?? '' });
+  return NextResponse.json({ ok: true });
 }

@@ -1,77 +1,52 @@
-/* ------------------------------------------------------------------------- *
-   TAB 2 – LỰA CHỌN: GỌI GPT & HIỂN THỊ KẾT QUẢ
- * ------------------------------------------------------------------------- */
+// -----------------------------------------------------------------------------
+// src/components/OptionsTab.tsx  ― <Tab 2 – Lựa chọn>
+// -----------------------------------------------------------------------------
 "use client";
-
 import { useState } from "react";
 import AnalysisCard from "./AnalysisCard";
 
-interface Props {
-  /** Đã có đủ Holland + Knowdell để cho phép phân tích hay chưa */
+type Knowdell = { values: string[]; skills: string[]; interests: string[] };
+
+export default function OptionsTab({
+  canAnalyse,
+  initialJobs,
+}: {
   canAnalyse  : boolean;
-  /** Server đã tính & lưu gợi ý nghề (để hiển thị ngay) */
-  hasAnalysed : boolean;
-}
-
-export default function OptionsTab({ canAnalyse, hasAnalysed }: Props) {
+  initialJobs : any[];          // 5 nghề đã lưu (nếu có)
+}) {
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [show,    setShow]    = useState<boolean>(hasAnalysed);
+  const [error  , setError  ]  = useState<string | null>(null);
+  const [show   , setShow   ]  = useState(initialJobs.length > 0);
 
-  /* --------------------------------------------------------------------- *
-     Gọi API /api/career/analyse     (không gửi body)
-   * --------------------------------------------------------------------- */
-  async function handleAnalyse() {
+  async function runAnalyse() {
     if (!canAnalyse || loading) return;
+    setLoading(true); setError(null);
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/career/analyse", {
-        method: "POST",
-        credentials: "include",          // <-- gửi cookie auth
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-
-      /* API đã lưu kết quả vào DB, chỉ cần hiển thị */
-      setShow(true);
-    } catch (e) {
-      console.error(e);
-      setError("Phân tích thất bại – thử lại sau.");
-    } finally {
-      setLoading(false);
+    const res = await fetch("/api/career/analyse", { method: "POST" });
+    if (!res.ok) {
+      const { error } = await res.json();
+      return setError(
+        error === "PROFILE_NOT_FOUND"
+          ? "Chưa có dữ liệu Holland & Knowdell."
+          : "Phân tích thất bại – thử lại sau.",
+      );
     }
-  }
-
-  /* --------------------------------------------------------------------- *
-     UI
-   * --------------------------------------------------------------------- */
-  if (!canAnalyse) {
-    return (
-      <p className="rounded border bg-yellow-50 p-4 text-center">
-        Vui lòng hoàn tất <strong>Holland</strong> và&nbsp;
-        <strong>Knowdell</strong> để sử dụng tính năng phân tích.
-      </p>
-    );
+    setShow(true);
+    setLoading(false);
   }
 
   return (
     <div className="space-y-6">
-      {/* nút gọi GPT */}
       <button
-        onClick={handleAnalyse}
-        disabled={loading}
-        className="rounded bg-indigo-600 px-6 py-2 text-white disabled:opacity-50"
+        onClick={runAnalyse}
+        disabled={loading || !canAnalyse}
+        className="rounded bg-indigo-600 px-5 py-2 text-white disabled:opacity-40"
       >
         {loading ? "Đang phân tích…" : "Phân tích kết hợp"}
       </button>
 
       {error && <p className="text-red-600">{error}</p>}
-
-      {/* kết quả */}
-      {show && <AnalysisCard />}
+      {show  && <AnalysisCard />}
     </div>
   );
 }
