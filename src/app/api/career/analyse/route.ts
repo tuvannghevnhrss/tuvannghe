@@ -32,7 +32,7 @@ export async function POST () {
           .eq('user_id',uid).order('created_at',{ascending:false}).limit(1).single(),
         supabase.from('holland_results').select('*')
           .eq('user_id',uid).order('created_at',{ascending:false}).limit(1).single(),
-        supabase.from('knowdell_values').select('*').eq('user_id',uid),
+        supabase.from('knowdell_interests').select('*').eq('user_id',uid),
       ]);
     if (!mbti || !holland || !knowdell?.length)
       return NextResponse.json({ error:'INCOMPLETE_TRAITS'},{status:400});
@@ -44,7 +44,7 @@ export async function POST () {
         user_id          : uid,
         mbti_type        : mbti.type,
         holland_profile  : holland.profile,          // JSONB
-        knowdell_profile : { values: knowdell.map(v=>v.value) }, // JSONB
+        knowdell : { interests: knowdell }, // JSONB
       })
       .select('*')
       .single();
