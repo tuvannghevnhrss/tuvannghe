@@ -1,34 +1,23 @@
 /* ------------------------------------------------------------------------- *
-   /api/career/analyse
-   POST → GPT phân tích + gợi ý nghề, lưu vào career_profiles
-   GET  → Client (SWR) lấy markdown + 5 nghề đã lưu
+   /api/career/analyse – Phân tích Knowdell + gợi ý nghề + lưu Supabase
  * ------------------------------------------------------------------------- */
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-import { analyseKnowdell } from '@/lib/career/analyseKnowdell';
-import { suggestJobs   }   from '@/lib/career/matchJobs';
+import { cookies           } from 'next/headers';
+import { NextResponse      } from 'next/server';
+import { analyseKnowdell   } from '@/lib/career/analyseKnowdell';
+import { suggestJobs       } from '@/lib/career/matchJobs';
 import { createSupabaseRouteServerClient } from '@/lib/supabaseServer';
 
-export const dynamic = 'force-dynamic';   // luôn chạy server-side
-export const runtime  = 'nodejs';         // để dùng service-role key
+export const dynamic = 'force-dynamic';   // chạy Edge/Node tuỳ Vercel
+export const runtime  = 'nodejs';         // để dùng Service-Role key
 
-/* ------------------------------------------------------------------ */
-/* 1. POST – chạy GPT, tính điểm, lưu DB                              */
-/* ------------------------------------------------------------------ */
-export async function POST() {
-  /* 1.1 Supabase auth */
+export async function POST () {
+  /* 1. Lấy session & user -------------------------------------------------- */
   const supabase = createSupabaseRouteServerClient(cookies);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    return NextResponse.json({ error: 'AUTH' }, { status: 401 });
-  }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return NextResponse.json({ error:'AUTH'},{status:401});
   const uid = session.user.id;
 
-  /* 1.2 Tìm (hoặc tạo) career_profile */
+  /* 2. Lấy (hoặc tạo) career_profile -------------------------------------- */
   let { data: profile } = await supabase
     .from('career_profiles')
     .select('*')
@@ -36,104 +25,56 @@ export async function POST() {
     .single();
 
   if (!profile) {
-    // Lấy dữ liệu gốc
+    /* ----- Lấy dữ liệu gốc MBTI / Holland / Knowdell --------------------- */
     const [{ data: mbti }, { data: holland }, { data: knowdell }] =
       await Promise.all([
-        supabase
-          .from('mbti_results')
-          .select('*')
-          .eq('user_id', uid)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single(),
-        supabase
-          .from('holland_results')
-          .select('*')
-          .eq('user_id', uid)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single(),
-        supabase.from('knowdell_values').select('*').eq('user_id', uid),
+        supabase.from('mbti_results'   ).select('*')
+          .eq('user_id',uid).order('created_at',{ascending:false}).limit(1).single(),
+        supabase.from('holland_results').select('*')
+          .eq('user_id',uid).order('created_at',{ascending:false}).limit(1).single(),
+        supabase.from('knowdell_values').select('*').eq('user_id',uid),
       ]);
+    if (!mbti || !holland || !knowdell?.length)
+      return NextResponse.json({ error:'INCOMPLETE_TRAITS'},{status:400});
 
-    if (!mbti || !holland || !knowdell?.length) {
-      return NextResponse.json(
-        { error: 'INCOMPLETE_TRAITS' },
-        { status: 400 },
-      );
-    }
-
-    const { data: inserted, error: insertErr } = await supabase
+    /* ----- Chèn dòng mới -------------------------------------------------- */
+    const { data: inserted, error: insErr } = await supabase
       .from('career_profiles')
       .insert({
-        user_id         : uid,
-        mbti_code       : mbti.type,
-        holland_profile : holland.profile,
-        knowdell_profile: { values: knowdell }, // jsonb
+        user_id          : uid,
+        mbti_type        : mbti.type,
+        holland_profile  : holland.profile,          // JSONB
+        knowdell_profile : { values: knowdell.map(v=>v.value) }, // JSONB
       })
       .select('*')
       .single();
-
-    if (insertErr) {
-      console.error(insertErr);
-      return NextResponse.json({ error: 'DB_INSERT' }, { status: 500 });
+    if (insErr) {
+      console.error(insErr);
+      return NextResponse.json({ error:'DB_INSERT'},{status:500});
     }
     profile = inserted;
   }
 
-  /* 1.3 GPT & gợi ý nghề */
-  const analysisMD = await analyseKnowdell(profile);
-  const jobs       = await suggestJobs(profile);
+  /* 3. Đã có phân tích? -> trả cached để khỏi tốn token ------------------- */
+  if (profile.knowdell_summary && profile.suggested_jobs?.length)
+    return NextResponse.json({ ok:true, cached:true });
 
-  /* 1.4 Lưu */
+  /* 4. Gọi GPT + Match jobs ---------------------------------------------- */
+  const summaryMD = await analyseKnowdell(profile);
+  const jobs      = await suggestJobs    (profile);
+
+  /* 5. Cập nhật dòng profile --------------------------------------------- */
   const { error: upErr } = await supabase
     .from('career_profiles')
     .update({
-      knowdell_summary: analysisMD,
-      suggested_jobs  : jobs,              // jsonb
-      updated_at      : new Date().toISOString(),
+      knowdell_summary : summaryMD,
+      suggested_jobs   : jobs,         // jsonb[]
+      updated_at       : new Date().toISOString(),
     })
     .eq('user_id', uid);
-
   if (upErr) {
     console.error(upErr);
-    return NextResponse.json({ error: 'DB_UPDATE' }, { status: 500 });
+    return NextResponse.json({ error:'DB_UPDATE'},{status:500});
   }
-
-  return NextResponse.json({ ok: true });
-}
-
-/* ------------------------------------------------------------------ */
-/* 2. GET – front-end SWR lấy markdown + 5 nghề đã lưu                */
-/* ------------------------------------------------------------------ */
-export async function GET() {
-  const supabase = createSupabaseRouteServerClient(cookies);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    return NextResponse.json({ error: 'AUTH' }, { status: 401 });
-  }
-  const uid = session.user.id;
-
-  const { data: profile, error } = await supabase
-    .from('career_profiles')
-    .select('knowdell_summary, suggested_jobs')
-    .eq('user_id', uid)
-    .single();
-
-  if (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'DB_READ' }, { status: 500 });
-  }
-
-  if (!profile?.knowdell_summary) {
-    return NextResponse.json(
-      { error: 'PROFILE_NOT_READY' },
-      { status: 404 },
-    );
-  }
-
-  return NextResponse.json(profile); // { knowdell_summary, suggested_jobs }
+  return NextResponse.json({ ok:true });
 }
