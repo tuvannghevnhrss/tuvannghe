@@ -21,12 +21,12 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/* ───────────────── helpers ───────────────── */
+/* ────────── helpers ────────── */
 function toDict<T extends Record<string, any>>(rows: T[] | null, key: keyof T) {
   return Object.fromEntries((rows ?? []).map(r => [r[key] as string, r.vi]));
 }
 
-/* ───────────────── PAGE ──────────────────── */
+/* ────────── PAGE ────────── */
 export default async function Profile({
   searchParams,
 }: {
@@ -63,13 +63,10 @@ export default async function Profile({
   const SKILL_DICT    = toDict(skillRows.data, 'skill_key');
   const INTEREST_DICT = toDict(intRows.data,   'interest_key');
 
-  /* 4 ▸ Knowdell */
-  const kb =
-    profile.knowdell_summary ??
-    // @ts-expect-error – cột jsonb động
-    profile.knowdell ??
-    {};
-
+  /* 4 ▸ Knowdell
+       => luôn lấy object gốc profile.knowdell
+          (markdown knowdell_summary chỉ dùng cho Tab 2) */
+  const kb = profile.knowdell ?? {};
   const valuesVI    = toText(kb.values,    [VALUE_DICT]);
   const skillsVI    = toText(kb.skills,    [SKILL_DICT]);
   const interestsVI = toText(kb.interests, [INTEREST_DICT]);
@@ -128,7 +125,7 @@ export default async function Profile({
       .order('deadline', { ascending: true }),
   ]);
 
-  /* ────────────────── render ────────────────── */
+  /* ────────── render ────────── */
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-20">
       <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề nghiệp</h1>
@@ -195,6 +192,7 @@ export default async function Profile({
                   '',
                   '💎 Giá trị cốt lõi',
                   '🛠 Kỹ năng động lực',
+                  '',
                   '🎈 Sở thích nghề nghiệp',
                 ]}
               />
