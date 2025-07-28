@@ -1,84 +1,47 @@
 // -----------------------------------------------------------------------------
 // src/app/profile/page.tsx
 // -----------------------------------------------------------------------------
-import { cookies } from "next/headers";
-import Link        from "next/link";
+import { cookies } from 'next/headers';
+import Link        from 'next/link';
 
-import StepTabs     from "@/components/StepTabs";
-import HollandRadar from "@/components/HollandRadar";
-import OptionsTab   from "@/components/OptionsTab";
-import FocusTab     from "@/components/FocusTab";
-import PlanTab      from "@/components/PlanTab";
+import StepTabs     from '@/components/StepTabs';
+import HollandRadar from '@/components/HollandRadar';
+import OptionsTab   from '@/components/OptionsTab';
+import FocusTab     from '@/components/FocusTab';
+import PlanTab      from '@/components/PlanTab';
 
-import { MBTI_MAP }    from "@/lib/mbtiDescriptions";
-import { HOLLAND_MAP } from "@/lib/hollandDescriptions";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import type { Database }               from "@/types/supabase";
+import { MBTI_MAP }    from '@/lib/mbtiDescriptions';
+import { HOLLAND_MAP } from '@/lib/hollandDescriptions';
+import { toText }      from '@/lib/toText';                 // <── NEW
+import {
+  createServerComponentClient,
+  type Database,
+} from '@supabase/auth-helpers-nextjs';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-/* ────────── helpers ────────── */
-/** gom thành dict: { key ➜ vi } */
-function toDict<T extends { [k: string]: any }>(
-  rows: T[] | null,
-  keyField: keyof T,
-) {
-  return Object.fromEntries(
-    (rows ?? []).map((r) => [r[keyField] as string, r.vi as string]),
-  );
+/* ───────────────── helpers ───────────────── */
+/** rows → { key ➜ vi }  */
+function toDict<T extends Record<string, any>>(rows: T[] | null, key: keyof T) {
+  return Object.fromEntries((rows ?? []).map(r => [r[key] as string, r.vi]));
 }
 
-/** item Knowdell → text (ưu tiên tra từ điển) */
-function toText(
-  arr: any[] | any | undefined,
-  dicts: Record<string, string>[],
-) {
-  const out: string[] = [];
-  const items = Array.isArray(arr) ? arr : arr ? [arr] : [];
-
-  items.forEach((it) => {
-    if (typeof it === "string") return out.push(it);
-
-    for (const k of [
-      "value_key",
-      "skill_key",
-      "interest_key",
-      "value",
-      "name_vi",
-    ]) {
-      if (it && it[k]) {
-        const key = it[k] as string;
-        const vi =
-          dicts.reduce<string | undefined>(
-            (acc, d) => acc ?? d[key],
-            undefined,
-          ) ?? key;
-        return out.push(vi);
-      }
-    }
-    const first = it && Object.values(it).find((v) => typeof v === "string");
-    out.push(typeof first === "string" ? first : String(it));
-  });
-
-  return Array.from(new Set(out));
-}
-
-/* ────────── PAGE ────────── */
+/* ───────────────── PAGE ──────────────────── */
 export default async function Profile({
   searchParams,
 }: {
   searchParams?: { step?: string };
 }) {
-  const step = searchParams?.step ?? "trait";
+  const step = searchParams?.step ?? 'trait';
 
-  /* 1 ▸ auth */
+  /* 1. auth */
   const supabase = createServerComponentClient<Database>({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Vui lòng đăng nhập.</p>;
 
-  /* 2 ▸ hồ sơ */
+  /* 2. hồ sơ */
   const { data: profile } = await supabase
-    .from("career_profiles")
+    .from('career_profiles')
     .select(`
       mbti_type,
       holland_profile,
@@ -86,85 +49,90 @@ export default async function Profile({
       knowdell,
       suggested_jobs
     `)
-    .eq("user_id", user.id)
+    .eq('user_id', user.id)
     .maybeSingle();
   if (!profile) return <p className="p-6">Chưa có dữ liệu hồ sơ.</p>;
 
-  /* 3 ▸ lookup dict (Knowdell) */
+  /* 3. lookup dicts (Giá trị / Kỹ năng / Sở thích) */
   const [valRows, skillRows, intRows] = await Promise.all([
-    supabase.from("lookup_values").select("value_key, vi"),
-    supabase.from("lookup_skills").select("skill_key , vi"),
-    supabase.from("lookup_interests").select("interest_key, vi"),
+    supabase.from('lookup_values')   .select('value_key, vi'),
+    supabase.from('lookup_skills')   .select('skill_key , vi'),
+    supabase.from('lookup_interests').select('interest_key, vi'),
   ]);
-  const VALUE_DICT    = toDict(valRows.data,   "value_key");
-  const SKILL_DICT    = toDict(skillRows.data, "skill_key");
-  const INTEREST_DICT = toDict(intRows.data,   "interest_key");
+  const VALUE_DICT    = toDict(valRows.data,   'value_key');
+  const SKILL_DICT    = toDict(skillRows.data, 'skill_key');
+  const INTEREST_DICT = toDict(intRows.data,   'interest_key');
 
-  /* 4 ▸ Knowdell */
+  /* 4. Knowdell */
   const kb =
+    /* summary đã có kết quả GPT → ưu tiên hiển thị */
     profile.knowdell_summary ??
+    /* nếu chưa có GPT, fallback dữ liệu thô đã gộp khi init profile */
     // @ts-expect-error – field động
     profile.knowdell ??
     {};
+
   const valuesVI    = toText(kb.values,    [VALUE_DICT]);
   const skillsVI    = toText(kb.skills,    [SKILL_DICT]);
   const interestsVI = toText(kb.interests, [INTEREST_DICT]);
-  
+
   const knowdellClean = {
     values:     valuesVI,
     skills:     skillsVI,
     interests:  interestsVI,
-  };	
+  };
 
-
-  /* 5 ▸ Holland */
+  /* 5. Holland */
   type Radar = { name: string; score: number };
   const hollandRadar: Radar[] = [];
-  let hollCode: string | null = null;
+  let  hollandCode: string | null = null;
+
   if (profile.holland_profile) {
     Object.entries(profile.holland_profile).forEach(([n, s]) =>
-      hollandRadar.push({ name: n, score: s as number }),
+      hollandRadar.push({ name: n, score: s as number })
     );
-    hollCode = hollandRadar
+    hollandCode = hollandRadar
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
-      .map((o) => o.name)
-      .join("");
+      .map(o => o.name)
+      .join('');
   }
-  const hollandSections = hollCode
-    ? hollCode.split("").map((l) => ({
-        code: l,
-        info: HOLLAND_MAP[l as keyof typeof HOLLAND_MAP],
+
+  const hollandSections = hollandCode
+    ? hollandCode.split('').map(c => ({
+        code: c,
+        info: HOLLAND_MAP[c as keyof typeof HOLLAND_MAP],
       }))
     : [];
 
-  /* 6 ▸ MBTI */
+  /* 6. MBTI */
   const mbtiCode: string | null = profile.mbti_type ?? null;
   const mbtiInfo = mbtiCode && MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP];
 
-  /* 7 ▸ thanh toán & quyền dùng tab Options */
+  /* 7. quyền dùng Tab 2 */
   const { data: payments } = await supabase
-    .from("payments")
-    .select("product")
-    .eq("user_id", user.id)
-    .eq("status", "paid");
-  const paidSet       = new Set((payments ?? []).map((p) => p.product));
+    .from('payments')
+    .select('product')
+    .eq('user_id', user.id)
+    .eq('status', 'paid');
+
+  const paidSet       = new Set((payments ?? []).map(p => p.product));
   const haveResult    = !!profile.holland_profile && !!kb.interests;
-  const havePaidCombo = ["holland", "knowdell"].every((p) => paidSet.has(p));
+  const havePaidCombo = ['holland', 'knowdell'].every(p => paidSet.has(p));
   const canAnalyse    = haveResult || havePaidCombo;
 
-  /* 8 ▸ mục tiêu, hành động */
+  /* 8. mục tiêu & hành động */
   const [{ data: goal }, { data: actions }] = await Promise.all([
     supabase
-      .from("career_goals")
-      .select("what, why")
-      .eq("user_id", user.id)
+      .from('career_goals')
+      .select('what, why')
+      .eq('user_id', user.id)
       .maybeSingle(),
     supabase
-      .from("career_actions")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("deadline", { ascending: true }),
+      .from('career_actions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('deadline', { ascending: true }),
   ]);
 
   /* ────────── render ────────── */
@@ -174,7 +142,7 @@ export default async function Profile({
       <StepTabs current={step} />
 
       {/* TAB 1 – Đặc tính */}
-      {step === "trait" && (
+      {step === 'trait' && (
         <section className="space-y-6">
           {/* MBTI */}
           <TraitCard title="MBTI">
@@ -185,7 +153,7 @@ export default async function Profile({
                   strengths={mbtiInfo?.strengths}
                   weaknesses={mbtiInfo?.flaws}
                   careers={mbtiInfo?.careers}
-                  labels={["💪 Thế mạnh", "⚠️ Điểm yếu", "🎯 Nghề phù hợp"]}
+                  labels={['', '💪 Thế mạnh', '⚠️ Điểm yếu']}
                 />
               </>
             ) : (
@@ -195,7 +163,7 @@ export default async function Profile({
 
           {/* Holland */}
           <TraitCard title="Holland">
-            {hollCode ? (
+            {hollandCode ? (
               <>
                 {hollandSections.map(
                   ({ code, info }) =>
@@ -210,7 +178,7 @@ export default async function Profile({
                           careers={info.careers}
                         />
                       </div>
-                    ),
+                    )
                 )}
                 {hollandRadar.length > 0 && (
                   <div className="mt-6">
@@ -231,11 +199,9 @@ export default async function Profile({
                 weaknesses={skillsVI}
                 careers={interestsVI}
                 labels={[
-                  "",
-		  "💎 Giá trị cốt lõi",
-                  "🛠 Kỹ năng động lực",
-		  "",
-                  "🎈 Sở thích nghề nghiệp",
+                  '💎 Giá trị cốt lõi',
+                  '🛠 Kỹ năng động lực',
+                  '🎈 Sở thích nghề nghiệp',
                 ]}
               />
             ) : (
@@ -246,9 +212,10 @@ export default async function Profile({
       )}
 
       {/* TAB 2 – Lựa chọn nghề */}
-      {step === "options" && (
+      {step === 'options' && (
         <OptionsTab
-          holland={hollCode}
+          mbti={mbtiCode}
+          holland={hollandCode}
           knowdell={knowdellClean}
           canAnalyse={canAnalyse}
           initialJobs={profile.suggested_jobs ?? []}
@@ -256,13 +223,13 @@ export default async function Profile({
       )}
 
       {/* TAB 3 & 4 */}
-      {step === "focus" && <FocusTab existingGoal={goal ?? null} />}
-      {step === "plan" && <PlanTab actions={actions ?? []} />}
+      {step === 'focus' && <FocusTab existingGoal={goal ?? null} />}
+      {step === 'plan'  && <PlanTab  actions={actions ?? []} />}
     </div>
   );
 }
 
-/* ---------- view helpers ---------- */
+/* ---------------- view helpers ---------------- */
 function TraitCard({
   title,
   children,
@@ -274,16 +241,16 @@ function TraitCard({
     </div>
   );
 }
+
 function Header({ code, intro }: { code: string; intro?: string }) {
   return (
     <>
-      <p className="text-2xl font-bold mb-1">{code}</p>
+      <p className="mb-1 text-2xl font-bold">{code}</p>
       {intro && <p className="text-sm leading-relaxed">{intro}</p>}
     </>
   );
 }
 
-/** Hiển thị 1-5 danh sách theo chiều dọc */
 function TraitGrid({
   traits,
   strengths,
@@ -291,11 +258,11 @@ function TraitGrid({
   improvements,
   careers,
   labels = [
-    "🔎 Đặc trưng",
-    "💪 Thế mạnh",
-    "⚠️ Điểm yếu",
-    "🛠 Cần cải thiện",
-    "🎯 Nghề phù hợp",
+    '🔎 Đặc trưng',
+    '💪 Thế mạnh',
+    '⚠️ Điểm yếu',
+    '🛠 Cần cải thiện',
+    '🎯 Nghề phù hợp',
   ],
 }: {
   traits?: any[];
@@ -319,14 +286,14 @@ function TraitGrid({
         (items, i) =>
           items.length > 0 && (
             <div key={i}>
-              <h4 className="mb-1 font-semibold">{labels[i] ?? ""}</h4>
+              <h4 className="mb-1 font-semibold">{labels[i] ?? ''}</h4>
               <ul className="list-disc list-inside space-y-1 text-sm leading-relaxed">
-                {items.map((t) => (
+                {items.map(t => (
                   <li key={t}>{t}</li>
                 ))}
               </ul>
             </div>
-          ),
+          )
       )}
     </div>
   );
@@ -335,7 +302,7 @@ function TraitGrid({
 function EmptyLink({ label, href }: { label: string; href: string }) {
   return (
     <p className="italic text-gray-500">
-      Chưa làm{" "}
+      Chưa làm{' '}
       <Link href={href} className="text-indigo-600 underline">
         {label}
       </Link>
