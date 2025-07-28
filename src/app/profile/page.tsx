@@ -12,7 +12,8 @@ import PlanTab      from '@/components/PlanTab';
 
 import { MBTI_MAP }    from '@/lib/mbtiDescriptions';
 import { HOLLAND_MAP } from '@/lib/hollandDescriptions';
-import { toText }      from '@/lib/toText';                 // <── NEW
+import { toText }      from '@/lib/toText';
+
 import {
   createServerComponentClient,
   type Database,
@@ -21,7 +22,6 @@ import {
 export const dynamic = 'force-dynamic';
 
 /* ───────────────── helpers ───────────────── */
-/** rows → { key ➜ vi }  */
 function toDict<T extends Record<string, any>>(rows: T[] | null, key: keyof T) {
   return Object.fromEntries((rows ?? []).map(r => [r[key] as string, r.vi]));
 }
@@ -34,12 +34,12 @@ export default async function Profile({
 }) {
   const step = searchParams?.step ?? 'trait';
 
-  /* 1. auth */
+  /* 1 ▸ Auth */
   const supabase = createServerComponentClient<Database>({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Vui lòng đăng nhập.</p>;
 
-  /* 2. hồ sơ */
+  /* 2 ▸ Hồ sơ */
   const { data: profile } = await supabase
     .from('career_profiles')
     .select(`
@@ -53,7 +53,7 @@ export default async function Profile({
     .maybeSingle();
   if (!profile) return <p className="p-6">Chưa có dữ liệu hồ sơ.</p>;
 
-  /* 3. lookup dicts (Giá trị / Kỹ năng / Sở thích) */
+  /* 3 ▸ Lookup dicts (Knowdell) */
   const [valRows, skillRows, intRows] = await Promise.all([
     supabase.from('lookup_values')   .select('value_key, vi'),
     supabase.from('lookup_skills')   .select('skill_key , vi'),
@@ -63,12 +63,10 @@ export default async function Profile({
   const SKILL_DICT    = toDict(skillRows.data, 'skill_key');
   const INTEREST_DICT = toDict(intRows.data,   'interest_key');
 
-  /* 4. Knowdell */
+  /* 4 ▸ Knowdell */
   const kb =
-    /* summary đã có kết quả GPT → ưu tiên hiển thị */
     profile.knowdell_summary ??
-    /* nếu chưa có GPT, fallback dữ liệu thô đã gộp khi init profile */
-    // @ts-expect-error – field động
+    // @ts-expect-error – cột jsonb động
     profile.knowdell ??
     {};
 
@@ -76,20 +74,16 @@ export default async function Profile({
   const skillsVI    = toText(kb.skills,    [SKILL_DICT]);
   const interestsVI = toText(kb.interests, [INTEREST_DICT]);
 
-  const knowdellClean = {
-    values:     valuesVI,
-    skills:     skillsVI,
-    interests:  interestsVI,
-  };
+  const knowdellClean = { values: valuesVI, skills: skillsVI, interests: interestsVI };
 
-  /* 5. Holland */
+  /* 5 ▸ Holland */
   type Radar = { name: string; score: number };
   const hollandRadar: Radar[] = [];
-  let  hollandCode: string | null = null;
+  let hollandCode: string | null = null;
 
   if (profile.holland_profile) {
     Object.entries(profile.holland_profile).forEach(([n, s]) =>
-      hollandRadar.push({ name: n, score: s as number })
+      hollandRadar.push({ name: n, score: s as number }),
     );
     hollandCode = hollandRadar
       .sort((a, b) => b.score - a.score)
@@ -97,7 +91,6 @@ export default async function Profile({
       .map(o => o.name)
       .join('');
   }
-
   const hollandSections = hollandCode
     ? hollandCode.split('').map(c => ({
         code: c,
@@ -105,11 +98,11 @@ export default async function Profile({
       }))
     : [];
 
-  /* 6. MBTI */
+  /* 6 ▸ MBTI */
   const mbtiCode: string | null = profile.mbti_type ?? null;
   const mbtiInfo = mbtiCode && MBTI_MAP[mbtiCode as keyof typeof MBTI_MAP];
 
-  /* 7. quyền dùng Tab 2 */
+  /* 7 ▸ Quyền sử dụng tab 2 */
   const { data: payments } = await supabase
     .from('payments')
     .select('product')
@@ -117,11 +110,11 @@ export default async function Profile({
     .eq('status', 'paid');
 
   const paidSet       = new Set((payments ?? []).map(p => p.product));
-  const haveResult    = !!profile.holland_profile && !!kb.interests;
+  const haveResult    = hollandCode && interestsVI.length;
   const havePaidCombo = ['holland', 'knowdell'].every(p => paidSet.has(p));
-  const canAnalyse    = haveResult || havePaidCombo;
+  const canAnalyse    = !!haveResult || havePaidCombo;
 
-  /* 8. mục tiêu & hành động */
+  /* 8 ▸ Mục tiêu & Hành động */
   const [{ data: goal }, { data: actions }] = await Promise.all([
     supabase
       .from('career_goals')
@@ -135,7 +128,7 @@ export default async function Profile({
       .order('deadline', { ascending: true }),
   ]);
 
-  /* ────────── render ────────── */
+  /* ────────────────── render ────────────────── */
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-20">
       <h1 className="text-3xl font-bold">Hồ sơ Phát triển nghề nghiệp</h1>
@@ -178,7 +171,7 @@ export default async function Profile({
                           careers={info.careers}
                         />
                       </div>
-                    )
+                    ),
                 )}
                 {hollandRadar.length > 0 && (
                   <div className="mt-6">
@@ -229,7 +222,7 @@ export default async function Profile({
   );
 }
 
-/* ---------------- view helpers ---------------- */
+/* --------------- view helpers --------------- */
 function TraitCard({
   title,
   children,
@@ -257,13 +250,7 @@ function TraitGrid({
   weaknesses,
   improvements,
   careers,
-  labels = [
-    '🔎 Đặc trưng',
-    '💪 Thế mạnh',
-    '⚠️ Điểm yếu',
-    '🛠 Cần cải thiện',
-    '🎯 Nghề phù hợp',
-  ],
+  labels = ['🔎 Đặc trưng', '💪 Thế mạnh', '⚠️ Điểm yếu', '🛠 Cần cải thiện', '🎯 Nghề phù hợp'],
 }: {
   traits?: any[];
   strengths?: any[];
@@ -293,7 +280,7 @@ function TraitGrid({
                 ))}
               </ul>
             </div>
-          )
+          ),
       )}
     </div>
   );

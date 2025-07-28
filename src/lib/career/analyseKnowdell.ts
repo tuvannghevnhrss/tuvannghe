@@ -30,6 +30,7 @@ Bạn là cố vấn nghề nghiệp. Phân tích mức độ phù hợp của �
 Trả lời bằng **Markdown tiếng Việt**,:
 1. **Đưa ra 05 ngành nghề phù hợp dựa trên danh sách nghề nghiệp mà người dùng đã chọn.
 2. **Định hướng phát triển** – gợi ý học tập/chứng chỉ/hoạt động nên làm.
+3. **Đưa ra thu nhập bình quân gần nhất của 05 ngành nghề đó trên trang Vietnamworks và TopCV tính đến thời điểm hiện tại.
 `;
 }
 
