@@ -1,37 +1,40 @@
+// -----------------------------------------------------------------------------
 // src/lib/career/analyseKnowdell.ts
-import OpenAI from "openai";          // hoặc client bạn đang dùng
+// -----------------------------------------------------------------------------
+import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 /* ------------------------------------------------------------------ */
-/* 1. Tạo prompt chỉ dùng Holland + Knowdell interests                 */
+/* 1. Tạo prompt – chỉ dùng Holland + Knowdell interests              */
 /* ------------------------------------------------------------------ */
 function buildPrompt(profile: any) {
-  // ── Holland: { "A":27,"C":31,"E":33,"I":22,"R":30,"S":27 }
+  // Holland: { "A":27,"C":31,"E":33,"I":22,"R":30,"S":27 }
   const hollandObj = profile.holland_profile ?? {};
   const hollandStr = Object.entries(hollandObj)
     .map(([k, v]) => `${k}:${v}`)
-    .join(", ");
+    .join(', ');
 
-  // ── Interests: [{interest_key:"Police Officer", …}, …]
+  // Interests: [{interest_key:"Police Officer", …}, …]
   const interests =
     profile.knowdell?.interests?.map((i: any) => i.interest_key) ?? [];
 
   return `
 Bạn là cố vấn nghề nghiệp. Phân tích mức độ phù hợp của ứng viên **chỉ dựa trên**:
 
-- Kết quả **Holland** (điểm % mỗi nhóm): ${hollandStr || "chưa có"}
+- Kết quả **Holland** (điểm % mỗi nhóm): ${hollandStr || 'chưa có'}
 - Danh sách **sở thích nghề (Knowdell)**: ${
-    interests.length ? interests.join(", ") : "chưa có"
+    interests.length ? interests.join(', ') : 'chưa có'
   }
 
-Trả lời bằng **Markdown tiếng Việt**,:
-1. **Đưa ra 05 ngành nghề phù hợp dựa trên danh sách nghề nghiệp mà người dùng đã chọn.
-2. **Định hướng phát triển** – gợi ý học tập/chứng chỉ/hoạt động nên làm.
-3. **Đưa ra thu nhập bình quân gần nhất của 05 ngành nghề đó trên trang Vietnamworks và TopCV tính đến thời điểm hiện tại.
-`;
+Yêu cầu:
+1. **Liệt kê đúng 05 ngành nghề phù hợp** (dựa trên Holland & sở thích)  
+   ➜ *Tên ngành bắt buộc viết bằng **tiếng Việt**, không dùng tiếng Anh.*
+2. **Định hướng phát triển** – gợi ý học tập, chứng chỉ, hoạt động nên làm.
+3. **Thu nhập bình quân gần nhất** (VNĐ/tháng) của 05 ngành trên – trích dẫn
+   từ VietnamWorks hoặc TopCV (ghi rõ nguồn & thời gian).
+
+Trả lời dưới dạng **Markdown tiếng Việt rõ ràng**.`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -41,11 +44,11 @@ export async function analyseKnowdell(profile: any): Promise<string> {
   const prompt = buildPrompt(profile);
 
   const chat = await openai.chat.completions.create({
-    model: "gpt-4o-mini",                 // model bạn đang dùng
+    model: 'gpt-4o-mini',
     temperature: 0.7,
     messages: [
-      { role: "system", content: "Bạn là chuyên gia hướng nghiệp." },
-      { role: "user",   content: prompt },
+      { role: 'system', content: 'Bạn là chuyên gia hướng nghiệp.' },
+      { role: 'user',   content: prompt },
     ],
   });
 

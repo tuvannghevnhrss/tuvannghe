@@ -192,6 +192,7 @@ export default async function Profile({
                 weaknesses={skillsVI}
                 careers={interestsVI}
                 labels={[
+                  '',
                   '💎 Giá trị cốt lõi',
                   '🛠 Kỹ năng động lực',
                   '🎈 Sở thích nghề nghiệp',
