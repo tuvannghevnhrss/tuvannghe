@@ -1,38 +1,38 @@
 // -----------------------------------------------------------------------------
-// src/app/holland/quiz/page.tsx
-// Server Component bảo vệ route Quiz Holland
+// src/app/holland/quiz/page.tsx       (SERVER component – no "use client")
 // -----------------------------------------------------------------------------
+import { cookies }            from 'next/headers';
+import { redirect }           from 'next/navigation';
+import { createServerComponentClient }
+       from '@supabase/auth-helpers-nextjs';
+import { STATUS }             from '@/lib/constants';
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import QuizClient             from './QuizClient';
 
-import QuizClient from "./QuizClient";      // 👈 default import (không ngoặc)
-
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export default async function HollandQuizPage() {
-  /* 1. Auth ----------------------------------------------------------------- */
+  /* 1 ▸ Auth --------------------------------------------------------------- */
   const supabase = createServerComponentClient({ cookies });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirectedFrom=/holland/quiz");
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login?redirectedFrom=/holland/quiz');
 
-  /* 2. Kiểm tra thanh toán --------------------------------------------------- */
-  const { data } = await supabase
-    .from("payments")
-    .select("status")
-    .eq("user_id", user.id)
-    .eq("product", "holland")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  /* 2 ▸ Đã trả tiền?  (Holland **hoặc** Knowdell) -------------------------- */
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('product, status')
+    .eq('user_id', user.id)
+    .eq('status', STATUS.PAID);
 
-  if (data?.status !== "paid") {
-    redirect("/holland");                   // Chưa trả phí → về trang Intro
+  const paid = (payments ?? []).some(p =>
+    p.product === 'holland' || p.product === 'knowdell'
+  );
+
+  if (!paid) {
+    // chưa thanh toán ⇒ quay về trang intro
+    redirect('/holland');
   }
 
-  /* 3. Render Client-side Quiz ---------------------------------------------- */
+  /* 3 ▸ OK – render quiz (client-side) ------------------------------------ */
   return <QuizClient />;
 }
