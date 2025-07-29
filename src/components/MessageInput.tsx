@@ -1,34 +1,40 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useChat } from '@/context/chat'
+import { useState } from 'react';
 
-export default function MessageInput() {
-  const { sendMessage } = useChat()
-  const [value, setValue] = useState('')
+export default function MessageInput({
+  onSend,
+  disabled,
+}: {
+  onSend: (text: string) => void;
+  disabled?: boolean;
+}) {
+  const [value, setValue] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!value.trim()) return
-    await sendMessage(value.trim())
-    setValue('')
-  }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const txt = value.trim();
+    if (!txt) return;
+    onSend(txt);
+    setValue('');
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="flex space-x-2">
+    <form onSubmit={handleSubmit} className="flex gap-2">
       <input
-        type="text"
+        className="flex-1 rounded border px-4 py-2 placeholder-gray-400 focus:outline-none"
+        placeholder="Nhập tin nhắn…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Nhập tin nhắn…"
-        className="flex-1 bg-white border px-4 py-2 rounded text-black placeholder-gray-400 focus:outline-none"
+        disabled={disabled}
       />
       <button
         type="submit"
-        className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 transition"
+        disabled={disabled}
+        className="rounded bg-indigo-600 px-5 py-2 text-white hover:bg-indigo-700 disabled:opacity-50"
       >
         Gửi
       </button>
     </form>
-  )
+  );
 }
