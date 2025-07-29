@@ -1,35 +1,46 @@
-'use client'
+/* ------------------------------------------------------------------
+   MessageInput – ô gửi tin nhắn đơn giản
+------------------------------------------------------------------- */
+'use client';
 
-import { useState } from 'react'
-import { useChat }  from '@/context/chat'
+import { useState, FormEvent } from 'react';
 
-export default function MessageInput() {
-  const { threadId, refresh } = useChat()     // giả sử hook đã có
-  const [value, setValue] = useState('')
+type Props = {
+  onSend   : (text: string) => void;
+  disabled?: boolean;
+};
 
-  async function send() {
-    const res = await fetch('/api/chat', {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({                // ✨ ĐỔI message ➜ content
-        content  : value.trim(),
-        thread_id: threadId || undefined
-      })
-    })
+export default function MessageInput({ onSend, disabled = false }: Props) {
+  const [value, setValue] = useState('');
 
-    if (res.ok) refresh(await res.json())      // lấy messages mới
-  }
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const text = value.trim();
+    if (!text || disabled) return;
+    onSend(text);
+    setValue('');
+  };
 
   return (
-    <form onSubmit={e=>{e.preventDefault(); if(value.trim()) send(); setValue('')}} 
-          className="flex gap-2 border-t p-3 bg-gray-50">
+    <form
+      onSubmit={handleSubmit}
+      className="flex gap-2 border-t bg-gray-50 px-4 py-3"
+    >
       <input
-        className="flex-1 rounded bg-white px-4 py-2 text-sm outline-none"
+        className="flex-1 rounded border px-3 py-2 text-sm outline-none disabled:bg-gray-100"
         placeholder="Nhập tin nhắn…"
         value={value}
-        onChange={e=>setValue(e.target.value)}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={disabled}
       />
-      <button className="bg-indigo-600 text-white px-4 py-2 rounded">Gửi</button>
+
+      <button
+        type="submit"
+        disabled={disabled}
+        className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50"
+      >
+        Gửi
+      </button>
     </form>
-  )
+  );
 }
