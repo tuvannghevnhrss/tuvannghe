@@ -1,26 +1,70 @@
-/* -------------------------------- ChatLayout.tsx --------------------------- */
-/* Server component – dựng khung 2-cột cố định rộng 100%                       */
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import type { Database } from '@/types/supabase';
+/* ------------------------------------------------------------------ */
+/*  ChatLayout.tsx - wrapper hiển thị 2 cột:                          */
+/*  • children   → khung hội thoại (ChatShell)                        */
+/*  • threads    → danh sách cuộc trò chuyện                         */
+/* ------------------------------------------------------------------ */
+'use client';
 
-export const dynamic = 'force-dynamic';
+import clsx from 'clsx';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 
-export default async function ChatLayout(
-  { children }: React.PropsWithChildren,
-) {
-  /* ── kiểm tra đăng nhập ── */
-  const supabase = createServerComponentClient<Database>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login?redirectedFrom=/chat');
+export interface Thread {
+  id       : string;
+  title    : string;
+  last_msg : string;
+  updated  : string;
+}
 
-  /* ── render khung ── */
+export default function ChatLayout({
+  threads,
+  children,
+}: React.PropsWithChildren<{ threads: Thread[] }>) {
+  const pathname = usePathname();
+  const router   = useRouter();
+
+  const currentId =
+    pathname.startsWith('/chat/') ? pathname.split('/').pop() : null;
+
+  /* ---------------------------------------------------------------- */
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <div className="grid h-[80vh] grid-cols-1 lg:grid-cols-3 gap-6">
-        {children /* ChatShell sẽ được lồng vào đây */}
-      </div>
+    <div className="flex h-[calc(100vh-56px)]"> {/* ↓ 56 px = chiều cao Header */}
+      {/* ─────────── Sidebar ─────────── */}
+      <aside className="w-72 shrink-0 border-r bg-gray-50 flex flex-col">
+        <div className="p-2 border-b">
+          <button
+            onClick={() => router.push('/chat')}
+            className="w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Chat mới
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1 text-sm">
+          {threads.length === 0 && (
+            <p className="px-2 text-gray-500">Chưa có.</p>
+          )}
+
+          {threads.map(t => (
+            <Link
+              key={t.id}
+              href={`/chat/${t.id}`}
+              className={clsx(
+                'block rounded px-3 py-2 hover:bg-indigo-50',
+                currentId === t.id && 'bg-indigo-100 font-medium',
+              )}
+            >
+              <p className="truncate">{t.title}</p>
+              <p className="truncate text-xs text-gray-500">
+                {t.last_msg || '…'}
+              </p>
+            </Link>
+          ))}
+        </nav>
+      </aside>
+
+      {/* ─────────── Khung Chat ─────────── */}
+      <main className="flex-1 overflow-hidden">{children}</main>
     </div>
   );
 }
