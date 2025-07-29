@@ -14,10 +14,11 @@ export default async function ChatPage() {
   if (!user) redirect('/login?redirectedFrom=/chat');
 
   /* Lấy danh sách thread (RPC đã tạo ở DB) */
-  const { data: threads } = await supabase
+  const { data} = await supabase
     .rpc('v_chat_overview', { _user_id: user.id });
 
-  const firstId = threads?.[0]?.id ?? null;
+  const list: any[] = Array.isArray(data) ? data : [];   // <-- LUÔN là mảng
+  const firstId = list[0]?.id ?? null;
 
-  return <ChatLayout threads={threads ?? []} initial={firstId} />;
+  return <ChatLayout threads={list} initial={firstId} />;
 }
