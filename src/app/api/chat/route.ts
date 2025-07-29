@@ -1,95 +1,97 @@
-/* --------------------------------------------------------------------------
-   /api/chat    –  GET  = lấy danh sách thread
-                –  POST = gửi 1 tin nhắn (tạo thread mới nếu cần)
-   -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------
+   /api/chat   – GET = lấy tin nhắn, POST = tạo thread / gửi tin nhắn
+   ------------------------------------------------------------------ */
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import type { Database } from '@/types/supabase';
+import { createRouteHandlerClient, type Database }
+        from '@supabase/auth-helpers-nextjs';
 
-function json(data: unknown, status = 200) {
-  return NextResponse.json(data, { status });
-}
-
-/* -------------------- common helpers -------------------- */
-async function mustAuthed() {
+export async function GET(req: NextRequest) {
   const supabase = createRouteHandlerClient<Database>({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw json({ error: 'UNAUTH' }, 401);
-  return { supabase, user };
+  if (!user) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+
+  const id = req.nextUrl.searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'MISSING_ID' }, { status: 400 });
+
+  /* lấy tin nhắn của thread */
+  const { data: msgs } = await supabase
+    .from('chat_messages')
+    .select('id, role, content')
+    .eq('thread_id', id)
+    .order('created_at');
+
+  return NextResponse.json({ messages: msgs ?? [] });
 }
-
-/* ==================== GET /api/chat ==================== */
-export async function GET() {
-  try {
-    const { supabase, user } = await mustAuthed();
-
-    const { data, error } = await supabase
-      .rpc('v_chat_overview', { _user_id: user.id });   // view + RPC đã tạo
-
-    if (error) {
-      console.error(error);
-      throw json({ error: 'DB_ERROR' }, 500);
-    }
-    return json(data ?? []);                            // luôn là mảng
-  } catch (res) {
-    return res as NextResponse;
-  }
-}
-
-/* ==================== POST /api/chat =================== */
-type Body = { thread_id?: string; message?: string };
 
 export async function POST(req: NextRequest) {
-  try {
-    const { supabase, user } = await mustAuthed();
+  const supabase = createRouteHandlerClient<Database>({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
 
-    /* ---------- 1. body JSON an toàn ---------- */
-    let body: Body;
-    try {
-      body = (await req.json()) ?? {};
-    } catch {
-      throw json({ error: 'BAD_JSON' }, 400);
-    }
-
-    const msg = body.message?.trim();
-    if (!msg) throw json({ error: 'EMPTY' }, 400);
-
-    /* ---------- 2. bảo đảm thread ---------- */
-    let threadId = body.thread_id;
-    if (!threadId) {
-      const { data: t, error } = await supabase
-        .from('chat_threads')
-        .insert({ user_id: user.id, title: msg.slice(0, 60) })
-        .select('id')
-        .single();
-      if (error) {
-        console.error(error);
-        throw json({ error: 'DB_ERROR' }, 500);
-      }
-      threadId = t.id;
-    }
-
-    /* ---------- 3. lưu tin nhắn của user ---------- */
-    const { error: msgErr } = await supabase
-      .from('chat_messages')
-      .insert({
-        thread_id: threadId,
-        user_id:   user.id,
-        role:      'user',
-        content:   msg,
-      });
-    if (msgErr) {
-      console.error(msgErr);
-      throw json({ error: 'DB_ERROR' }, 500);
-    }
-
-    /* ---------- 4. (tùy chọn) gọi OpenAI & lưu reply ---------- */
-    // const ai = await chatWithGPT(msg);
-    // await supabase.from('chat_messages').insert({ ... })
-
-    return json({ ok: true, thread_id: threadId });
-  } catch (res) {
-    return res as NextResponse;
+  // --------- an-toàn khi body rỗng hoặc không phải JSON ----------
+  let body: any = {};
+  if (req.headers.get('content-type')?.includes('application/json')) {
+    try { body = await req.json(); } catch { /* body vẫn {} */ }
   }
+
+  const { id: threadId, content } = body as {
+    id?: string; content?: string;
+  };
+
+  /* 1 ▸ KHỞI TẠO THREAD (POST rỗng) ----------------------------- */
+  if (!threadId && !content) {
+    const { data, error } = await supabase
+      .from('chat_threads')
+      .insert({ user_id: user.id, title: 'Cuộc trò chuyện mới' })
+      .select('id')
+      .single();
+
+    return error
+      ? NextResponse.json({ error: 'DB_ERROR' }, { status: 500 })
+      : NextResponse.json({ id: data.id });
+  }
+
+  /* 2 ▸ GỬI TIN NHẮN ------------------------------------------- */
+  if (!threadId || !content?.trim())
+    return NextResponse.json({ error: 'BAD_JSON' }, { status: 400 });
+
+  // lưu tin nhắn của user
+  const { error: e1 } = await supabase
+    .from('chat_messages')
+    .insert({ thread_id: threadId, user_id: user.id, role: 'user', content });
+
+  if (e1) return NextResponse.json({ error: 'DB_ERROR' }, { status: 500 });
+
+  /* gọi OpenAI 💬 */
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method : 'POST',
+    headers: {
+      'Content-Type' : 'application/json',
+      Authorization  : `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model   : 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content }],
+    }),
+  }).then(r => r.json());
+
+  const assistantMsg = resp.choices?.[0]?.message?.content?.trim() ?? 'Xin lỗi, tôi gặp lỗi!';
+
+  // lưu tin nhắn assistant
+  const { data: msg, error: e2 } = await supabase
+    .from('chat_messages')
+    .insert({ thread_id: threadId, role: 'assistant', content: assistantMsg })
+    .select('id')
+    .single();
+
+  if (e2) return NextResponse.json({ error: 'DB_ERROR' }, { status: 500 });
+
+  /* cập nhật timestamp thread */
+  await supabase
+    .from('chat_threads')
+    .update({ updated_at: new Date() })
+    .eq('id', threadId);
+
+  return NextResponse.json({ id: msg.id, content: assistantMsg });
 }
