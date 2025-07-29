@@ -1,48 +1,49 @@
-/* ------------------------------------------------------------------ */
-/*  /chat – server component dựng dữ liệu + bọc ChatLayout            */
-/* ------------------------------------------------------------------ */
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import type { Database } from '@/types/supabase';
-import ChatLayout, { type Thread } from '@/components/ChatLayout';
-import ChatClient from '@/components/ChatClient';
+// -----------------------------------------------------------------------------
+// src/app/chat/page.tsx  –  SERVER COMPONENT
+// -----------------------------------------------------------------------------
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import ChatLayout   from '@/components/ChatLayout'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import type { Database } from '@/types/supabase'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
-export default async function ChatPage() {
-  /* ---------- auth ---------- */
-  const supabase = createServerComponentClient<Database>({ cookies });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/login?redirectedFrom=/chat');
+export default async function ChatPage(
+  { searchParams }: { searchParams?: { thread?: string } }
+) {
+  /* 1 ▸ auth ------------------------------------------------------- */
+  const supabase = createServerComponentClient<Database>({ cookies })
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login?redirectedFrom=/chat')
 
-  /* ---------- danh sách thread ---------- */
-  const { data } = await supabase
-    .from('chat_messages')
-    .select('thread_id:id, content, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+  /* 2 ▸ đọc query an-toàn ----------------------------------------- */
+  const threadId = searchParams?.thread ?? null        // ← tránh destructure null
 
-  // gom theo thread & lấy tin mới nhất làm preview
-  const map = new Map<string, Thread>();
-  (data ?? []).forEach((m) => {
-    if (!map.has(m.thread_id)) {
-      map.set(m.thread_id, {
-        id: m.thread_id,
-        title: m.content.slice(0, 40) || 'Chat mới',
-        last_msg: m.content,
-        updated: m.created_at,
-      });
-    }
-  });
-  const threads = Array.from(map.values());
+  /* 3 ▸ lấy danh sách thread -------------------------------------- */
+  const { data: threads } = await supabase
+    .rpc('v_chat_overview', { _user_id: user.id })     // view đã tạo
+  // Nếu RPC trả null, biến threads = null → ép về []
+  const overview = threads ?? []
 
-  /* ---------- render ---------- */
+  /* 4 ▸ lấy tin nhắn nếu có thread hiện hành ---------------------- */
+  let messages: any[] = []
+  if (threadId) {
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('id, role, content, created_at')
+      .eq('thread_id', threadId)
+      .order('created_at', { ascending: true })
+    messages = data ?? []
+  }
+
+  /* 5 ▸ render ----------------------------------------------------- */
   return (
-    <ChatLayout threads={threads}>
-      <ChatClient />
-    </ChatLayout>
-  );
+    <ChatLayout
+      userId={user.id}
+      overview={overview}     // mảng { id, title, last_message, updated_at }
+      initialThreadId={threadId}
+      initialMessages={messages}
+    />
+  )
 }
