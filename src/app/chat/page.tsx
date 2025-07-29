@@ -1,45 +1,80 @@
-/* --------------------------------------------------------------------------
-   /chat – SERVER component
-   -------------------------------------------------------------------------- */
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import ChatLayout from '@/components/ChatLayout';
-import type { Database } from '@/types/supabase';
+/* ------------------------------------------------------------------ */
+/*  ChatLayout – bố cục 2 cột + header “Lịch sử chat / Chat”          */
+/* ------------------------------------------------------------------ */
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useState } from 'react';
+import ChatShell from './ChatShell';
+import clsx       from 'clsx';
 
-type PageProps = {
-  searchParams?: Record<string, string | string[]>;
+export type Thread = { id: string; title: string; updated_at: string };
+
+type Props = {
+  threads: Thread[];
+  initialThreadId: string | null;
+  userId: string;
 };
 
-export default async function ChatPage({ searchParams }: PageProps) {
-  /* 1. Auth ------------------------------------------------------- */
-  const supabase = createServerComponentClient<Database>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login?redirectedFrom=/chat');
+export default function ChatLayout({
+  threads: initialThreads,
+  initialThreadId,
+  userId,
+}: Props) {
+  const [threads, setThreads]   = useState<Thread[]>(initialThreads);
+  const [current, setCurrent]   = useState<string | null>(initialThreadId);
 
-  /* 2. Threads overview (RPC) ------------------------------------ */
-  const { data: threadsData } = await supabase.rpc('v_chat_overview', {
-    _user_id: user.id,
-  });
-  const threads = Array.isArray(threadsData) ? threadsData : [];
+  /** Khi ChatShell tạo thread mới */
+  const handleNewThread = (id: string, title: string) => {
+    setThreads([{ id, title, updated_at: new Date().toISOString() }, ...threads]);
+    setCurrent(id);
+  };
 
-  /* 3. Thread được chọn ------------------------------------------ */
-  const initialThreadId =
-    typeof searchParams?.id === 'string'
-      ? searchParams.id
-      : threads[0]?.id ?? null;
-
-  /* 4. Render ----------------------------------------------------- */
   return (
-    <ChatLayout
-      threads={threads}
-      initialThreadId={initialThreadId}
-      userId={user.id}
-    />
+    <section className="flex flex-col h-[calc(100vh-48px)]">
+      {/* ---------- HEADER ---------- */}
+      <header className="grid grid-cols-12 border-b bg-white shrink-0">
+        <div className="col-span-3 px-4 py-2 font-semibold border-r">
+          Lịch sử chat
+        </div>
+        <div className="col-span-9 px-4 py-2 font-semibold">Chat</div>
+      </header>
+
+      {/* ---------- BODY ---------- */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* ----- Sidebar ----- */}
+        <aside className="w-72 border-r overflow-y-auto">
+          {threads.length === 0 ? (
+            <p className="p-4 text-sm text-gray-500">Chưa có.</p>
+          ) : (
+            <ul className="p-2 space-y-1">
+              {threads.map((t) => (
+                <li
+                  key={t.id}
+                  onClick={() => setCurrent(t.id)}
+                  className={clsx(
+                    'cursor-pointer rounded px-3 py-2 text-sm',
+                    current === t.id
+                      ? 'bg-indigo-600 text-white'
+                      : 'hover:bg-gray-100',
+                  )}
+                >
+                  {t.title.slice(0, 50)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+
+        {/* ----- Chat area ----- */}
+        <div className="flex-1 flex flex-col">
+          <ChatShell
+            threadId={current}
+            onThreadChange={(id) => setCurrent(id)}
+            onThreadCreate={handleNewThread}   {/* thêm callback */}
+            userId={userId}
+          />
+        </div>
+      </div>
+    </section>
   );
 }
-
-/*  🔥  KHÔNG CÒN BẤT CỨ CODE NÀO BÊN DƯỚI –   
-    xoá hẳn các truy vấn messages + filter cũ */
