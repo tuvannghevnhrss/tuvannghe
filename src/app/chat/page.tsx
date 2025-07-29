@@ -1,3 +1,6 @@
+/* --------------------------------------------------------------------------
+   /chat – SERVER component
+   -------------------------------------------------------------------------- */
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -7,29 +10,28 @@ import type { Database } from '@/types/supabase';
 export const dynamic = 'force-dynamic';
 
 type PageProps = {
-  /** Các query string, ví dụ /chat?id=abc */
   searchParams?: Record<string, string | string[]>;
 };
 
 export default async function ChatPage({ searchParams }: PageProps) {
-  /* 1. Xác thực người dùng */
+  /* 1. Auth ------------------------------------------------------- */
   const supabase = createServerComponentClient<Database>({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?redirectedFrom=/chat');
 
-  /* 2. Lấy danh sách thread (overview) */
-  const { data } = await supabase.rpc('v_chat_overview', { _user_id: user.id });
-  const threads = Array.isArray(data) ? data : [];
+  /* 2. Threads overview (RPC) ------------------------------------ */
+  const { data: threadsData } = await supabase.rpc('v_chat_overview', {
+    _user_id: user.id,
+  });
+  const threads = Array.isArray(threadsData) ? threadsData : [];
 
-  /* 3. Xác định thread được chọn
-        - Ưu tiên ?id=… trên URL
-        - Nếu không có, lấy thread đầu tiên (nếu có)
-  */
+  /* 3. Thread được chọn ------------------------------------------ */
   const initialThreadId =
     typeof searchParams?.id === 'string'
       ? searchParams.id
       : threads[0]?.id ?? null;
 
+  /* 4. Render ----------------------------------------------------- */
   return (
     <ChatLayout
       threads={threads}
@@ -38,3 +40,6 @@ export default async function ChatPage({ searchParams }: PageProps) {
     />
   );
 }
+
+/*  🔥  KHÔNG CÒN BẤT CỨ CODE NÀO BÊN DƯỚI –   
+    xoá hẳn các truy vấn messages + filter cũ */
