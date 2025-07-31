@@ -1,21 +1,13 @@
-'use client';
+// ❗️CHỈ dùng tại Client Component
+import { createBrowserClient } from '@supabase/ssr';
 
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/supabase';
+const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-/**
- * Browser-side singleton Supabase client
- * (tương đương createBrowserClient của @supabase/ssr)
- */
-export const createSupabaseBrowserClient = () =>
-  createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: { persistSession: true, autoRefreshToken: true }
-    }
-  );
+/** Singleton client cho toàn bộ FE */
+export const supabaseBrowser = createBrowserClient(
+  supabaseUrl,
+  supabaseAnonKey,
+);
 
-// --- alias để code cũ vẫn chạy ---
-export { createSupabaseBrowserClient as supabaseBrowser };
-export default createSupabaseBrowserClient;
+export default supabaseBrowser;          // Giữ nguyên default-export cũ

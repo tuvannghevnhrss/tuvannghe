@@ -1,39 +1,41 @@
-/* src/app/chat/page.tsx */
-import { redirect } from 'next/navigation'
-import ChatLayout from '@/components/ChatLayout'
-import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import ChatLayout, { ThreadMeta } from '@/components/ChatLayout';
+import MessageList                from '@/components/MessageList';
+import MessageInput               from '@/components/MessageInput';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
-export const dynamic = 'force-dynamic'                  // luôn SSR, tránh cache
+/* Tránh static-generate để luôn đọc cookie – fix 307 redirect & cookie-error */
+export const dynamic = 'force-dynamic';
 
-export default async function ChatPage() {
-  const supabase = createSupabaseServerClient()
+/* Lấy danh sách thread cho sidebar */
+async function fetchThreads(): Promise<ThreadMeta[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('v_chat_overview')
+    .select('*')
+    .order('updated_at', { ascending: false });
 
-  /* ---- Lấy user ---- */
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/signup')
-
-  /* ---- Lấy threads + message cuối ---- */
-  const { data: threads, error } = await supabase
-    .from('chat_threads')
-    .select(`
-      id,
-      updated_at,
-      messages:chat_messages (
-        id,
-        role,
-        content,
-        created_at
-      )
-    `)
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false })
-
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[fetchThreads]', error);
+    return [];
+  }
 
   return (
-    <ChatLayout
-      userId  ={user.id}
-      threads ={threads ?? []}
-    />
-  )
+    data ?? []
+  ).map((row) => ({
+    id:          row.id,
+    title:       row.title       ?? 'Cuộc trò chuyện',
+    updatedAt:   row.updated_at ?? row.created_at,
+    lastMessage: row.last_message,
+  }));
+}
+
+export default async function ChatPage() {
+  const threads = await fetchThreads();
+
+  return (
+    <ChatLayout threads={threads}>
+      <MessageList threads={threads} />
+      <MessageInput />
+    </ChatLayout>
+  );
 }
