@@ -1,34 +1,43 @@
-'use client';
+/* src/components/MessageInput.tsx */
 import { useState } from 'react';
 
-export default function MessageInput({ onSend }: { onSend: (txt: string)=>void }) {
+export default function MessageInput({
+  userId,
+  initialThreadId,
+  className = '',
+}: {
+  userId: string;
+  initialThreadId: string | null;
+  className?: string;
+}) {
   const [text, setText] = useState('');
 
-  const submit = () => {
+  async function handleSend() {
     if (!text.trim()) return;
-    onSend(text.trim());
+    // POST /api/chat …
     setText('');
-  };
+  }
 
   return (
     <form
-      className="w-full px-6 py-4 bg-transparent sticky bottom-0"
-      onSubmit={e => { e.preventDefault(); submit(); }}
+      onSubmit={e => {
+        e.preventDefault();
+        handleSend();
+      }}
+      className={`flex gap-2 ${className}`}
     >
-      <div className="flex gap-2 max-w-3xl mx-auto">
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="Nhập tin nhắn…"
-          className="flex-1 rounded-lg border px-4 py-3 shadow-sm focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg"
-        >
-          Gửi
-        </button>
-      </div>
+      <input
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Nhập tin nhắn…"
+        className="flex-1 rounded border px-4 py-2 outline-none"
+      />
+      <button
+        type="submit"
+        className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+      >
+        Gửi
+      </button>
     </form>
   );
 }
