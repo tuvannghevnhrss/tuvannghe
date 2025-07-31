@@ -1,4 +1,6 @@
 /* src/components/MessageInput.tsx */
+'use client';
+
 import { useState } from 'react';
 
 export default function MessageInput({
@@ -14,7 +16,7 @@ export default function MessageInput({
 
   async function handleSend() {
     if (!text.trim()) return;
-    // POST /api/chat …
+    // TODO: call POST /api/chat
     setText('');
   }
 
