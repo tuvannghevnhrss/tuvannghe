@@ -1,7 +1,21 @@
-// src/lib/supabaseBrowser.ts
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types_db'
+'use client';
 
-export const supabaseBrowser = createBrowserSupabaseClient<Database>()
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 
-export default supabaseBrowser           // ⬅ giữ default export để không gãy code cũ
+/**
+ * Browser-side singleton Supabase client
+ * (tương đương createBrowserClient của @supabase/ssr)
+ */
+export const createSupabaseBrowserClient = () =>
+  createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: { persistSession: true, autoRefreshToken: true }
+    }
+  );
+
+// --- alias để code cũ vẫn chạy ---
+export { createSupabaseBrowserClient as supabaseBrowser };
+export default createSupabaseBrowserClient;

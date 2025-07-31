@@ -1,17 +1,30 @@
-// src/lib/supabaseServer.ts
-import { cookies } from 'next/headers'
-import {
-  createServerSupabaseClient,
-  type SupabaseClient,
-} from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types_db'
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import type { Database } from '@/types/supabase';
 
-export function supabaseServer(): SupabaseClient<Database> {
-  // auth-helpers tự lo cookies, chỉ cần truyền context
-  return createServerSupabaseClient<Database>({ cookies })
-}
+/**
+ * Server-component / Route-handler Supabase client
+ * Giữ session qua cookie store của Next App Router.
+ */
+export const createSupabaseServerClient = () => {
+  const cookieStore = cookies();
 
-export default supabaseServer
-// ✱ Nếu muốn hàm khởi tạo cho route handler (để dùng trong “/api/…/route.ts”)
-export const createSupabaseRouteServerClient = supabaseServer
-export const createSupabaseServerClient      = supabaseServer
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (key) => cookieStore.get(key)?.value,
+        set: (key, value, options: CookieOptions) =>
+          cookieStore.set({ name: key, value, ...options }),
+        remove: (key, options) =>
+          cookieStore.set({ name: key, value: '', ...options })
+      }
+    }
+  );
+};
+
+// --- alias để code cũ vẫn chạy ---
+export const createSupabaseRouteServerClient = createSupabaseServerClient;
+export { createSupabaseServerClient as supabaseServer };
+export default createSupabaseServerClient;
