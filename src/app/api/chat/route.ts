@@ -1,97 +1,85 @@
-/* ------------------------------------------------------------------
-   /api/chat   – GET = lấy tin nhắn, POST = tạo thread / gửi tin nhắn
-   ------------------------------------------------------------------ */
-import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient, type Database }
-        from '@supabase/auth-helpers-nextjs';
+/*  src/app/api/chat/route.ts
+    POST  /api/chat
+-------------------------------------------------- */
+import { NextResponse } from "next/server"
+import OpenAI from "openai"
+import { createSupabaseRouteServerClient } from "@/lib/supabaseServer"
 
-export async function GET(req: NextRequest) {
-  const supabase = createRouteHandlerClient<Database>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+export const runtime = "edge"          // ⏩ dùng Edge Functions (rẻ & nhanh)
 
-  const id = req.nextUrl.searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'MISSING_ID' }, { status: 400 });
+const openai = new OpenAI({
+  apiKey : process.env.OPENAI_API_KEY,
+})
 
-  /* lấy tin nhắn của thread */
-  const { data: msgs } = await supabase
-    .from('chat_messages')
-    .select('id, role, content')
-    .eq('thread_id', id)
-    .order('created_at');
-
-  return NextResponse.json({ messages: msgs ?? [] });
+/* ------------------- types ------------------- */
+interface Body {
+  userId   : string          // id người dùng Supabase
+  content  : string          // tin nhắn người dùng
+  threadId?: string          // id cuộc trò chuyện (nếu đã có)
 }
 
-export async function POST(req: NextRequest) {
-  const supabase = createRouteHandlerClient<Database>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+/* ------------------- handler ------------------- */
+export async function POST(req: Request) {
+  const data = (await req.json()) as Body
+  if (!data.userId || !data.content?.trim())
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
 
-  // --------- an-toàn khi body rỗng hoặc không phải JSON ----------
-  let body: any = {};
-  if (req.headers.get('content-type')?.includes('application/json')) {
-    try { body = await req.json(); } catch { /* body vẫn {} */ }
+  /* ----- Supabase ----- */
+  const supabase = createSupabaseRouteServerClient()
+  let threadId   = data.threadId
+
+  // 1. Tạo thread mới nếu chưa có
+  if (!threadId) {
+    const { data: t, error } = await supabase
+      .from("threads")
+      .insert({ user_id: data.userId })
+      .select("id")
+      .single()
+    if (error) return NextResponse.json({ error }, { status: 500 })
+    threadId = t.id
   }
 
-  const { id: threadId, content } = body as {
-    id?: string; content?: string;
-  };
+  // 2. Lưu message người dùng
+  await supabase.from("messages").insert({
+    thread_id: threadId,
+    role     : "user",
+    content  : data.content.trim(),
+  })
 
-  /* 1 ▸ KHỞI TẠO THREAD (POST rỗng) ----------------------------- */
-  if (!threadId && !content) {
-    const { data, error } = await supabase
-      .from('chat_threads')
-      .insert({ user_id: user.id, title: 'Cuộc trò chuyện mới' })
-      .select('id')
-      .single();
+  // 3. Lấy tối đa 15 message gần nhất làm bối cảnh
+  const { data: history } = await supabase
+    .from("messages")
+    .select("role, content")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: true })
+    .limit(15)
 
-    return error
-      ? NextResponse.json({ error: 'DB_ERROR' }, { status: 500 })
-      : NextResponse.json({ id: data.id });
-  }
-
-  /* 2 ▸ GỬI TIN NHẮN ------------------------------------------- */
-  if (!threadId || !content?.trim())
-    return NextResponse.json({ error: 'BAD_JSON' }, { status: 400 });
-
-  // lưu tin nhắn của user
-  const { error: e1 } = await supabase
-    .from('chat_messages')
-    .insert({ thread_id: threadId, user_id: user.id, role: 'user', content });
-
-  if (e1) return NextResponse.json({ error: 'DB_ERROR' }, { status: 500 });
-
-  /* gọi OpenAI 💬 */
-  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-    method : 'POST',
-    headers: {
-      'Content-Type' : 'application/json',
-      Authorization  : `Bearer ${process.env.OPENAI_API_KEY}`,
+  /* ----- gọi GPT-4o ----- */
+  const messages = [
+    {
+      role    : "system",
+      content :
+        "Bạn là trợ lý hướng nghiệp AI. \
+        Hãy trả lời bằng tiếng Việt, súc tích, dễ hiểu và thực tế.",
     },
-    body: JSON.stringify({
-      model   : 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content }],
-    }),
-  }).then(r => r.json());
+    ...(history ?? []), // lịch sử cũ (đã bao gồm câu user vừa gửi)
+  ]
 
-  const assistantMsg = resp.choices?.[0]?.message?.content?.trim() ?? 'Xin lỗi, tôi gặp lỗi!';
+  const completion = await openai.chat.completions.create({
+    model    : "gpt-4o-mini",
+    messages ,
+    temperature: 0.7,
+  })
 
-  // lưu tin nhắn assistant
-  const { data: msg, error: e2 } = await supabase
-    .from('chat_messages')
-    .insert({ thread_id: threadId, role: 'assistant', content: assistantMsg })
-    .select('id')
-    .single();
+  const assistant = completion.choices[0].message.content.trim()
 
-  if (e2) return NextResponse.json({ error: 'DB_ERROR' }, { status: 500 });
+  // 4. Lưu phản hồi AI
+  await supabase.from("messages").insert({
+    thread_id: threadId,
+    role     : "assistant",
+    content  : assistant,
+  })
 
-  /* cập nhật timestamp thread */
-  await supabase
-    .from('chat_threads')
-    .update({ updated_at: new Date() })
-    .eq('id', threadId);
-
-  return NextResponse.json({ id: msg.id, content: assistantMsg });
+  /* ----- trả kết quả ----- */
+  return NextResponse.json({ threadId, assistant })
 }
