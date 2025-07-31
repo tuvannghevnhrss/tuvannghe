@@ -1,20 +1,53 @@
-'use client';
-import * as React from 'react';
-import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
-import clsx from 'classnames';
+import * as React from "react";
+import * as RadixScroll from "@radix-ui/react-scroll-area";
 
-export function ScrollArea({ className, children }: React.ComponentPropsWithoutRef<'div'>) {
+type ScrollAreaProps = React.ComponentPropsWithoutRef<
+  typeof RadixScroll.Root
+>;
+
+export function ScrollArea({
+  className,
+  children,
+  ...props
+}: ScrollAreaProps) {
   return (
-    <ScrollAreaPrimitive.Root className={clsx('overflow-hidden', className)}>
-      <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+    <RadixScroll.Root
+      className={`relative overflow-hidden ${className ?? ""}`}
+      {...props}
+    >
+      <RadixScroll.Viewport className="h-full w-full rounded-[inherit]">
         {children}
-      </ScrollAreaPrimitive.Viewport>
-      <ScrollAreaPrimitive.Scrollbar
-        orientation="vertical"
-        className="flex touch-none select-none p-0.5"
-      >
-        <ScrollAreaPrimitive.Thumb className="flex-1 bg-muted rounded-full" />
-      </ScrollAreaPrimitive.Scrollbar>
-    </ScrollAreaPrimitive.Root>
+      </RadixScroll.Viewport>
+      {/* Thanh cuộn mặc định dọc */}
+      <ScrollBar orientation="vertical" />
+      {/* Tùy cần thanh cuộn ngang thì mở dòng dưới */}
+      {/* <ScrollBar orientation="horizontal" /> */}
+      <RadixScroll.Corner />
+    </RadixScroll.Root>
+  );
+}
+
+type ScrollBarProps = React.ComponentPropsWithoutRef<
+  typeof RadixScroll.Scrollbar
+>;
+
+export function ScrollBar({
+  className,
+  orientation = "vertical",
+  ...props
+}: ScrollBarProps) {
+  const base =
+    orientation === "vertical"
+      ? "h-full w-2.5 border-l"
+      : "h-2.5 w-full border-t";
+
+  return (
+    <RadixScroll.Scrollbar
+      orientation={orientation}
+      className={`flex touch-none select-none transition-colors ${base} ${className ?? ""}`}
+      {...props}
+    >
+      <RadixScroll.Thumb className="relative flex-1 rounded-full bg-muted-foreground/50" />
+    </RadixScroll.Scrollbar>
   );
 }

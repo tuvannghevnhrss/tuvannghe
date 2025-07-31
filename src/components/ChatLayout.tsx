@@ -5,8 +5,8 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { Menu, MessageCircle, School } from 'lucide-react';
 
-import HistoryList    from './HistoryList';
-import MessageInput   from './MessageInput';
+import HistoryList   from '@/components/HistoryList';
+import MessageInput  from '@/components/MessageInput';
 import type { ThreadMeta } from './types';
 import { Button }      from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';

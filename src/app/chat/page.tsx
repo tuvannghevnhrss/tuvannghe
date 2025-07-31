@@ -1,11 +1,10 @@
-import ChatLayout      from '@/components/chat/ChatLayout';
-import MessageList     from '@/components/chat/MessageList';
-import type { ThreadMeta } from '@/components/chat/types';
+// src/app/chat/page.tsx
+import ChatLayout       from '@/components/ChatLayout';
+import type { ThreadMeta } from '@/components/chat/types'; // GIỮ đường dẫn này nếu folder chat/ chứa types
 
-/** Server-action lấy toàn bộ thread của user hiện tại. */
+/** 🚀 Lấy danh sách thread của user – thay thế bằng Supabase thực tế */
 async function fetchThreadsForUser(): Promise<ThreadMeta[]> {
-  // 👉 Thay thế bằng supabase / DB thực tế của bạn
-  return [];
+  return [];          // TODO: gọi Supabase
 }
 
 export default async function ChatPage() {
@@ -13,8 +12,8 @@ export default async function ChatPage() {
 
   return (
     <ChatLayout threads={threads}>
-      {/* Khi chưa chọn thread ⇒ hiện hướng dẫn trống */}
-      <div className="text-muted-foreground text-center">
+      {/* Màn hình trống khi chưa chọn thread */}
+      <div className="text-center text-muted-foreground">
         Chọn một đoạn chat ở thanh bên trái hoặc tạo cuộc trò chuyện mới.
       </div>
     </ChatLayout>
