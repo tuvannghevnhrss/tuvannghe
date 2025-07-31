@@ -1,77 +1,99 @@
-'use client';
+"use client";
 
-import { useState, ReactNode } from 'react';
-import Link from 'next/link';
-import clsx from 'clsx';
-import { Menu, MessageCircle, School } from 'lucide-react';
+import { useEffect, useRef } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { HistoryList } from "./HistoryList";
+import { MessageInput } from "./MessageInput";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { PlusCircle, Loader2, MessagesSquare } from "lucide-react";
+import useSWR from "swr";
+import { fetchThreadsForUser } from "@/lib/supabaseBrowser";
 
-import HistoryList   from '@/components/HistoryList';
-import MessageInput  from '@/components/MessageInput';
-import type { ThreadMeta } from './types';
-import { Button }      from '@/components/ui/button';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+// -----------------------------
+// Types
+// -----------------------------
+interface ChatLayoutProps {
+  userId: string | null;
+  children: React.ReactNode;
+}
 
-type Props = { threads: ThreadMeta[]; children: ReactNode };
+// -----------------------------
+// Component
+// -----------------------------
+export default function ChatLayout({ userId, children }: ChatLayoutProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-export default function ChatLayout({ threads, children }: Props) {
-  const [open, setOpen] = useState(true);
+  // Fetch chat threads
+  const {
+    data: threads,
+    isLoading,
+    mutate,
+  } = useSWR(userId ? ["threads", userId] : null, () => fetchThreadsForUser(userId!));
 
+  // Auto‑scroll to bottom when thread list changes
+  useEffect(() => {
+    if (bottomRef.current) bottomRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [threads]);
+
+  // ----------------------------------
+  // Render
+  // ----------------------------------
   return (
-    <section className="grid h-[calc(100vh-48px)] grid-cols-[auto_1fr] bg-background">
-      {/* ────────── SIDEBAR ────────── */}
-      <aside
-        className={clsx(
-          'flex flex-col border-r bg-muted transition-all duration-300',
-          open ? 'w-60' : 'w-0 overflow-hidden'
-        )}
-      >
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="text-primary">🎓</span>
-            <span className="hidden lg:inline">Hướng nghiệp AI</span>
-          </Link>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
-            <Menu size={18} />
-          </Button>
-        </div>
+    <div className="grid h-[calc(100vh-48px)] grid-cols-[260px_1fr] overflow-hidden">
+      {/* -------------- SIDEBAR -------------- */}
+      <aside className="flex h-full flex-col border-r">
+        <header className="flex items-center justify-between border-b px-4 py-3 text-sm font-medium">
+          <span className="inline-flex items-center gap-1"><MessagesSquare size={16}/> Đoạn chat</span>
+          <button
+            onClick={() => router.push("/chat?new=1")}
+            className="inline-flex items-center gap-1 text-primary hover:underline"
+          >
+            <PlusCircle size={14}/> Mới
+          </button>
+        </header>
 
-        {/* Threads */}
-        <ScrollArea className="flex-1">
-          <h2 className="px-4 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1">
-            <MessageCircle size={14} /> Đoạn chat
-          </h2>
-          {threads.map(t => (
-            <Link
-              key={t.id}
-              href={`/chat/${t.id}`}
-              className="block truncate px-4 py-2 text-sm hover:bg-accent"
-            >
-              {t.title || 'Không tiêu đề'}
-            </Link>
-          ))}
-          <ScrollBar orientation="vertical" />
+        {/* Thread list */}
+        <ScrollArea className="flex-1 overflow-y-auto">
+          {isLoading && (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Đang tải…
+            </div>
+          )}
+
+          {!isLoading && threads?.length === 0 && (
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+              Bạn chưa có cuộc trò chuyện nào.
+            </p>
+          )}
+
+          {!isLoading && threads?.length! > 0 && (
+            <HistoryList
+              threads={threads!}
+              activeId={pathname.split("/").pop()!}
+              onSelect={(id) => router.push(`/chat/${id}`)}
+              onDelete={async () => {
+                await mutate();
+                if (pathname === "/chat") router.refresh();
+              }}
+            />
+          )}
+
+          {/* keep scroll position */}
+          <div ref={bottomRef}/>
         </ScrollArea>
 
-        {/* Quick links */}
-        <nav className="border-t p-2 text-sm">
-          <h2 className="mb-1 flex items-center gap-1 px-2 text-xs font-semibold uppercase text-muted-foreground">
-            <School size={14} /> Khám phá
-          </h2>
-          <Link href="/mbti"    className="block rounded px-3 py-2 hover:bg-accent">MBTI</Link>
-          <Link href="/holland" className="block rounded px-3 py-2 hover:bg-accent">Holland</Link>
-        </nav>
+        {/* QUICK LINKS ĐÃ XOÁ: nếu muốn dùng lại, thêm ở đây */}
       </aside>
 
-      {/* ────────── CHAT AREA ────────── */}
-      <main className="relative flex flex-col">
-        {/* messages */}
-        <div className="flex-1 overflow-y-auto p-6">{children}</div>
-        {/* input cố định dưới đáy */}
-        <div className="border-t bg-background p-3">
-          <MessageInput />
-        </div>
-      </main>
-    </section>
+      {/* -------------- MAIN CHAT -------------- */}
+      <section className="relative flex h-full flex-col">
+        <div className="flex-1 overflow-y-auto">{children}</div>
+        <MessageInput userId={userId} onSent={() => mutate()}/>
+      </section>
+    </div>
   );
 }

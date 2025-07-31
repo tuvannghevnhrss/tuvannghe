@@ -14,7 +14,7 @@ export default async function ChatPage() {
     <ChatLayout threads={threads}>
       {/* Màn hình trống khi chưa chọn thread */}
       <div className="text-center text-muted-foreground">
-        Chọn một đoạn chat ở thanh bên trái hoặc tạo cuộc trò chuyện mới.
+        
       </div>
     </ChatLayout>
   );
