@@ -1,68 +1,46 @@
-"use client"
+"use client";
 
-import { useState, useRef, FormEvent } from "react"
-import { ArrowUpCircle } from "lucide-react"
+import { useState } from "react";
 
-interface MessageInputProps {
-  userId : string | null
-  onSent?: () => void
-}
+export default function MessageInput({ onSent }: { onSent: () => void }) {
+  const [input, setInput] = useState("");
 
-export default function MessageInput({ userId, onSent }: MessageInputProps) {
-  const [value,   setValue]   = useState("")
-  const [sending, setSending] = useState(false)
-  const inputRef              = useRef<HTMLInputElement>(null)
+  async function handleSend() {
+    const text = input.trim();
+    if (!text) return;
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (!value.trim() || sending) return
-    setSending(true)
+    // 🟢 Gửi đúng payload + header
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: text }),
+    });
 
-    try {
-      await fetch("/api/chat", {
-        method : "POST",
-        headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({ userId, content: value.trim() }),
-      })
-      setValue("")
-      onSent?.()
-      inputRef.current?.focus()
-    } finally {
-      setSending(false)
+    if (!res.ok) {
+      console.error(await res.text());   // debug nếu còn lỗi
+      return;
     }
+
+    setInput("");
+    onSent();            // gọi mutate, scroll, …
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-4 mb-4 flex items-center gap-2 rounded-full border bg-white px-4 py-2 shadow-sm"
-    >
+    <div className="flex gap-2 p-4">
       <input
-        ref={inputRef}
-        type="text"
-        placeholder="Hỏi huongnghiep"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        className="flex-1 rounded-lg border px-3 py-2 text-sm"
+        placeholder="Hỏi huongnghiep.ai"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSend()}
       />
-
-      {value.length > 0 && (
-        <span className="rounded-full bg-violet-500 px-2 py-0.5 text-xs font-medium text-white">
-          {value.length}
-        </span>
-      )}
-
       <button
-        type="submit"
-        disabled={sending || !value.trim()}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
-          sending || !value.trim()
-            ? "cursor-not-allowed bg-muted text-muted-foreground"
-            : "bg-violet-500 text-white hover:bg-violet-600"
-        }`}
+        onClick={handleSend}
+        className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        disabled={!input.trim()}
       >
-        <ArrowUpCircle className="h-5 w-5" />
+        Gửi
       </button>
-    </form>
-  )
+    </div>
+  );
 }
