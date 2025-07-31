@@ -1,31 +1,37 @@
-'use client';
-import { useState } from 'react';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
-import { Button } from '@/components/ui/button';
+// src/components/MessageInput.tsx
+"use client"
 
-export default function MessageInput() {
-  const [value, setValue] = useState('');
+import { useState } from "react"
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const text = value.trim();
-    if (!text) return;
-
-    const supabase = supabaseBrowser();
-    await supabase.from('messages').insert({ role: 'user', content: text });
-    setValue('');
-    // Tuỳ bạn xử lý realtime hoặc mutate SWR...
-  }
+export default function MessageInput({
+  onSend,
+}: {
+  onSend: (value: string) => void
+}) {
+  const [message, setMessage] = useState("")
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!message.trim()) return
+        onSend(message)
+        setMessage("")
+      }}
+      className="flex gap-2 w-full"
+    >
       <input
-        className="flex-1 border rounded-md px-3 py-2 text-sm focus:outline-none"
-        placeholder="Nhập tin nhắn…"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
+        className="flex-1 rounded border px-3 py-2 outline-none"
+        placeholder="Nhập tin nhắn..."
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
       />
-      <Button type="submit">Gửi</Button>
+      <button
+        type="submit"
+        className="rounded bg-primary px-4 py-2 text-white hover:opacity-90"
+      >
+        Gửi
+      </button>
     </form>
-  );
+  )
 }
