@@ -1,31 +1,21 @@
 import { cookies, headers } from 'next/headers';
-import {
-  createServerClient,
-  type CookieOptions,
-} from '@supabase/ssr';
-
-const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { createServerClient } from '@supabase/ssr';
 
 /**
- * Client dùng trong Server Component / Route Handler.
- * Không thao tác cookie trực tiếp – dùng API của Next 13 +
+ * Server‑side Supabase client.  
+ *   – Đọc / ghi cookie phiên đăng nhập an toàn.  
+ *   – Trả về 1 client mới cho mỗi request.
  */
 export function createSupabaseServerClient() {
-  const store = cookies();
-
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    headers: { authorization: headers().get('authorization') ?? '' },
-
-    cookies: {
-      get:    (name)             => store.get(name)?.value,
-      set:    (name, value, opt) => store.set({ name, value, ...opt }),
-      remove: (name,      opt)   => store.delete(name,        opt),
-    },
-  });
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies, headers }
+  );
 }
 
-/* Giữ nguyên các tên export cũ để code khác không đổi */
+// Giữ alias cũ để không breaking các module khác
+export const supabaseServer       = createSupabaseServerClient;
+export const createServerClient   = createSupabaseServerClient;
 export const createSupabaseRouteServerClient = createSupabaseServerClient;
-export { createSupabaseServerClient as createSupabaseServerClientLegacy };
 export default createSupabaseServerClient;

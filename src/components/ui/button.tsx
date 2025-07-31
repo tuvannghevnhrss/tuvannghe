@@ -1,33 +1,43 @@
 'use client';
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
-import clsx from 'clsx';
+import { cva, type VariantProps } from 'class-variance-authority';
+import clsx from 'classnames';
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  asChild?: boolean;
-  variant?: 'default' | 'ghost';
-  size?: 'sm' | 'icon';
-}
+/** Cơ bản đủ dùng – tuỳ chỉnh thêm tuỳ dự án */
+const buttonVariants = cva(
+  'inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:pointer-events-none',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        outline: 'border border-input hover:bg-accent hover:text-accent-foreground',
+      },
+      size: {
+        default: 'h-9 px-4 py-2',
+        sm: 'h-8 rounded-md px-3 text-xs',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  }
+);
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants> & { asChild?: boolean };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ asChild, variant = 'default', size, className, ...props }, ref) => {
-    const Comp: any = asChild ? Slot : 'button';
-
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button';
     return (
       <Comp
+        className={clsx(buttonVariants({ variant, size }), className)}
         ref={ref}
-        className={clsx(
-          'inline-flex items-center justify-center rounded-md text-sm font-medium',
-          variant === 'default' && 'bg-primary text-primary-foreground hover:opacity-90',
-          variant === 'ghost' && 'hover:bg-accent hover:text-foreground',
-          size === 'icon' && 'h-8 w-8 p-0',
-          className,
-        )}
         {...props}
       />
     );
-  },
+  }
 );
 Button.displayName = 'Button';
-export default Button;

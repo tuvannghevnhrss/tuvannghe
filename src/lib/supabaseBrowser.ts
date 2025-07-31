@@ -1,13 +1,16 @@
-// ❗️CHỈ dùng tại Client Component
 import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+/**
+ * Singleton browser‑side Supabase client.
+ * ⚠️  Uses the *anon* key – NEVER put the service‑role key on the client!  
+ */
+export function createSupabaseBrowserClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
 
-/** Singleton client cho toàn bộ FE */
-export const supabaseBrowser = createBrowserClient(
-  supabaseUrl,
-  supabaseAnonKey,
-);
-
-export default supabaseBrowser;          // Giữ nguyên default-export cũ
+// Back‑compat aliases so các file cũ vẫn chạy
+export const supabaseBrowser = createSupabaseBrowserClient;
+export default createSupabaseBrowserClient;
