@@ -1,41 +1,32 @@
-import ChatLayout, { ThreadMeta } from '@/components/ChatLayout';
-import MessageList                from '@/components/MessageList';
-import MessageInput               from '@/components/MessageInput';
-import { createSupabaseServerClient } from '@/lib/supabaseServer';
+/* src/components/ChatLayout.tsx */
+import React, { ReactNode } from 'react'
+import HistoryList   from './HistoryList'
+import ThreadSideBar from './ThreadSideBar'
+import MessageInput  from './MessageInput'
+import type { ThreadMeta } from './types'
 
-/* Tránh static-generate để luôn đọc cookie – fix 307 redirect & cookie-error */
-export const dynamic = 'force-dynamic';
+type Props = { threads: ThreadMeta[]; children: ReactNode }
 
-/* Lấy danh sách thread cho sidebar */
-async function fetchThreads(): Promise<ThreadMeta[]> {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('v_chat_overview')
-    .select('*')
-    .order('updated_at', { ascending: false });
-
-  if (error) {
-    console.error('[fetchThreads]', error);
-    return [];
-  }
-
+export default function ChatLayout({ threads, children }: Props) {
   return (
-    data ?? []
-  ).map((row) => ({
-    id:          row.id,
-    title:       row.title       ?? 'Cuộc trò chuyện',
-    updatedAt:   row.updated_at ?? row.created_at,
-    lastMessage: row.last_message,
-  }));
-}
+    <section className="flex h-[calc(100vh-48px)]">   {/* bỏ phần header */}
+      {/* =========== SIDEBAR =========== */}
+      <aside className="w-64 border-r bg-muted/40 overflow-y-auto">
+        <HistoryList threads={threads} />
+      </aside>
 
-export default async function ChatPage() {
-  const threads = await fetchThreads();
+      {/* =========== VÙNG CHAT =========== */}
+      <main className="flex flex-col flex-1">
+        {/* danh sách message “chiếm” hết chiều cao còn lại  */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {children}
+        </div>
 
-  return (
-    <ChatLayout threads={threads}>
-      <MessageList threads={threads} />
-      <MessageInput />
-    </ChatLayout>
-  );
+        {/* input luôn nằm dưới cùng  */}
+        <div className="border-t bg-white p-3">
+          <MessageInput />
+        </div>
+      </main>
+    </section>
+  )
 }
