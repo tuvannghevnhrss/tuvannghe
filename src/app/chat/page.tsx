@@ -1,33 +1,31 @@
-/* src/app/chat/page.tsx – SERVER COMPONENT */
 import ChatLayout from '@/components/ChatLayout';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseServer } from '@/lib/supabaseServer';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'; // luôn fetch mới
 
 export default async function ChatPage() {
-  /* 1 — auth ------------------------------------------------------- */
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login?redirectedFrom=/chat');
+  // ⬇️ Lấy user hiện tại
+  const { data: { user } } = await supabaseServer.auth.getUser();
+  if (!user) {
+    // chuyển hướng đăng nhập
+    return null;
+  }
 
-  /* 2 — list threads --------------------------------------------- */
-  const { data: threads } = await supabase
+  // ⬇️ Lấy thread list + last message để hiển thị sidebar
+  const { data: threads } = await supabaseServer
     .from('chat_threads')
-    .select('id,title,updated_at')
+    .select(`
+      id,
+      updated_at,
+      messages:chat_messages(content)
+    `)
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
 
-  /* 3 — render ---------------------------------------------------- */
   return (
-    /* pt-12 ≈ 48 px => tránh đè lên navbar, h-[calc] giữ chiều cao   */
-    <section className="pt-12 h-[calc(100vh-48px)]">
-      <ChatLayout
-        threads={threads ?? []}
-        initialThreadId={null}
-        userId={user.id}
-      />
-    </section>
+    <ChatLayout
+      userId={user.id}
+      threads={threads ?? []}
+    />
   );
 }

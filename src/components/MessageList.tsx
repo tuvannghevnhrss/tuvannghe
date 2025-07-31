@@ -1,51 +1,42 @@
-// src/components/MessageList.tsx
-'use client'
+'use client';
 
-import React, { useEffect, useRef } from 'react'
-import { ChatMessage, useChat } from '@/context/chat'
+import useSWR from 'swr';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-/**
- * Hiển thị luồng hội thoại.
- * - Tin nhắn của “Trợ lý Seven” bám trái (màu xám nhạt)
- * - Tin nhắn của người dùng bám phải (màu xanh indigo)
- * - Tự động cuộn xuống cuối mỗi lần có tin mới
- */
-export default function MessageList({ messages }: { messages: ChatMessage[] }) {
-  const endRef = useRef<HTMLDivElement>(null)
+async function fetchMessages(threadId: string | null) {
+  if (!threadId) return [];
+  const { data } = await supabaseBrowser
+    .from('chat_messages')
+    .select('id, role, content, created_at')
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: true });
+  return data ?? [];
+}
 
-  /* luôn cuộn xuống cuối danh sách khi có tin nhắn mới */
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+export default function MessageList({ threadId }: { threadId: string | null }) {
+  const { data: messages = [] } = useSWR(
+    ['messages', threadId],
+    () => fetchMessages(threadId),
+  );
 
   return (
-    <ul className="space-y-3 max-w-3xl mx-auto">
-      {messages.map((msg) => {
-        const isAssistant = msg.role === 'assistant'
-        return (
-          <li
-            key={msg.id}
-            className={`flex ${isAssistant ? 'justify-start' : 'justify-end'}`}
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {messages.map((m) => (
+        <div
+          key={m.id}
+          className={m.role === 'user' ? 'text-right' : 'text-left'}
+        >
+          <div
+            className={
+              m.role === 'user'
+                ? 'inline-block rounded bg-indigo-600 text-white px-3 py-2'
+                : 'inline-block rounded bg-gray-100 px-3 py-2'
+            }
           >
-            <div
-              className={`whitespace-pre-wrap rounded-lg px-4 py-2 leading-relaxed shadow
-                ${isAssistant
-                  ? 'bg-gray-100 text-gray-900'
-                  : 'bg-indigo-600 text-white'
-                }`}
-              style={{ maxWidth: '85%' }}
-            >
-              <span className="font-medium">
-                {isAssistant ? 'Trợ lý Seven:' : 'Bạn:'}
-              </span>{' '}
-              {msg.content}
-            </div>
-          </li>
-        )
-      })}
-
-      {/* phần tử “neo” để auto-scroll */}
-      <div ref={endRef} />
-    </ul>
-  )
+            {m.content}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }

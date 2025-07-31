@@ -1,40 +1,55 @@
-/* src/components/ChatLayout.tsx */
-import ThreadSidebar from './ThreadSidebar';
-import MessageList   from './MessageList';
-import MessageInput  from './MessageInput';
+'use client';
 
-interface Props {
-  threads: { id: string; title: string }[];
-  userId:  string;
-  initialThreadId: string | null;
-}
+import { useState, useMemo } from 'react';
+import Sidebar from './Sidebar';
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
 
-export default function ChatLayout({ threads, userId, initialThreadId }: Props) {
+type Thread = {
+  id: string;
+  updated_at: string;
+  messages: { content: string }[];
+};
+
+export default function ChatLayout({
+  userId,
+  threads,
+}: {
+  userId: string;
+  threads: Thread[];
+}) {
+  const [activeId, setActiveId] = useState<string | null>(
+    threads[0]?.id ?? null,
+  );
+
+  const grouped = useMemo(() => {
+    // { '2025-07-31': [thread1, thread2], … }
+    return threads.reduce<Record<string, Thread[]>>((acc, t) => {
+      const d = new Date(t.updated_at).toLocaleDateString('vi-VN');
+      (acc[d] ||= []).push(t);
+      return acc;
+    }, {});
+  }, [threads]);
+
   return (
-    <div className="flex h-full">
-      {/* -------- SIDEBAR --------- */}
-      <ThreadSidebar
-        threads={threads}
-        userId={userId}
-        initialThreadId={initialThreadId}
+    <section className="grid h-[calc(100vh-48px)] grid-cols-[280px_1fr]">
+      {/* —— Sidebar —— */}
+      <Sidebar
+        grouped={grouped}
+        activeId={activeId}
+        onSelect={setActiveId}
       />
 
-      {/* -------- MAIN --------- */}
-      <div className="flex flex-1 flex-col bg-slate-50">
-        {/* Danh sách tin nhắn cuộn được  */}
-        <MessageList
-          userId={userId}
-          initialThreadId={initialThreadId}
-          className="flex-1 overflow-y-auto px-6 py-4"
-        />
+      {/* —— Main —— */}
+      <div className="flex flex-col">
+        <MessageList threadId={activeId} />
 
-        {/* Ô nhập – luôn bám đáy  */}
         <MessageInput
           userId={userId}
-          initialThreadId={initialThreadId}
-          className="sticky bottom-0 border-t bg-white px-6 py-4"
+          threadId={activeId}
+          className="border-t p-3 sticky bottom-0 bg-white"
         />
       </div>
-    </div>
+    </section>
   );
 }
