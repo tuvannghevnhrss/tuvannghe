@@ -1,24 +1,22 @@
-import { redirect } from 'next/navigation';
-import ChatLayout from '@/components/ChatLayout';
-import supabaseServer from '@/lib/supabaseServer';
+import ChatLayout      from '@/components/chat/ChatLayout';
+import MessageList     from '@/components/chat/MessageList';
+import type { ThreadMeta } from '@/components/chat/types';
 
-export const dynamic = 'force-dynamic';   // tắt SSG để tránh lỗi prerender
+/** Server-action lấy toàn bộ thread của user hiện tại. */
+async function fetchThreadsForUser(): Promise<ThreadMeta[]> {
+  // 👉 Thay thế bằng supabase / DB thực tế của bạn
+  return [];
+}
 
 export default async function ChatPage() {
-  const supabase = supabaseServer();
+  const threads = await fetchThreadsForUser();
 
-  // ======= Kiểm tra đăng nhập =======
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/signup');
-
-  // ======= Lấy message =======
-  const { data: messages = [] } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true });
-
-  return <ChatLayout messages={messages} />;
+  return (
+    <ChatLayout threads={threads}>
+      {/* Khi chưa chọn thread ⇒ hiện hướng dẫn trống */}
+      <div className="text-muted-foreground text-center">
+        Chọn một đoạn chat ở thanh bên trái hoặc tạo cuộc trò chuyện mới.
+      </div>
+    </ChatLayout>
+  );
 }
