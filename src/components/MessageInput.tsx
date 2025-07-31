@@ -1,46 +1,34 @@
-/* ------------------------------------------------------------------
-   MessageInput – ô gửi tin nhắn đơn giản
-------------------------------------------------------------------- */
 'use client';
+import { useState } from 'react';
 
-import { useState, FormEvent } from 'react';
+export default function MessageInput({ onSend }: { onSend: (txt: string)=>void }) {
+  const [text, setText] = useState('');
 
-type Props = {
-  onSend   : (text: string) => void;
-  disabled?: boolean;
-};
-
-export default function MessageInput({ onSend, disabled = false }: Props) {
-  const [value, setValue] = useState('');
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const text = value.trim();
-    if (!text || disabled) return;
-    onSend(text);
-    setValue('');
+  const submit = () => {
+    if (!text.trim()) return;
+    onSend(text.trim());
+    setText('');
   };
 
   return (
     <form
-      onSubmit={handleSubmit}
-      className="flex gap-2 border-t bg-gray-50 px-4 py-3"
+      className="w-full px-6 py-4 bg-transparent sticky bottom-0"
+      onSubmit={e => { e.preventDefault(); submit(); }}
     >
-      <input
-        className="flex-1 rounded border px-3 py-2 text-sm outline-none disabled:bg-gray-100"
-        placeholder="Nhập tin nhắn…"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        disabled={disabled}
-      />
-
-      <button
-        type="submit"
-        disabled={disabled}
-        className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50"
-      >
-        Gửi
-      </button>
+      <div className="flex gap-2 max-w-3xl mx-auto">
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Nhập tin nhắn…"
+          className="flex-1 rounded-lg border px-4 py-3 shadow-sm focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-lg"
+        >
+          Gửi
+        </button>
+      </div>
     </form>
   );
 }
