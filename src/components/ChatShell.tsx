@@ -35,15 +35,15 @@ export default function ChatShell({ userId }: { userId: string | null }) {
       <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm">
         {messages.map((m, i) => (
           <p
-            key={i}
+            key={msg.id}
             className={cn(
-              "rounded-md px-3 py-2 max-w-[85%]",
-              m.role === "user"
+              "max-w-[75%] rounded-md p-3 text-sm leading-relaxed",
+              isUser
                 ? "ml-auto bg-primary text-white"
                 : "mr-auto bg-muted"
             )}
           >
-            {m.content}
+            {msg.content}
           </p>
         ))}
       </div>

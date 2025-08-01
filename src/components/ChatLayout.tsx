@@ -97,7 +97,7 @@ export default function ChatLayout({ userId, children }: ChatLayoutProps) {
 
       {/* ------ KHUNG CHAT CHÍNH ------ */}
       <section className="relative flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">{children}</div>
 
         {/* Ô nhập tin nhắn ở đáy */}
         <div className="border-t p-4">

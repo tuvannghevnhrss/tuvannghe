@@ -1,43 +1,70 @@
 "use client";
 
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { useState, useRef, FormEvent } from "react";
+import { ArrowUpCircle } from "lucide-react";
 
-interface Props {
-  onSend: (content: string) => void;
+interface MessageInputProps {
+  userId: string | null;
+  onSent?: () => void;
 }
 
-export default function MessageInput({ onSend }: Props) {
+export default function MessageInput({ userId, onSent }: MessageInputProps) {
   const [value, setValue] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  async function submit() {
-    if (!value.trim() || loading) return;
-    setLoading(true);
-    await onSend(value.trim());
-    setValue("");
-    setLoading(false);
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const content = value.trim();
+    if (!content || sending) return;
+
+    setSending(true);
+    try {
+      await fetch("/api/chat/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, content }),
+      });
+
+      setValue("");
+      onSent?.();
+      inputRef.current?.focus();
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
-    <div className="border-t p-3 flex gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="mx-4 mb-4 flex items-center gap-2 rounded-full border bg-white px-4 py-2 shadow-sm"
+    >
       <input
-        className="flex-1 rounded-md border px-4 py-2 text-sm"
+        ref={inputRef}
+        type="text"
         placeholder="Hỏi huongnghiep.ai"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
+        className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-muted-foreground focus:outline-none"
       />
+
+      {value.length > 0 && (
+        <span className="rounded-full bg-violet-500 px-2 py-0.5 text-xs font-medium text-white">
+          {value.length}
+        </span>
+      )}
+
       <button
-        onClick={submit}
-        disabled={loading}
-        className={cn(
-          "h-8 w-8 rounded-full grid place-items-center text-white transition-colors",
-          loading ? "bg-muted" : "bg-primary hover:bg-primary/90"
-        )}
+        type="submit"
+        disabled={sending || !value.trim()}
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+          sending || !value.trim()
+            ? "cursor-not-allowed bg-muted text-muted-foreground"
+            : "bg-violet-500 text-white hover:bg-violet-600"
+        }`}
       >
-        →
+        <ArrowUpCircle className="h-5 w-5" />
       </button>
-    </div>
+    </form>
   );
 }
