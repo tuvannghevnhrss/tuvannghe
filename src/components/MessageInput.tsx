@@ -1,47 +1,54 @@
-"use client"
+"use client";
 
-import { useState, useRef, FormEvent } from "react"
-import { ArrowUpCircle } from "lucide-react"
+import { useState, useRef, FormEvent } from "react";
+import { ArrowUpCircle } from "lucide-react";
 
 /* ---------- props ---------- */
 interface MessageInputProps {
-  userId  : string | null        // user → Supabase UID (có thể null nếu chưa đăng nhập)
-  threadId?: string              // id cuộc trò chuyện hiện tại  ← *mới thêm*
-  onSent? : () => void           // callback sau khi gửi thành công
+  userId   : string | null;                 // Supabase UID (có thể null)
+  threadId?: string;                       // uuid của cuộc trò chuyện (undefined ở msg đầu)
+  onSent?  : (newThreadId: string) => void; // bắn ra threadId vừa tạo
 }
 
+/* regex xác thực uuid v4 */
+const isUUIDv4 = (s: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+
 /* ---------- component ---------- */
-export default function MessageInput({
-  userId,
-  threadId,
-  onSent,
-}: MessageInputProps) {
-  const [value,   setValue]   = useState("")
-  const [sending, setSending] = useState(false)
-  const inputRef              = useRef<HTMLInputElement>(null)
+export default function MessageInput({ userId, threadId, onSent }: MessageInputProps) {
+  const [value,   setValue]   = useState("");
+  const [sending, setSending] = useState(false);
+  const inputRef              = useRef<HTMLInputElement>(null);
 
   /* ---------- submit ---------- */
   async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (!value.trim() || sending) return
+    e.preventDefault();
+    if (!value.trim() || sending) return;
 
-    setSending(true)
+    setSending(true);
     try {
-      await fetch("/api/chat/send", {
+      /* build payload */
+      const payload: Record<string, any> = {
+        userId,
+        content: value.trim(),
+      };
+      if (threadId && isUUIDv4(threadId)) payload.threadId = threadId;
+
+      /* gửi API */
+      const res  = await fetch("/api/chat/send", {
         method : "POST",
         headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({
-          userId,
-          threadId,          // ⚠️ truyền kèm id nếu có; API sẽ tự tạo cuộc trò chuyện mới khi undefined
-          content: value.trim(),
-        }),
-      })
+        body   : JSON.stringify(payload),
+      });
+      const data = await res.json();       // { assistantReply, threadId }
 
-      setValue("")
-      onSent?.()
-      inputRef.current?.focus()
+      /* callback cho component cha */
+      onSent?.(data.threadId);
+
+      setValue("");
+      inputRef.current?.focus();
     } finally {
-      setSending(false)
+      setSending(false);
     }
   }
 
@@ -77,5 +84,5 @@ export default function MessageInput({
         <ArrowUpCircle className="h-5 w-5" />
       </button>
     </form>
-  )
+  );
 }
