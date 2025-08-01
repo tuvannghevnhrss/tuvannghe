@@ -1,38 +1,32 @@
-import { type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export const runtime = "edge";                  // Edge Function
+/** edge runtime */
+export const runtime = "edge";
 
-// ---- khởi tạo OpenAI ----
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,          // đặt trong dashboard Vercel
-});
-
+/** POST /api/chat/send */
 export async function POST(req: NextRequest) {
-  try {
-    const { userId, content } = await req.json();
+  const { userId, content } = (await req.json()) as {
+    userId: string | null;
+    content: string;
+  };
 
-    if (typeof content !== "string" || !content.trim()) {
-      return Response.json({ error: "Invalid payload" }, { status: 400 });
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",                    // hoặc model khác bạn có quyền dùng
-      messages: [
-        {
-          role: "system",
-          content:
-            "Xin chào! Tôi là trợ lý hướng nghiệp. Cần tôi giúp gì cho bạn hôm nay?",
-        },
-        { role: "user", content },
-      ],
-    });
-
-    return Response.json({
-      answer: completion.choices[0].message.content,
-    });
-  } catch (err) {
-    console.error(err);
-    return Response.json({ error: "Server error" }, { status: 500 });
+  if (!content?.trim()) {
+    return NextResponse.json({ error: "Nội dung trống" }, { status: 400 });
   }
+
+  /* --- call OpenAI (GPT-4o) --- */
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",                                  // GPT-4o
+    messages: [
+      { role: "system", content: "Bạn là trợ lý hướng nghiệp." },
+      { role: "user", content },
+    ],
+  });
+
+  const assistant = completion.choices[0].message.content ?? "";
+
+  /* → trả về JSON đơn giản; không stream */
+  return NextResponse.json({ assistant });
 }

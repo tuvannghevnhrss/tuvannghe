@@ -3,29 +3,30 @@
 import { useState, useRef, FormEvent } from "react";
 import { ArrowUpCircle } from "lucide-react";
 
+/** props */
 interface MessageInputProps {
   userId: string | null;
   onSent?: () => void;
 }
 
+/** component – *default* export */
 export default function MessageInput({ userId, onSent }: MessageInputProps) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  /** submit */
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const content = value.trim();
-    if (!content || sending) return;
+    if (!value.trim() || sending) return;
 
     setSending(true);
     try {
       await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, content }),
+        body: JSON.stringify({ userId, content: value.trim() }),
       });
-
       setValue("");
       onSent?.();
       inputRef.current?.focus();
@@ -41,14 +42,13 @@ export default function MessageInput({ userId, onSent }: MessageInputProps) {
     >
       <input
         ref={inputRef}
-        type="text"
-        placeholder="Hỏi huongnghiep.ai"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-muted-foreground focus:outline-none"
+        placeholder="Hỏi huongnghiep.ai"
+        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />
 
-      {value.length > 0 && (
+      {value && (
         <span className="rounded-full bg-violet-500 px-2 py-0.5 text-xs font-medium text-white">
           {value.length}
         </span>
