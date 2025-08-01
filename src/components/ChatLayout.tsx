@@ -1,55 +1,51 @@
+// src/components/ChatLayout.tsx
 "use client"
 
 import { useEffect, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
-
-import HistoryList   from "./HistoryList"         // ← xuất mặc định
-import { MessageInput }  from "./MessageInput"        // ← xuất mặc định
-import { ScrollArea } from "@/components/ui/scroll-area"  // ← xuất *named*
+import useSWR from "swr"
 import { PlusCircle, Loader2, MessagesSquare } from "lucide-react"
 
-import useSWR from "swr"
+import HistoryList   from "./HistoryList"          // default export
+import MessageInput  from "./MessageInput"         // default export
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-/* ---------- Kiểu ---------- */
 interface ChatLayoutProps {
-  userId : string | null
+  userId  : string | null
   children: React.ReactNode
 }
 
-/* ---------- Hàm lấy thread (thay thế cho fetchThreadsForUser) ---------- */
+/* Lấy danh sách thread của người dùng */
 async function getThreads(userId: string) {
   if (!userId) return []
   const res = await fetch(`/api/chat/threads?userId=${userId}`)
   if (!res.ok) throw new Error("Failed to load threads")
   return (await res.json()) as {
-    id: string
-    title: string | null
+    id        : string
+    title     : string | null
     updated_at: string
   }[]
 }
 
-/* ---------- Component ---------- */
 export default function ChatLayout({ userId, children }: ChatLayoutProps) {
   const router    = useRouter()
   const pathname  = usePathname()
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  /* Lấy danh sách threads */
-  const {
-    data: threads,
-    isLoading,
-    mutate,
-  } = useSWR(userId ? ["threads", userId] : null, () => getThreads(userId!))
+  /* lấy threads */
+  const { data: threads, isLoading, mutate } = useSWR(
+    userId ? ["threads", userId] : null,
+    () => getThreads(userId!)
+  )
 
-  /* Auto-scroll khi danh sách thay đổi */
+  /* tự cuộn xuống cuối danh sách */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [threads])
 
-  /* ------------ Render ------------ */
   return (
     <div className="grid h-[calc(100vh-48px)] grid-cols-[260px_1fr]">
-      {/* ------ SIDEBAR ------ */}
+      {/* ============ SIDEBAR ============ */}
       <aside className="flex h-full flex-col border-r">
         <header className="flex items-center justify-between border-b px-4 py-3 text-sm font-medium">
           <span className="inline-flex items-center gap-1">
@@ -63,7 +59,7 @@ export default function ChatLayout({ userId, children }: ChatLayoutProps) {
           </button>
         </header>
 
-        {/* Danh sách thread */}
+        {/* danh sách thread */}
         <ScrollArea className="flex-1">
           {isLoading && (
             <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -90,17 +86,18 @@ export default function ChatLayout({ userId, children }: ChatLayoutProps) {
             />
           )}
 
-          {/* neo cuối danh sách */}
+          {/* giữ vị trí cuộn */}
           <div ref={bottomRef} />
         </ScrollArea>
       </aside>
 
-      {/* ------ KHUNG CHAT CHÍNH ------ */}
+      {/* ============ KHUNG CHAT CHÍNH ============ */}
       <section className="relative flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">{children}</div>
+        {/* nội dung chat */}
+        <div className="flex-1 overflow-y-auto space-y-4 px-4 py-6">{children}</div>
 
-        {/* Ô nhập tin nhắn ở đáy */}
-        <div className="border-t p-4">
+        {/* khung nhập luôn ở đáy */}
+        <div className="sticky bottom-0 border-t bg-white p-4">
           <MessageInput userId={userId} onSent={() => mutate()} />
         </div>
       </section>
