@@ -20,7 +20,7 @@ export default function MessageInput({ userId, onSent }: MessageInputProps) {
 
     setSending(true);
     try {
-      await fetch("/api/chat/send", {
+      await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, content }),
