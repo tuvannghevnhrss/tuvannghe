@@ -1,80 +1,55 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import MessageList  from './MessageList';
-import MessageInput from './MessageInput';
+import { useState } from "react";
+import MessageInput from "./MessageInput";
+import { cn } from "@/lib/utils";
 
-export type Msg = { id: string; role: 'user' | 'assistant'; content: string };
+interface Msg { role: "user" | "assistant"; content: string }
 
-type Props = {
-  threadId: string | null;
-  onThreadChange: (id: string) => void;
-  onThreadCreate: (id: string, title: string) => void;
-  userId: string;
-};
-
-export default function ChatShell({
-  threadId,
-  onThreadChange,
-  onThreadCreate,
-  userId,
-}: Props) {
+export default function ChatShell({ userId }: { userId: string | null }) {
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [loading , setLoading ] = useState(false);
-  const [error   , setError   ] = useState<string | null>(null);
 
-  /* ---- tạo thread đầu tiên nếu chưa có ---- */
-  useEffect(() => {
-    if (threadId) return;
-    (async () => {
-      try {
-        const res = await fetch('/api/chat', { method: 'POST' }).then(r => r.json());
-        onThreadCreate(res.id, 'Cuộc trò chuyện mới');
-      } catch { setError('DB_ERROR'); }
-    })();
-  }, [threadId, onThreadCreate]);
+  /** khi user gửi – nhận lại answer */
+  async function handleSend(content: string) {
+    // thêm tin nhắn người dùng trước
+    setMessages((m) => [...m, { role: "user", content }]);
 
-  /* ---- nạp tin nhắn khi đổi thread ---- */
-  useEffect(() => {
-    if (!threadId) return;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/chat?id=${threadId}`, { cache: 'no-store' })
-                          .then(r => r.json());
-        setMessages(res.messages);
-        setError(null);
-      } catch { setError('DB_ERROR'); }
-      finally { setLoading(false); }
-    })();
-  }, [threadId]);
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, content }),
+    });
 
-  /* ---- gửi tin nhắn ---- */
-  const handleSend = async (text: string) => {
-    if (!threadId || !text.trim()) return;
-    const optimistic: Msg = { id: crypto.randomUUID(), role: 'user', content: text };
-    setMessages(m => [...m, optimistic]);
+    if (!res.ok) {
+      console.error(await res.json());
+      return;
+    }
 
-    try {
-      const res = await fetch('/api/chat', {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ threadId, text }),
-      }).then(r => r.json());
-
-      setMessages(m => [...m.filter(x => x.id !== optimistic.id), ...res.messages]);
-      onThreadChange(threadId);                       // cập nhật sidebar
-    } catch { setError('DB_ERROR'); }
-  };
-
-  /* ---- UI ---- */
-  if (error)   return <p className="p-4 text-red-600">{error}</p>;
-  if (loading) return <p className="p-4 text-gray-500">Đang tải…</p>;
+    const { answer } = await res.json();
+    setMessages((m) => [...m, { role: "assistant", content: answer }]);
+  }
 
   return (
-    <>
-      <MessageList messages={messages} />
+    <div className="flex flex-col h-full">
+      {/* khung tin nhắn */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm">
+        {messages.map((m, i) => (
+          <p
+            key={i}
+            className={cn(
+              "rounded-md px-3 py-2 max-w-[85%]",
+              m.role === "user"
+                ? "ml-auto bg-primary text-white"
+                : "mr-auto bg-muted"
+            )}
+          >
+            {m.content}
+          </p>
+        ))}
+      </div>
+
+      {/* ô nhập */}
       <MessageInput onSend={handleSend} />
-    </>
+    </div>
   );
 }

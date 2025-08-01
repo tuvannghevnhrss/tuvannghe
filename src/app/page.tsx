@@ -53,7 +53,7 @@ export default function HomePage() {
           Các công cụ đánh giá
         </h2>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-4">
+        <div className="mt-10 grid gap-6 md:grid-cols-5">
           {[
             { key: SERVICE.MBTI, label: "MBTI", desc: "60 câu hỏi • Miễn phí" },
             { key: SERVICE.HOLLAND, label: "Holland", desc: "54 câu hỏi • 20 K" },

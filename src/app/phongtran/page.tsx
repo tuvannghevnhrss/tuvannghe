@@ -60,10 +60,8 @@ export default function PhongTranProfile() {
         <h2 className="text-center text-2xl font-bold">Sứ mệnh</h2>
         <p className="text-center text-gray-700">
           <b>“Giúp người mất phương hướng tìm lại la bàn sự nghiệp.”</b> <br />
-          Tôi tin sự nghiệp bền vững bắt đầu từ việc hiểu chính mình – tính cách,
-          sở thích, giá trị cốt lõi. Tôi kết hợp với kinh nghiệm nhân sự, các mô hình
-          MBTI • Holland • Knowdell cùng dữ liệu thực tiễn để đồng hành với học
-          sinh, sinh viên &amp; nhân sự trẻ.
+          Tôi tin rằng một sự nghiệp bền vững bắt đầu từ việc hiểu rõ chính mình – về tính cách, sở thích và giá trị cốt lõi.
+Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đã được kiểm chứng như MBTI, Holland, Knowdell, tôi đồng hành cùng học sinh, sinh viên và người trẻ trong hành trình khám phá bản thân và định hướng nghề nghiệp một cách thực tế, rõ ràng.
         </p>
       </section>
 
@@ -107,15 +105,15 @@ export default function PhongTranProfile() {
           {[
             {
               time: "2023 – 2025",
-              role: "HR Manager – Thuận Phong Express (Miền Trung)",
+              role: "HR Manager – JTExpress (Chi nhánh Miền Trung từ Thanh Hóa - Quảng Nam)",
               bullet:
                 "Tái cấu trúc, giảm 3 tỷ ₫ chi phí nhân công; quản lý 5.000 nhân sự.",
             },
             {
               time: "2017 – 2022",
-              role: "HR Manager – PGS Group",
+              role: "HR Manager – PGS Group (từ Ninh Bình - Quảng Trị)",
               bullet:
-                "Mở 6 chi nhánh, quy mô nhân sự tăng 270 → 1.000; triển khai lương 2P.",
+                "Mở 6 chi nhánh, quy mô nhân sự tăng 270 → 1.000; Tuyển dụng - đào tạo - truyền lửa nhân sự mới.",
             },
             {
               time: "2014 – 2017",

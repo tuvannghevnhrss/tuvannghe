@@ -1,21 +1,39 @@
-import { cookies, headers } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+import { cookies, headers } from "next/headers";
+import { type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 
-/**
- * Server‑side Supabase client.  
- *   – Đọc / ghi cookie phiên đăng nhập an toàn.  
- *   – Trả về 1 client mới cho mỗi request.
- */
+const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+/** ------------------------------------------------
+ * Trả về Supabase client dùng trong Server-Side code
+ * ------------------------------------------------*/
 export function createSupabaseServerClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies, headers }
-  );
+  const cookieStore = cookies();                     // <- cookies() chứ KHÔNG phải cookies
+  return createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      get:        (name: string)                    => cookieStore.get(name)?.value,
+      getAll:     ()                               => cookieStore.getAll().map(c => ({ name: c.name, value: c.value })),
+      set:        (name: string, value: string, opts?: CookieOptions) =>
+                    cookieStore.set({ name, value, ...opts }),
+      delete:     (name: string, opts?: CookieOptions) =>
+                    cookieStore.delete({ name, ...opts }),
+    },
+    headers:      () => headers(),                  // gửi nguyên header xuống edge
+  });
 }
 
-// Giữ alias cũ để không breaking các module khác
-export const supabaseServer       = createSupabaseServerClient;
-export const createServerClient   = createSupabaseServerClient;
+/** Aliases để các file cũ không báo lỗi import */
 export const createSupabaseRouteServerClient = createSupabaseServerClient;
-export default createSupabaseServerClient;
+export const createSupabaseLegacyClient     = createSupabaseServerClient; // tuỳ, nếu còn file cũ
+
+/** Lấy user (dùng trong app/chat/page.tsx) */
+export async function getUser() {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    console.error("supabase.getUser:", error.message);
+    return null;
+  }
+  return data.user;
+}

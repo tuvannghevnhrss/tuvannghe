@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 
 import HistoryList   from "./HistoryList"         // ← xuất mặc định
-import MessageInput  from "./MessageInput"        // ← xuất mặc định
+import { MessageInput }  from "./MessageInput"        // ← xuất mặc định
 import { ScrollArea } from "@/components/ui/scroll-area"  // ← xuất *named*
 import { PlusCircle, Loader2, MessagesSquare } from "lucide-react"
 
