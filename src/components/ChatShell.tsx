@@ -42,9 +42,10 @@ export default function ChatShell({ threadId }: Props) {
 
   if (!messages || messages.length === 0)
     return (
-      <p className="text-center text-sm text-muted-foreground">
-        Hãy đặt câu hỏi đầu tiên của bạn 👋
-      </p>
+      <div className="rounded-lg bg-gray-100 p-4 text-sm text-gray-700 max-w-[80%]">
+      Xin chào, tôi là trợ lý seven, tôi sẽ hỗ trợ bạn trong các vấn đề liên quan
+      đến hướng nghiệp, nghề nghiệp.
+      </div>
     )
 
   return (

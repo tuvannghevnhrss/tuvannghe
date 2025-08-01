@@ -88,7 +88,9 @@ export default function ChatLayout({ userId, children }: ChatLayoutProps) {
       {/* chat pane */}
       <section className="relative flex h-full flex-col">
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">{children}</div>
-        <MessageInput userId={userId} onSent={() => mutate()} />
+        <MessageInput userId={userId}
+  threadId={pathname.split("/").pop()!}   // activeId
+  onSent={() => mutate()} />
       </section>
     </div>
   );

@@ -1,40 +1,51 @@
-"use client";
+"use client"
 
-import { useState, useRef, FormEvent } from "react";
-import { ArrowUpCircle } from "lucide-react";
+import { useState, useRef, FormEvent } from "react"
+import { ArrowUpCircle } from "lucide-react"
 
-/** props */
+/* ---------- props ---------- */
 interface MessageInputProps {
-  userId: string | null;
-  onSent?: () => void;
+  userId  : string | null        // user → Supabase UID (có thể null nếu chưa đăng nhập)
+  threadId?: string              // id cuộc trò chuyện hiện tại  ← *mới thêm*
+  onSent? : () => void           // callback sau khi gửi thành công
 }
 
-/** component – *default* export */
-export default function MessageInput({ userId, onSent }: MessageInputProps) {
-  const [value, setValue] = useState("");
-  const [sending, setSending] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+/* ---------- component ---------- */
+export default function MessageInput({
+  userId,
+  threadId,
+  onSent,
+}: MessageInputProps) {
+  const [value,   setValue]   = useState("")
+  const [sending, setSending] = useState(false)
+  const inputRef              = useRef<HTMLInputElement>(null)
 
-  /** submit */
+  /* ---------- submit ---------- */
   async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!value.trim() || sending) return;
+    e.preventDefault()
+    if (!value.trim() || sending) return
 
-    setSending(true);
+    setSending(true)
     try {
       await fetch("/api/chat/send", {
-        method: "POST",
+        method : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, content: value.trim() }),
-      });
-      setValue("");
-      onSent?.();
-      inputRef.current?.focus();
+        body   : JSON.stringify({
+          userId,
+          threadId,          // ⚠️ truyền kèm id nếu có; API sẽ tự tạo cuộc trò chuyện mới khi undefined
+          content: value.trim(),
+        }),
+      })
+
+      setValue("")
+      onSent?.()
+      inputRef.current?.focus()
     } finally {
-      setSending(false);
+      setSending(false)
     }
   }
 
+  /* ---------- UI ---------- */
   return (
     <form
       onSubmit={handleSubmit}
@@ -66,5 +77,5 @@ export default function MessageInput({ userId, onSent }: MessageInputProps) {
         <ArrowUpCircle className="h-5 w-5" />
       </button>
     </form>
-  );
+  )
 }
