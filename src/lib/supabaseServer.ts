@@ -1,35 +1,30 @@
-// src/lib/supabaseServer.ts
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-/* ---------------------------------------------------------
- *  Hàm chuẩn dùng trong Server Component / Route-handler
- * -------------------------------------------------------- */
 export function createSupabaseServerClient() {
   const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!; // dùng khóa server-side
-
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!; // server-side key
   if (!url || !key) throw new Error("Missing Supabase env vars");
 
-  const cookieStore = cookies();
+  const store = cookies(); // Next 15 helpers
 
   return createServerClient(url, key, {
     cookies: {
-      // trả về **string** hoặc undefined
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      /* lấy 1 cookie; phải trả về string | undefined */
+      get(name) {
+        return store.get(name)?.value;
       },
-      // ghi cookie
-      set(name: string, value: string, options: any) {
-        cookieStore.set({ name, value, ...options });
+      /* đặt cookie */
+      set(name, value, options) {
+        store.set({ name, value, ...options });
       },
-      // xoá cookie
-      remove(name: string, options: any) {
-        cookieStore.set({ name, value: "", ...options });
+      /* xoá cookie */
+      remove(name, options) {
+        store.set({ name, value: "", ...options });
       },
     },
   });
 }
 
-/* Giữ alias tương thích code cũ */
+/* alias cho code cũ (tuỳ chọn) */
 export const createSupabaseRouteServerClient = createSupabaseServerClient;
