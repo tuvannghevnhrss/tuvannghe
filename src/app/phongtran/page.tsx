@@ -14,7 +14,7 @@ import {
 export const metadata: Metadata = {
   title: "Trần Thanh Phong – HRBP | Career Mentor",
   description:
-    "10+ HRBP – chia sẻ kinh nghiệm định hướng nghề nghiệp & xây dựng sự nghiệp cho bạn trẻ.",
+    "12+ HRBP – chia sẻ kinh nghiệm định hướng nghề nghiệp & xây dựng sự nghiệp cho bạn trẻ.",
 };
 
 export default function PhongTranProfile() {
@@ -61,7 +61,7 @@ export default function PhongTranProfile() {
         <p className="text-center text-gray-700">
           <b>“Giúp người mất phương hướng tìm lại la bàn sự nghiệp.”</b> <br />
           Tôi tin sự nghiệp bền vững bắt đầu từ việc hiểu chính mình – tính cách,
-          sở thích, giá trị cốt lõi. Tôi kết hợp kinh nghiệm nhân sự, các mô hình
+          sở thích, giá trị cốt lõi. Tôi kết hợp với kinh nghiệm nhân sự, các mô hình
           MBTI • Holland • Knowdell cùng dữ liệu thực tiễn để đồng hành với học
           sinh, sinh viên &amp; nhân sự trẻ.
         </p>
@@ -76,11 +76,11 @@ export default function PhongTranProfile() {
             {[
               {
                 title: "Phỏng vấn & tuyển dụng",
-                desc: "10+ năm lead tuyển dụng, phỏng vấn từ Nhân viên đến Quản lý cấp cao; tư vấn CV, đào tạo kỹ năng phỏng vấn.",
+                desc: "10+ năm lead tuyển dụng, phỏng vấn từ Nhân viên đến Quản lý cấp cao; tư vấn viết CV, đào tạo kỹ năng phỏng vấn.",
               },
               {
                 title: "Xây dựng hệ thống nhân sự",
-                desc: "Hoạch định, tái cơ cấu tổ chức, triển khai BSC / KPI cho doanh nghiệp 1 000+ nhân sự.",
+                desc: "Hoạch định, tái cơ cấu tổ chức, triển khai BSC / KPI cho doanh nghiệp 1.000+ nhân sự.",
               },
               {
                 title: "Thiết kế lương – thưởng",
@@ -109,17 +109,17 @@ export default function PhongTranProfile() {
               time: "2023 – 2025",
               role: "HR Manager – Thuận Phong Express (Miền Trung)",
               bullet:
-                "Tái cấu trúc, giảm 3 tỷ ₫ chi phí nhân công; quản lý 5 000 nhân sự.",
+                "Tái cấu trúc, giảm 3 tỷ ₫ chi phí nhân công; quản lý 5.000 nhân sự.",
             },
             {
               time: "2017 – 2022",
               role: "HR Manager – PGS Group",
               bullet:
-                "Mở 6 chi nhánh, quy mô nhân sự tăng 270 → 1 000; triển khai lương 2P.",
+                "Mở 6 chi nhánh, quy mô nhân sự tăng 270 → 1.000; triển khai lương 2P.",
             },
             {
               time: "2014 – 2017",
-              role: "HR Lead – E.Land Việt Nam (5 000 nhân sự)",
+              role: "HR Lead – E.Land Việt Nam/ Dệt May Thành Công (5.000 nhân sự)",
               bullet: "Triển khai phần mềm HR, xây dựng chính sách lương sản phẩm.",
             },
           ].map((e) => (

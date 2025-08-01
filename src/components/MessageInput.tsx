@@ -1,68 +1,58 @@
-"use client"
+"use client";
 
-import { useState, useRef, FormEvent } from "react"
-import { ArrowUpCircle } from "lucide-react"
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-interface MessageInputProps {
-  userId : string | null
-  onSent?: () => void
+interface Props {
+  userId: string | null;
+  onSent: () => void;      // callback để ChatLayout gọi mutate()
 }
 
-export default function MessageInput({ userId, onSent }: MessageInputProps) {
-  const [value,   setValue]   = useState("")
-  const [sending, setSending] = useState(false)
-  const inputRef              = useRef<HTMLInputElement>(null)
+export default function MessageInput({ userId, onSent }: Props) {
+  const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (!value.trim() || sending) return
-    setSending(true)
+  async function handleSend() {
+    if (!content.trim()) return;
+    setLoading(true);
 
-    try {
-      await fetch("/api/chat", {
-        method : "POST",
-        headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify({ userId, content: value.trim() }),
-      })
-      setValue("")
-      onSent?.()
-      inputRef.current?.focus()
-    } finally {
-      setSending(false)
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, content }),
+    });
+
+    if (res.ok) {
+      onSent();
+      setContent("");
+    } else {
+      console.error(await res.json());
     }
+    setLoading(false);
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-4 mb-4 flex items-center gap-2 rounded-full border bg-white px-4 py-2 shadow-sm"
-    >
+    <div className="border-t p-3 flex gap-2">
       <input
-        ref={inputRef}
-        type="text"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSend()}
         placeholder="Hỏi huongnghiep.ai"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        className={cn(
+          "flex-1 rounded-md border px-4 py-2 text-sm",
+          loading && "opacity-60"
+        )}
       />
-
-      {value.length > 0 && (
-        <span className="rounded-full bg-violet-500 px-2 py-0.5 text-xs font-medium text-white">
-          {value.length}
-        </span>
-      )}
-
       <button
-        type="submit"
-        disabled={sending || !value.trim()}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
-          sending || !value.trim()
-            ? "cursor-not-allowed bg-muted text-muted-foreground"
-            : "bg-violet-500 text-white hover:bg-violet-600"
-        }`}
+        disabled={loading}
+        onClick={handleSend}
+        className={cn(
+          "rounded-full h-8 w-8 flex items-center justify-center transition-colors",
+          loading ? "bg-muted" : "bg-primary text-white hover:bg-primary/90"
+        )}
       >
-        <ArrowUpCircle className="h-5 w-5" />
+        →
       </button>
-    </form>
-  )
+    </div>
+  );
 }

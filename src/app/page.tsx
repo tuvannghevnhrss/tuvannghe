@@ -25,8 +25,12 @@ export default function HomePage() {
             Nền tảng <span className="text-indigo-600">Hướng nghiệp AI</span>
           </h1>
           <p className="mt-4 text-gray-600">
-            Tự khám phá bản thân với MBTI, Holland, Giá trị bản thân và nhận báo cáo
-            qua email chuyên sâu chỉ trong vài phút.
+            Không biết mình hợp ngành gì? Phân vân giữa đam mê và thực tế?
+            Đừng lo! Hướng nghiệp AI giúp bạn tự hiểu bản thân nhanh chóng qua các bài test MBTI, Holland và Giá trị cá nhân – tất cả chỉ mất vài phút. Với công nghệ AI hiện đại, nền tảng sẽ phân tích kết quả và tạo ra báo cáo chuyên sâu, cực kỳ dễ hiểu và sát với bạn. Không chỉ “nói bạn là ai”, hệ thống còn gợi ý ngành nghề phù hợp, giúp bạn định hình hướng đi rõ ràng cho học tập và sự nghiệp.
+            Dễ dùng – Nhanh chóng – Cá nhân hóa.
+            Dù bạn đang là học sinh, sinh viên hay người đang tìm hướng đi mới, Hướng nghiệp AI luôn sẵn sàng đồng hành.
+
+            Bắt đầu khám phá chính mình hôm nay – Để mai này không chọn sai đường!.
           </p>
           <Link
             href="/mbti"
@@ -54,7 +58,8 @@ export default function HomePage() {
             { key: SERVICE.MBTI, label: "MBTI", desc: "60 câu hỏi • Miễn phí" },
             { key: SERVICE.HOLLAND, label: "Holland", desc: "54 câu hỏi • 20 K" },
             { key: SERVICE.KNOWDELL, label: "Giá trị bản thân", desc: "54 thẻ • 100 K" },
-            { key: "chat", label: "Chatbot AI", desc: "Tư vấn & FAQ" },
+            { key: "chat", label: "Chatbot A.I", desc: "Tư vấn A.I & FAQ" },
+            { key: "phongtran", label: "Tư vấn 1-1", desc: "Tư vấn trực tiếp với chuyên gia" },
           ].map(card => (
             <Link
               key={card.key}
@@ -167,9 +172,37 @@ export default function HomePage() {
             Sau khi thanh toán tôi nhận báo cáo ở đâu?
           </summary>
           <p className="mt-2 text-sm text-gray-600">
-            Báo cáo PDF sẽ tự động gửi vào email và lưu trong mục “Hồ sơ” trên website.
+            Báo cáo lưu trong mục “Hồ sơ” trên website.
           </p>
         </details>
+
+        <details className="mt-4 rounded border p-4">
+          <summary className="cursor-pointer font-medium">
+            Tại sao nên sử dụng website này để hướng nghiệp?
+          </summary>
+          <p className="mt-2 text-sm text-gray-600">
+            Vì bạn sẽ nhận được phân tích cá nhân hóa bằng AI, dựa trên các trắc nghiệm đã được khoa học kiểm chứng – nhanh, dễ hiểu và sát với bản thân.
+          </p>
+        </details>
+
+        <details className="mt-4 rounded border p-4">
+          <summary className="cursor-pointer font-medium">
+            Có nên nhờ gia đình tham khảo kết quả không?
+          </summary>
+          <p className="mt-2 text-sm text-gray-600">
+            Có chứ! Gia đình hiểu bạn và có kinh nghiệm. Việc tham khảo ý kiến người thân sẽ giúp bạn có thêm góc nhìn để đưa ra quyết định đúng đắn hơn.
+          </p>
+        </details>
+
+        <details className="mt-4 rounded border p-4">
+          <summary className="cursor-pointer font-medium">
+            Tôi muốn được tư vấn thêm sau khi có kết quả thì sao?
+          </summary>
+          <p className="mt-2 text-sm text-gray-600">
+            Bạn có thể đăng ký tư vấn 1:1 với chuyên gia hướng nghiệp nếu cần thêm định hướng sâu hơn.
+          </p>
+        </details>
+
       </section>
 
       {/* ---------- CTA cuối ---------- */}
