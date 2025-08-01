@@ -94,7 +94,7 @@ export default function HomePage() {
                 desc: "Báo cáo được tạo riêng cho bạn, nêu rõ điểm mạnh & phù hợp nghề.",
               },
               {
-                title: "Báo cáo Email /Chatbot",
+                title: "Hồ sơ phát triển sự nghiệp",
                 desc: "Dễ dàng đọc lại.",
               },
             ].map(item => (

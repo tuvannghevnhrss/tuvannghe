@@ -1,81 +1,76 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { z } from "zod";
 
-export const runtime = "edge";          // chạy trên Edge
+export const runtime = "edge";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+// ----- validate body --------------------------------------------------------
+const Body = z.object({
+  threadId: z.string(),
+  content : z.string().min(1),
+  userId  : z.string().nullable(),
+});
 
-export async function POST(req: NextRequest) {
-  try {
-    const { userId, content, threadId } = await req.json();
-    if (!content?.trim()) {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-    }
+export async function POST(req: Request) {
+  const body = Body.parse(await req.json());
+  const supabase = createSupabaseServerClient();
+  const openai   = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-    /* ----- Supabase ----- */
-    const supabase = createServerClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!,
-      { headers: req.headers, cookies: { getAll() { return [] }, setAll() {} } }
-    );
+  // 1) đảm bảo thread tồn tại – hoặc tạo mới
+  let { data: thread } = await supabase
+    .from("chat_threads")
+    .select("id")
+    .eq("id", body.threadId)
+    .single();
 
-    /* 1. Tạo thread nếu chưa có */
-    let tId = threadId as string | undefined;
-    if (!tId) {
-      const { data, error } = await supabase
-        .from("threads")
-        .insert({
-          user_id: userId,
-          title: content.split(" ").slice(0, 10).join(" "),
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      tId = data.id;
-    }
-
-    /* 2. Lưu tin nhắn user */
-    await supabase.from("messages").insert({
-      thread_id: tId,
-      role: "user",
-      content,
-    });
-
-    /* 3. Lấy lịch sử để gửi GPT */
-    const { data: history } = await supabase
-      .from("messages")
-      .select("role, content")
-      .eq("thread_id", tId)
-      .order("created_at", { ascending: true });
-
-    /* 4. Gọi GPT-4o */
-    const system =
-      "Bạn là trợ lý Seven, chuyên tư vấn hướng nghiệp. " +
-      "Nếu đây là tin nhắn đầu tiên trong đoạn chat hãy chào: " +
-      "“Xin chào, tôi là trợ lý seven, tôi sẽ hỗ trợ bạn trong các vấn đề liên quan đến hướng nghiệp, nghề nghiệp”.";
-    const messages = [
-      { role: "system", content: system },
-      ...(history ?? []).map((m) => ({ role: m.role, content: m.content })),
-    ];
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
-    });
-
-    const answer = completion.choices[0].message.content ?? "";
-
-    /* 5. Lưu tin nhắn assistant */
-    await supabase.from("messages").insert({
-      thread_id: tId,
-      role: "assistant",
-      content: answer,
-    });
-
-    return NextResponse.json({ threadId: tId });
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  if (!thread) {
+    const { data, error } = await supabase
+      .from("chat_threads")
+      .insert({ id: body.threadId, title: body.content.split(" ").slice(0, 10).join(" ") })
+      .select("id")
+      .single();
+    if (error) throw error;
+    thread = data;
   }
+
+  // 2) lưu message user
+  await supabase.from("chat_messages").insert({
+    thread_id: thread.id,
+    role     : "user",
+    content  : body.content,
+  });
+
+  // 3) lấy history
+  const { data: history } = await supabase
+    .from("chat_messages")
+    .select("role, content")
+    .eq("thread_id", thread.id)
+    .order("created_at", { ascending: true });
+
+  // 4) gọi GPT-4o-mini
+  const system =
+    "Bạn là trợ lý Seven, chuyên tư vấn hướng nghiệp. " +
+    "Nếu đây là tin nhắn đầu tiên trong đoạn chat hãy chào: " +
+    "“Xin chào, tôi là trợ lý seven, tôi sẽ hỗ trợ bạn trong các vấn đề liên quan đến hướng nghiệp, nghề nghiệp”.";
+  const messages = [
+    { role: "system", content: system },
+    ...((history ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))),
+  ];
+
+  const completion = await openai.chat.completions.create({
+    model   : "gpt-4o-mini",
+    messages,
+  });
+
+  const assistantReply = completion.choices[0].message.content ?? "";
+
+  // 5) lưu message assistant
+  await supabase.from("chat_messages").insert({
+    thread_id: thread.id,
+    role     : "assistant",
+    content  : assistantReply,
+  });
+
+  return NextResponse.json({ assistantReply });
 }
