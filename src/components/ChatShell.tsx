@@ -1,55 +1,66 @@
-"use client";
+/*  ChatShell chỉ còn nhiệm vụ:
+      - lấy messages của thread hiện tại
+      - render danh sách tin nhắn
+      - KHÔNG chứa MessageInput nữa
+*/
 
-import { useState } from "react";
-import MessageInput from "./MessageInput";
-import { cn } from "@/lib/utils";
+"use client"
 
-interface Msg { role: "user" | "assistant"; content: string }
+import useSWR from "swr"
+import { Loader2 } from "lucide-react"
 
-export default function ChatShell({ userId }: { userId: string | null }) {
-  const [messages, setMessages] = useState<Msg[]>([]);
+interface Props {
+  userId: string | null
+  threadId?: string          // nếu dùng dynamic route /chat/[id]
+}
 
-  /** khi user gửi – nhận lại answer */
-  async function handleSend(content: string) {
-    // thêm tin nhắn người dùng trước
-    setMessages((m) => [...m, { role: "user", content }]);
+/* ---- API lấy messages ---- */
+async function fetchMessages(threadId?: string) {
+  if (!threadId) return []
+  const res = await fetch(`/api/chat/messages?threadId=${threadId}`)
+  if (!res.ok) throw new Error("Failed to fetch messages")
+  return (await res.json()) as {
+    id: string
+    role: "user" | "assistant"
+    content: string
+    created_at: string
+  }[]
+}
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, content }),
-    });
+export default function ChatShell({ threadId }: Props) {
+  const { data: messages, isLoading } = useSWR(
+    threadId ? ["messages", threadId] : null,
+    () => fetchMessages(threadId)
+  )
 
-    if (!res.ok) {
-      console.error(await res.json());
-      return;
-    }
+  if (isLoading)
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải…
+      </div>
+    )
 
-    const { answer } = await res.json();
-    setMessages((m) => [...m, { role: "assistant", content: answer }]);
-  }
+  if (!messages || messages.length === 0)
+    return (
+      <p className="text-center text-sm text-muted-foreground">
+        Hãy đặt câu hỏi đầu tiên của bạn 👋
+      </p>
+    )
 
   return (
-    <div className="flex flex-col h-full">
-      {/* khung tin nhắn */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm">
-        {messages.map((m, i) => (
-          <p
-            key={msg.id}
-            className={cn(
-              "max-w-[75%] rounded-md p-3 text-sm leading-relaxed",
-              isUser
-                ? "ml-auto bg-primary text-white"
-                : "mr-auto bg-muted"
-            )}
-          >
-            {msg.content}
-          </p>
-        ))}
-      </div>
-
-      {/* ô nhập */}
-      <MessageInput onSend={handleSend} />
-    </div>
-  );
+    <>
+      {messages.map((m) => (
+        <div
+          key={m.id}
+          className={
+            m.role === "user"
+              ? "self-end max-w-[80%] rounded-lg bg-violet-500 px-3 py-2 text-white"
+              : "max-w-[80%] rounded-lg bg-muted px-3 py-2"
+          }
+        >
+          {m.content}
+        </div>
+      ))}
+    </>
+  )
 }
