@@ -26,7 +26,7 @@ export default function PhongTranProfile() {
             </h1>
             <p className="mt-4 text-xl">
               <span className="font-semibold">HRBP Manager</span> &amp;{" "}
-              <span className="font-semibold">Career Mentor</span> – 10+ năm kinh nghiệm
+              <span className="font-semibold">Career Mentor</span> – 12+ năm kinh nghiệm
             </p>
             <p className="mt-6 max-w-lg text-gray-600">
               Chia sẻ công cụ, trải nghiệm và động lực để giúp bạn trẻ khám phá bản thân,
@@ -77,9 +77,9 @@ export default function PhongTranProfile() {
           </h2>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { title: "Phỏng vấn & tuyển dụng", desc: "..." },
-              { title: "Xây dựng hệ thống nhân sự", desc: "..." },
-              { title: "Thiết kế lương – thưởng", desc: "..." },
+              { title: "Phỏng vấn & tuyển dụng", desc: "10+ năm lead tuyển dụng, phỏng vấn từ Nhân viên đến Quản lý cấp cao; tư vấn viết CV, đào tạo kỹ năng phỏng vấn" },
+              { title: "Xây dựng hệ thống nhân sự", desc: "Hoạch định, tái cơ cấu tổ chức, triển khai BSC / KPI cho doanh nghiệp 1.000+ nhân sự" },
+              { title: "Thiết kế lương – thưởng", desc: "Xây dựng lương 2P và hệ thống báo cáo tự động với Looker Studio / Power BI" },
             ].map((k) => (
               <div
                 key={k.title}
@@ -102,10 +102,10 @@ export default function PhongTranProfile() {
         </h2>
         <div className="mt-6 space-y-6">
           {[
-            { title: "Sửa CV, LinkedIn...", price: "100.000 đ" },
-            { title: "Phỏng vấn thử...", price: "200.000 đ" },
-            { title: "Tư vấn chọn ngành...", price: "100.000 đ" },
-            { title: "Tư vấn định hướng...", price: "1.000.000 đ" },
+            { title: "Sửa CV, hồ sơ ứng tuyển chuyên sâu", price: "100.000đ" },
+            { title: "Phỏng vấn thử, tư vấn chuẩn bị phỏng vấn: Bạn nhận được hướng dẫn chuẩn bị trước, trong và sau một buổi phỏng vấn và được nhận xét cách trả lời các câu hỏi phỏng vấn khó nhằn", price: "200.000đ" },
+            { title: "Tư vấn định hướng nghề, tìm việc, đổi việc: Bạn được tư vấn các công cụ, phương pháp để khám phá bản thân, tìm ra công việc phù hợp với mong muốn, trình độ và kĩ năng hiện có, tìm được đam mê và hạnh phúc hơn trong công việc. Gói tư vấn này đồng thời được tư vấn CV và phỏng vấn", price: "799.000đ" },
+            { title: "Đào tạo Nghề Nhân sự: Chuyên viên hoặc TP Nhân sự", price: "từ 1.999.000đ" },
           ].map((s) => (
             <div
               key={s.title}
