@@ -109,18 +109,18 @@ export default function PlanTab({ actions }: { actions: Action[] }) {
       >
         <input
           name="what"
-          placeholder="Việc cần làm"
+          placeholder="Việc cần làm để đạt được mục tiêu"
           className="min-w-[160px] flex-1 rounded border p-2"
         />
         <input
           name="who"
-          placeholder="Ai chịu trách nhiệm"
+          placeholder="Phần thưởng nếu bạn đạt được?"
           className="min-w-[140px] flex-1 rounded border p-2"
         />
         <input
           name="deadline"
           type="date"
-          placeholder="dd/mm/yyyy"
+          lang="vi"                       /* hiển thị dd/mm/yyyy */
           className="rounded border p-2"
         />
         <button
