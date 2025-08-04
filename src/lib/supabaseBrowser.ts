@@ -1,16 +1,17 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createBrowserClient } from "@supabase/ssr";
 
-/**
- * Singleton browser‑side Supabase client.
- * ⚠️  Uses the *anon* key – NEVER put the service‑role key on the client!  
- */
-export function createSupabaseBrowserClient() {
-  return createBrowserClient(
+/* Singleton client cho trình duyệt */
+let _client:
+  | ReturnType<typeof createBrowserClient>
+  | undefined;
+
+export function supabaseBrowser() {
+  if (_client) return _client;
+  _client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+  return _client;
 }
 
-// Back‑compat aliases so các file cũ vẫn chạy
-export const supabaseBrowser = createSupabaseBrowserClient;
-export default createSupabaseBrowserClient;
+export default supabaseBrowser;
