@@ -54,7 +54,7 @@ export default function KnowdellQuizPage() {
 
   /* 4. render UI */
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-5xl mx-auto p-6 mt-6">
       <h1 className="text-2xl font-bold">Chọn {LIMIT} giá trị nghề nghiệp quan trọng nhất</h1>
       <p className="text-sm text-gray-600">
         Đã chọn <b>{picked.length}</b>/{LIMIT}

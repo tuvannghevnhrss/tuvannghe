@@ -137,8 +137,8 @@ export default function PlanTab({ actions }: { actions: Action[] }) {
         <table className="w-full rounded border text-sm">
           <thead className="select-none bg-gray-50">
             <tr className="whitespace-nowrap">
-              <Th label="Việc"       sortKey="what"     />
-              <Th label="Ai"         sortKey="who"      />
+              <Th label="Việc cần làm"       sortKey="what"     />
+              <Th label="Phần thưởng"         sortKey="who"      />
               <Th label="Deadline"   sortKey="deadline" />
               <Th label="Trạng thái" sortKey="status"   />
             </tr>
