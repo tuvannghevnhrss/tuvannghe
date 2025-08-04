@@ -97,6 +97,14 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
         </div>
       </section>
 
+      {/* --------------- GIẢI PHÁP --------------- */}
+      <section className="mx-auto max-w-4xl space-y-8 px-6">
+        <h2 className="text-center text-2xl font-bold">Tôi giúp gì được cho bạn?</h2>
+
+        <ul className="border-l-2 border-indigo-600 pl-6">
+      </section>
+
+
       {/* --------------- EXPERIENCE --------------- */}
       <section className="mx-auto max-w-4xl space-y-8 px-6">
         <h2 className="text-center text-2xl font-bold">Hành trình sự nghiệp</h2>
