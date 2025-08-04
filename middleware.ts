@@ -1,67 +1,73 @@
-// src/middleware.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createMiddlewareClient }    from "@supabase/ssr";
-import { STATUS } from "@/lib/constants";
+/* -------------------------------------------------------------------------- *
+ * Middleware: refresh cookie, bảo vệ trang MBTI/Holland/Knowdell + thanh toán
+ * -------------------------------------------------------------------------- */
+import { NextRequest, NextResponse } from 'next/server'
+import { createMiddlewareClient }    from '@supabase/auth-helpers-nextjs' // ⬅️ thay @supabase/ssr
+import { STATUS }                    from '@/lib/constants'
 
-/* --------------------------------------------------------
- * 1) Áp dụng cho MỌI request (trừ file tĩnh, _next, favicon)
- *    – để cookie luôn được refresh, kể cả /api/**
- * ------------------------------------------------------ */
+/*  Chặn mọi request trừ static asset /favicon/_next/...  */
 export const config = {
-  matcher: ["/((?!_next|favicon.ico|.*\\.).*)"],
-};
+  matcher: ['/((?!_next|favicon.ico|.*\\.).*)'],
+}
 
-export async function middleware(req: NextRequest) {
+export async function middleware (req: NextRequest) {
   /* ---------------------------------------------------- *
-   * Tạo response trước, rồi inject Supabase vào
+   * 1. Khởi tạo Supabase & tự động refresh cookie phiên
    * ---------------------------------------------------- */
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+  const res       = NextResponse.next()
+  const supabase  = createMiddlewareClient({ req, res })
 
-  /* ❶ Refresh (hoặc lấy) session – hàm này có thể
-       tạo mới cookie sb-…-auth-token khi token sắp hết hạn */
+  // Gọi getSession() để Supabase tự refresh access / refresh-token
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await supabase.auth.getSession()
 
-  /* ❷ QUAN TRỌNG: copy mọi cookie Supabase mới set sang res  
-       (nếu bỏ dòng này – cookie không về được trình duyệt) */
-  res.cookies.setAll(res.cookies.getAll());
-
-  /* ---------- Phần kiểm tra thanh toán cũ của bạn -------- */
-  if (!session) {
-    return NextResponse.redirect(new URL("/signup", req.url));
+  /* 2. Nếu CHƯA đăng nhập → redirect /signup?redirectedFrom=... */
+  if (!session?.user) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/signup'
+    url.searchParams.set('redirectedFrom', req.nextUrl.pathname)
+    return NextResponse.redirect(url)
   }
 
-  const user = session.user;
-  const path = req.nextUrl.pathname.startsWith("/mbti")
-    ? "mbti"
-    : req.nextUrl.pathname.startsWith("/holland")
-    ? "holland"
-    : req.nextUrl.pathname.startsWith("/knowdell")
-    ? "knowdell"
-    : null;
+  const user      = session.user
+  const pathname  = req.nextUrl.pathname
 
-  if (path) {
+  /* ---------------------------------------------------- *
+   * 3. Xác định xem đường dẫn hiện tại có yêu cầu thanh toán
+   * ---------------------------------------------------- */
+  let product: 'mbti' | 'holland' | 'knowdell' | null = null
+  if      (pathname.startsWith('/mbti'))     product = 'mbti'
+  else if (pathname.startsWith('/holland'))  product = 'holland'
+  else if (pathname.startsWith('/knowdell')) product = 'knowdell'
+
+  if (product) {
+    /* -------------------------------------------------- *
+     *   Kiểm tra bảng payments: đã thanh toán hay chưa
+     * -------------------------------------------------- */
     const { data: payment, error } = await supabase
-      .from("payments")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("product", path)
-      .eq("status", STATUS.PAID)
-      .maybeSingle();
+      .from('payments')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('product', product)
+      .eq('status', STATUS.PAID)
+      .maybeSingle()
 
     if (error) {
-      console.error("Error fetching payment in middleware:", error);
-      return res;          // cho qua nhưng log lỗi
+      // Log lỗi nhưng vẫn cho request đi tiếp để không chặn UI
+      console.error('Middleware payment lookup error:', error)
+      return res
     }
 
+    /* Chưa thanh toán → ép redirect /payment?product=... */
     if (!payment) {
-      return NextResponse.redirect(
-        new URL(`/payment?product=${path}`, req.url)
-      );
+      const payUrl = req.nextUrl.clone()
+      payUrl.pathname = '/payment'
+      payUrl.searchParams.set('product', product)
+      return NextResponse.redirect(payUrl)
     }
   }
 
-  return res;
+  /* Cookie Supabase mới (nếu có) đã được attach vào `res` bởi helper  */
+  return res
 }
