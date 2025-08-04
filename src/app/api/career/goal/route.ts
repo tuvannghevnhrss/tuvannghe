@@ -1,32 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+/* ----------------------- GET career_goal ---------------------- */
+import { NextResponse } from 'next/server'
+import { createSupabaseRouteServerClient } from '@/lib/supabaseServer'
 
-export async function POST(req: NextRequest) {
-  const supa = createRouteHandlerClient({ cookies });
-  const { data: { session } } = await supa.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauth" }, { status: 401 });
+export const dynamic = 'force-dynamic'
 
-  const body = await req.json();        // { what, why }
-  const { data, error } = await supa
-    .from("career_goal")
-    .upsert({ user_id: session.user.id, ...body })
-    .select("id, what, why")
-    .single();
+export async function GET () {
+  const supabase = createSupabaseRouteServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'AUTH' }, { status: 401 })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json(data);
-}
+  const { data } = await supabase
+    .from('career_goal')
+    .select(`
+      job, goals, activities,
+      start_date, end_date, supporters
+    `)
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle()
 
-export async function GET() {
-  const supa = createRouteHandlerClient({ cookies });
-  const { data: { session } } = await supa.auth.getSession();
-  if (!session) return NextResponse.json({ goal: null });
-
-  const { data } = await supa
-    .from("career_goal")
-    .select("id, what, why")
-    .eq("user_id", session.user.id)
-    .single();
-  return NextResponse.json({ goal: data });
+  return NextResponse.json({ data })
 }
