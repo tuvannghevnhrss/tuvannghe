@@ -1,55 +1,30 @@
-import Header from '@/components/Header';
-import Footer  from '@/components/Footer';
-import { supabase } from '@/lib/supabaseClient';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import React from 'react';
+import { notFound } from 'next/navigation';
+import HuongNghiepCap3 from '../../../notebooks/HuongNghiepCap3';
+import CachXacDinhNghe from '../../../notebooks/CachXacDinhNghe';
 
-/**
- *  Dùng tên khác (BlogPageProps) thay vì “PageProps”
- *  – params.slug: string
- *  – searchParams?: optional
- */
-type BlogPageProps = {
+interface Props {
   params: { slug: string };
-  searchParams?: Record<string, string | string[]>;
-};
-
-/* -------- 1. Tạo danh sách static params (ISR/SSG) -------- */
-export async function generateStaticParams(): Promise<
-  BlogPageProps['params'][]
-> {
-  const { data } = await supabase.from('posts').select('slug');
-  return data?.map((p) => ({ slug: p.slug })) || [];
 }
 
-/* -------- 2. Render trang bài viết -------- */
-export default async function BlogPostPage({ params }: BlogPageProps) {
-  const { data: post } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('slug', params.slug)
-    .single();
+export default function PostPage({ params }: Props) {
+  const { slug } = params;
+  let ContentComponent: React.FC;
 
-  if (!post) return <p className="p-8">Bài viết không tìm thấy.</p>;
+  switch (slug) {
+    case 'huong-nghiep-cap-3':
+      ContentComponent = HuongNghiepCap3;
+      break;
+    case 'cach-xac-dinh-nghe':
+      ContentComponent = CachXacDinhNghe;
+      break;
+    default:
+      return notFound();
+  }
 
   return (
-    <>
-      <Header />
-
-      <article className="container mx-auto px-4 pt-24 prose prose-lg">
-        <h1>{post.title}</h1>
-        <time className="text-gray-500">
-          {new Date(post.published_at).toLocaleDateString('vi-VN', {
-            dateStyle: 'long',
-          })}
-        </time>
-
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {post.content_md}
-        </ReactMarkdown>
-      </article>
-
-      <Footer />
-    </>
+    <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+      <ContentComponent />
+    </main>
   );
 }

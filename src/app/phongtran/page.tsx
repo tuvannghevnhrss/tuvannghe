@@ -24,7 +24,7 @@ export default function PhongTranProfile() {
       <section className="relative overflow-hidden bg-indigo-50/60 py-24">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 px-6 text-center md:flex-row md:text-left">
           <Image
-            src="/avatar-phongtran.jpg"       /* ảnh 1:1 ~300×300 đặt trong /public */
+            src="/avatar-phongtran.jpg"
             alt="Trần Thanh Phong"
             width={220}
             height={220}
@@ -61,7 +61,7 @@ export default function PhongTranProfile() {
         <p className="text-center text-gray-700">
           <b>“Giúp người mất phương hướng tìm lại la bàn sự nghiệp.”</b> <br />
           Tôi tin rằng một sự nghiệp bền vững bắt đầu từ việc hiểu rõ chính mình – về tính cách, sở thích và giá trị cốt lõi.
-Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đã được kiểm chứng như MBTI, Holland, Knowdell, tôi đồng hành cùng học sinh, sinh viên và người trẻ trong hành trình khám phá bản thân và định hướng nghề nghiệp một cách thực tế, rõ ràng.
+          Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đã được kiểm chứng như MBTI, Holland, Knowdell, tôi đồng hành cùng học sinh, sinh viên và người trẻ trong hành trình khám phá bản thân và định hướng nghề nghiệp một cách thực tế, rõ ràng.
         </p>
       </section>
 
@@ -96,6 +96,39 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
           </div>
         </div>
       </section>
+
+      {/* ====== START: Section Dịch vụ tư vấn 1:1 ====== */}
+      <section className="mx-auto max-w-5xl px-6 py-16 bg-white rounded-2xl shadow-md">
+        <h2 className="text-3xl font-semibold text-center mb-6">
+          Dịch vụ tư vấn 1:1
+        </h2>
+        <p className="text-center text-gray-700 mb-8">
+          Phong Trần cung cấp dịch vụ tư vấn hướng nghiệp 1:1, khi kết nối bạn sẽ được Dịch vụ tư vấn tìm việc và định hướng nghề nghiệp:
+        </p>
+        <ul className="max-w-3xl mx-auto space-y-4 list-disc list-inside text-gray-800">
+          <li>
+            <strong>Sửa CV, LinkedIn, hồ sơ ứng tuyển chuyên sâu</strong> – Bảng giá: <span className="font-medium">100.000 đ/lần/CV</span>
+          </li>
+          <li>
+            <strong>Phỏng vấn thử, tư vấn chuẩn bị phỏng vấn</strong> – Bạn được hướng dẫn chuẩn bị trước, trong và sau một buổi phỏng vấn, nhận xét cách trả lời các câu hỏi khó nhằn, chia sẻ bí kíp giữ bình tĩnh. Bảng giá: <span className="font-medium">200.000 đ/lần/30 phút</span>
+          </li>
+          <li>
+            <strong>Tư vấn chọn ngành, trường</strong> – Bạn được hướng dẫn chọn ngành cử nhân, thạc sĩ và trường cao đẳng/đại học tại Việt Nam hoặc du học. Bảng giá: <span className="font-medium">100.000 đ/lần/30 phút</span>
+          </li>
+          <li>
+            <strong>Tư vấn định hướng nghề, tìm việc, đổi việc</strong> – Bạn được tư vấn công cụ và phương pháp khám phá bản thân, tìm công việc phù hợp, kèm CV & phỏng vấn. Gói dịch vụ 2 ngày. Bảng giá: <span className="font-medium">1.000.000 đ/lần/2 ngày</span>
+          </li>
+        </ul>
+        <div className="mt-10 text-center">
+          <a
+            href="mailto:your-email@example.com"
+            className="inline-block bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700 transition"
+          >
+            Liên hệ tư vấn chi tiết
+          </a>
+        </div>
+      </section>
+      {/* ====== END: Section Dịch vụ tư vấn 1:1 ====== */}
 
       {/* --------------- EXPERIENCE --------------- */}
       <section className="mx-auto max-w-4xl space-y-8 px-6">
@@ -138,7 +171,7 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
         <h2 className="text-2xl font-bold">Quà tặng dành cho bạn</h2>
         <p className="mt-4 text-lg">
           Nhập mã <b className="tracking-wider">PT20</b> để giảm 20 000 đ khi mua
-          gói <u>Combo định hướng&nbsp;–&nbsp;hướng nghiệp</u>.
+          gói <u>Combo định hướng – hướng nghiệp</u>.
         </p>
         <a
           href="/payment?product=knowdell"
@@ -151,9 +184,8 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
       {/* --------------- CONTACT (NEW) --------------- */}
       <section id="contact" className="bg-gray-50 py-20">
         <h2 className="text-center text-2xl font-bold mb-12">
-          Kết nối với&nbsp;Phong
+          Kết nối với Phong
         </h2>
-
         <div className="mx-auto grid max-w-5xl gap-10 px-6 sm:grid-cols-2 md:grid-cols-5">
           {/* PHONE */}
           <a
@@ -164,7 +196,7 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
               <PhoneIcon className="h-7 w-7" />
             </div>
             <p className="font-semibold">Gọi ngay</p>
-            <p className="text-sm text-gray-600">0919&nbsp;122&nbsp;225</p>
+            <p className="text-sm text-gray-600">0919 122 225</p>
           </a>
 
           {/* ZALO */}
@@ -178,7 +210,7 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
               <ChatBubbleLeftRightIcon className="h-7 w-7" />
             </div>
             <p className="font-semibold">Chat Zalo</p>
-            <p className="text-sm text-gray-600">0919&nbsp;122&nbsp;225</p>
+            <p className="text-sm text-gray-600">0919 122 225</p>
           </a>
 
           {/* FACEBOOK */}
@@ -189,7 +221,6 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
             className="flex flex-col items-center space-y-3 group"
           >
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white transition group-hover:bg-blue-700">
-              {/* Simple FB “f” logo */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -205,7 +236,6 @@ Kết hợp giữa kinh nghiệm nhân sự thực tiễn và các mô hình đ�
           {/* TIKTOK – placeholder */}
           <div className="flex flex-col items-center space-y-3 opacity-60">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-300 text-gray-600">
-              {/* Simple circle icon */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
