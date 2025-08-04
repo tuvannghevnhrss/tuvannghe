@@ -78,7 +78,65 @@ export default function FocusTab ({ existing }: { existing: Goal | null }) {
           placeholder="VD: Chuyên viên nhân sự"
         />
       </div>
-      {/* ... (các field Goals, Activities, Dates, Supporters) */}
+      {/* Mục tiêu ưu tiên */}
+      <div>
+        <label className="font-medium block">
+          Những mục tiêu ưu tiên và quan trọng nhất để đạt được nghề nghiệp yêu thích
+        </label>
+        <textarea
+          className="mt-1 w-full rounded border p-2 h-24"
+          value={goals}
+          onChange={e => setGoals(e.target.value)}
+          placeholder="VD: Hoàn thành chứng chỉ HRBP trong 6 tháng…"
+        />
+      </div>
+
+      {/* Hoạt động ưu tiên */}
+      <div>
+        <label className="font-medium block">
+          Hoạt động ưu tiên và quan trọng để đạt được nghề nghiệp yêu thích
+        </label>
+        <textarea
+          className="mt-1 w-full rounded border p-2 h-24"
+          value={activities}
+          onChange={e => setActivities(e.target.value)}
+          placeholder="VD: Tham gia khoá HR Analytics, networking nhóm HR Friday…"
+        />
+      </div>
+
+      {/* Ngày bắt đầu / hoàn thành */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="font-medium block">Thời gian bắt đầu</label>
+          <input
+            type="date"
+            className="mt-1 w-full rounded border p-2"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="font-medium block">Thời gian hoàn thành</label>
+          <input
+            type="date"
+            className="mt-1 w-full rounded border p-2"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Người hỗ trợ */}
+      <div>
+        <label className="font-medium block">Người hỗ trợ / đồng hành</label>
+        <input
+          type="text"
+          className="mt-1 w-full rounded border p-2"
+          value={supporter}
+          onChange={e => setSupporter(e.target.value)}
+          placeholder="VD: Anh A (Mentor), Chị B (Leader)…"
+        />
+      </div>
       <button
         onClick={handleSave}
         disabled={pending}
