@@ -1,28 +1,25 @@
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
-/* ---------- Tạo Supabase client dùng trong Server Component / Route ---------- */
-export function createSupabaseServerClient() {
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!; // KHÓA server-side
-  if (!url || !key) throw new Error("Missing Supabase env vars");
+/* ▸ Dùng cho API/route cần session người dùng (Key ANON + Cookies) */
+export function createSupabaseRouteServerClient() {
+  const url     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if (!url || !anonKey) {
+    console.error("❌ Missing Supabase env vars", { url: !!url, anonKey: !!anonKey });
+    throw new Error("Missing Supabase env vars");
+  }
 
-  const store = cookies(); // helper Next 15
-
-  return createServerClient(url, key, {
+  /* API v0.6 – cần getAll + set  */
+  return createServerClient(url, anonKey, {
     cookies: {
-      get(name) {
-        return store.get(name)?.value; // phải trả về string | undefined
-      },
-      set(name, value, options) {
-        store.set({ name, value, ...options });
-      },
-      remove(name, options) {
-        store.set({ name, value: "", ...options });
-      },
+      getAll: () =>
+        cookies().getAll().map(c => ({ name: c.name, value: c.value })),
+      set: (name, value, options) =>
+        cookies().set({ name, value, ...options }),
     },
   });
 }
 
-/* Giữ alias cũ nếu code nơi khác còn gọi */
-export const createSupabaseRouteServerClient = createSupabaseServerClient;
+/* ▸ Hàm server-side (Service-Role) bạn đã có – giữ nguyên */
+export function createSupabaseServerClient() { … }
