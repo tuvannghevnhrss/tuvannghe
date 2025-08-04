@@ -1,43 +1,52 @@
 import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import {
+  createServerClient,
+  type CookieOptions,
+} from "@supabase/ssr";
 
-/* ---------------------------------------------------------------------------
- * 1) Dùng trong Route Handler / API – cần session người dùng (Anon key + Cookie)
- * ------------------------------------------------------------------------- */
+/* ----------------------------------------------------------
+ * 1) API / Route Handler – dùng Anon Key + Cookie người dùng
+ * -------------------------------------------------------- */
 export function createSupabaseRouteServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  if (!url || !anonKey) {
-    console.error("❌ Missing Supabase env vars", { url: !!url, anonKey: !!anonKey });
-    throw new Error("Missing Supabase env vars");
-  }
+  const url      = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if (!url || !anonKey) throw new Error("Missing Supabase env vars");
 
+  const store = cookies();                           // Next 15 cookie store
   return createServerClient(url, anonKey, {
     cookies: {
-      getAll: () => cookies().getAll().map(c => ({ name: c.name, value: c.value })),
-      set:  (name, value, options) => cookies().set({ name, value, ...options }),
+      /* đọc **tất cả** cookie kèm request */
+      getAll() {
+        return store.getAll().map(c => ({ name: c.name, value: c.value }));
+      },
+      /* ghi **nguyên xi** cookie Supabase muốn set  */
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          store.set({ name, value, ...options } as CookieOptions & { name: string; value: string });
+        });
+      },
     },
   });
 }
 
-/* ---------------------------------------------------------------------------
- * 2) Dùng trong Server Component / Cron – quyền Service-Role
- * ------------------------------------------------------------------------- */
+/* ----------------------------------------------------------
+ * 2) Server Component / Cron – dùng Service-Role
+ * -------------------------------------------------------- */
 export function createSupabaseServerClient() {
-  const url  = process.env.SUPABASE_URL!;
-  const key  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   if (!url || !key) throw new Error("Missing Supabase env vars");
 
-  const store = cookies();   // helper Next.js 15
-
+  const store = cookies();
   return createServerClient(url, key, {
     cookies: {
-      get:    (name)                 => store.get(name)?.value,            // string | undefined
-      set:    (name, value, options) => store.set({ name, value, ...options }),
-      remove: (name,        options) => store.set({ name, value: "", ...options }),
+      getAll: () => store.getAll().map(c => ({ name: c.name, value: c.value })),
+      setAll: cs => cs.forEach(({ name, value, options }) =>
+        store.set({ name, value, ...options } as CookieOptions & { name: string; value: string })
+      ),
     },
   });
 }
 
-/* Giữ alias cũ nếu mã khác vẫn import tên này */
+/* alias cũ nếu mã khác vẫn import */
 export const createSupabaseRouteClient = createSupabaseRouteServerClient;
