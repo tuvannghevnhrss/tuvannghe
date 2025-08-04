@@ -134,9 +134,9 @@ export default function PhongTranProfile() {
           </h2>
           <ul className="relative border-l-2 border-indigo-300 pl-8">
             {[
-              { time: "2023–2025", role: "HR Manager – JTExpress", desc: "..." },
-              { time: "2017–2022", role: "HR Manager – PGS Group", desc: "..." },
-              { time: "2014–2017", role: "HR Lead – E.Land", desc: "..." },
+              { time: "2023–2025", role: "HR Manager – JTExpress", desc: "Tái cấu trúc, giảm 3 tỷ ₫ chi phí nhân công; quản lý 5.000 nhân sự" },
+              { time: "2017–2022", role: "HR Manager – PGS Group", desc: "Mở 6 chi nhánh, quy mô nhân sự tăng 270 → 1.000; Tuyển dụng - đào tạo - truyền lửa nhân sự mới" },
+              { time: "2014–2017", role: "HR Lead – E.Land/Dệt may Thành Công", desc: "Triển khai phần mềm HR, xây dựng chính sách lương sản phẩm" },
             ].map((e, i) => (
               <li key={i} className="mb-8 relative">
                 <span className="absolute -left-4 top-0 flex h-3 w-3 items-center justify-center rounded-full bg-indigo-600">
