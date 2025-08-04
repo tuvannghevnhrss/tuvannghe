@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import HuongNghiepCap3 from '../../../notebooks/HuongNghiepCap3';
-import CachXacDinhNghe from '../../../notebooks/CachXacDinhNghe';
+import HuongNghiepCap3 from '../notebooks/HuongNghiepCap3';
+import CachXacDinhNghe from '../notebooks/CachXacDinhNghe';
 
 interface Props {
   params: { slug: string };
