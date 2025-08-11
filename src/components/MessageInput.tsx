@@ -62,7 +62,7 @@ export default function MessageInput({ userId, threadId, onSent }: MessageInputP
         ref={inputRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Hỏi huongnghiep.ai"
+        placeholder="Hỏi tuvannghe để được giải đáp"
         className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />
 
