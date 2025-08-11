@@ -14,6 +14,7 @@ const MENU = [
   { label: "Giá trị bản thân", href: "/knowdell" },
   { label: "Tin tức", href: "/blog" },
   { label: "Chatbot/FAQ", href: "/chat" },
+  { label: "Liên hệ", href: "/phongtran" },
 ];
 
 export default function Header() {

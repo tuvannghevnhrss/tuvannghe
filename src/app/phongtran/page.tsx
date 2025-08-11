@@ -10,6 +10,7 @@ import {
   ShieldCheckIcon,
   RocketLaunchIcon,
   ArrowRightIcon,
+  EnvelopeIcon, // <-- NEW
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, StarIcon } from "@heroicons/react/24/solid";
 
@@ -34,6 +35,7 @@ export default function PhongTranProfile() {
     name: "Trần Thanh Phong",
     jobTitle: "HRBP Manager & Career Mentor",
     image: "/avatar-phongtran.jpg",
+    email: "mailto:vnhrss@gmail.com", // <-- NEW
     sameAs: ["https://facebook.com/kyvophong"],
     makesOffer: {
       "@type": "Offer",
@@ -52,7 +54,7 @@ export default function PhongTranProfile() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* HERO – tập trung 1–1 */}
+      {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-indigo-50">
         <div className="container mx-auto grid items-center gap-10 px-6 py-20 md:grid-cols-2 md:py-28">
           <div className="order-2 md:order-1">
@@ -84,7 +86,6 @@ export default function PhongTranProfile() {
               </a>
             </div>
 
-            {/* Trust signals */}
             <div className="mt-6 flex flex-wrap items-center gap-6 text-sm text-gray-600">
               <div className="flex items-center gap-2">
                 <CheckCircleIcon className="h-5 w-5 text-green-600" />
@@ -156,7 +157,7 @@ export default function PhongTranProfile() {
         </div>
       </section>
 
-      {/* KẾT QUẢ NHẬN ĐƯỢC */}
+      {/* KẾT QUẢ */}
       <section className="container mx-auto max-w-5xl px-6 py-16">
         <h2 className="text-3xl font-bold text-indigo-800">
           Bạn nhận được gì sau chương trình?
@@ -164,7 +165,7 @@ export default function PhongTranProfile() {
         <ul className="mt-6 grid gap-3 sm:grid-cols-2">
           {[
             "Bản đồ nghề cá nhân (Holland/Knowdell) + năng lực lõi",
-            "CV chuẩn ATS thu hút",
+            "CV chuẩn ATS  thu hút",
             "Kịch bản trả lời 20+ câu hỏi phỏng vấn khó",
             "Roadmap 6–12 tháng (skill, dự án, portfolio)",
             "Bộ template email, theo dõi ứng tuyển, checklist",
@@ -326,7 +327,7 @@ export default function PhongTranProfile() {
         </div>
       </section>
 
-      {/* HÀNH TRÌNH SỰ NGHIỆP (giữ gọn) */}
+      {/* HÀNH TRÌNH */}
       <section className="bg-indigo-50 py-16">
         <div className="container mx-auto max-w-4xl space-y-10 px-6">
           <h2 className="text-center text-3xl font-bold text-indigo-800">
@@ -365,7 +366,7 @@ export default function PhongTranProfile() {
         </div>
       </section>
 
-      {/* FAQ (không cần JS) */}
+      {/* FAQ */}
       <section className="container mx-auto max-w-4xl px-6 py-16">
         <h2 className="text-3xl font-bold text-indigo-800">Câu hỏi thường gặp</h2>
         <div className="mt-6 space-y-3">
@@ -416,7 +417,7 @@ export default function PhongTranProfile() {
 
       {/* BOOKING / CONTACT */}
       <section id="booking" className="bg-gray-50 py-16">
-        <div className="container mx-auto grid grid-cols-1 gap-10 px-6 sm:grid-cols-2 md:grid-cols-5">
+        <div className="container mx-auto grid grid-cols-1 gap-10 px-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           {[
             {
               label: "Gọi ngay",
@@ -431,6 +432,13 @@ export default function PhongTranProfile() {
               href: "https://zalo.me/0919122225",
               info: "0919 122 225",
               bg: "bg-sky-500",
+            },
+            {
+              label: "Email",
+              icon: EnvelopeIcon,
+              href: "mailto:vnhrss@gmail.com",
+              info: "vnhrss@gmail.com",
+              bg: "bg-emerald-600", // <-- NEW CONTACT CARD
             },
             {
               label: "Facebook",
