@@ -72,8 +72,8 @@ export default async function PostPage({ params }: PageProps) {
             <ul className={`${styles.list} ${styles.tools}`}>
               <li><Link href="/mbti">Trắc nghiệm MBTI</Link></li>
               <li><Link href="/holland">Bộ Holland (RIASEC)</Link></li>
-              <li><Link href="/gia-tri-ban-than">Giá trị bản thân</Link></li>
-              <li><Link href="/chatbot">Hỏi Chatbot tư vấn</Link></li>
+              <li><Link href="/knowdell">Giá trị bản thân</Link></li>
+              <li><Link href="/chat">Hỏi Chatbot tư vấn</Link></li>
             </ul>
           </div>
         </aside>
