@@ -9,10 +9,10 @@ import { useRouter } from "next/navigation";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 
 const MENU = [
-  { label: "Profile", href: "/profile" },
   { label: "MBTI", href: "/mbti" },
   { label: "Holland", href: "/holland" },
   { label: "Giá trị bản thân", href: "/knowdell" },
+  { label: "Profile", href: "/profile" },
   { label: "Tin tức", href: "/blog" },
   { label: "Chatbot/FAQ", href: "/chat" },
 ];
