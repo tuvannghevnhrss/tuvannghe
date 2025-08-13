@@ -15,6 +15,7 @@ const MENU = [
   { label: "Profile", href: "/profile" },
   { label: "Tin tức", href: "/blog" },
   { label: "Chatbot/FAQ", href: "/chat" },
+  { label: "Liên hệ", href: "/phongtran" },
 ];
 
 export default function Header() {
