@@ -3,21 +3,21 @@ import { cookies } from 'next/headers'
 import {
   createRouteHandlerClient,
   createServerComponentClient,
-  type SupabaseClient
+  type SupabaseClient,
 } from '@supabase/auth-helpers-nextjs'
 
-/**  
- *  Cho API Route & middleware  
- */
-export const createSupabaseRouteServerClient = <
+/** Cho API Route (app/api/*) */
+export async function createSupabaseRouteServerClient<
   Database = any
->(): SupabaseClient<Database> =>
-  createRouteHandlerClient<Database>({ cookies })
+>(): Promise<SupabaseClient<Database>> {
+  const cookieStore = await cookies()
+  return createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+}
 
-/**
- *  Cho Server Component / React Server Action
- */
-export const createSupabaseServerClient = <
+/** Cho Server Components / React Server Actions */
+export async function createSupabaseServerClient<
   Database = any
->(): SupabaseClient<Database> =>
-  createServerComponentClient<Database>({ cookies })
+>(): Promise<SupabaseClient<Database>> {
+  const cookieStore = await cookies()
+  return createServerComponentClient<Database>({ cookies: () => cookieStore })
+}

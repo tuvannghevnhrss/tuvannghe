@@ -1,88 +1,99 @@
-"use client";
+'use client'
+import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useSWRConfig } from 'swr'
+import type { Msg } from './MessageList'
 
-import { useState, useRef, FormEvent } from "react";
-import { ArrowUpCircle } from "lucide-react";
-
-/* ---------- props ---------- */
-interface MessageInputProps {
-  userId   : string | null;                 // Supabase UID (có thể null)
-  threadId?: string;                       // uuid của cuộc trò chuyện (undefined ở msg đầu)
-  onSent?  : (newThreadId: string) => void; // bắn ra threadId vừa tạo
+type Props = {
+  onDraft?: (m: Msg) => void
+  onClearDraft?: () => void
 }
 
-/* regex xác thực uuid v4 */
-const isUUIDv4 = (s: string) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+export default function MessageInput({
+  onDraft = () => {},
+  onClearDraft = () => {},
+}: Props) {
+  const [value, setValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const search = useSearchParams()
+  const threadId = search.get('threadId')
+  const { mutate } = useSWRConfig()
 
-/* ---------- component ---------- */
-export default function MessageInput({ userId, threadId, onSent }: MessageInputProps) {
-  const [value,   setValue]   = useState("");
-  const [sending, setSending] = useState(false);
-  const inputRef              = useRef<HTMLInputElement>(null);
+  const send = async () => {
+    if (!value.trim() || loading) return
+    setLoading(true)
 
-  /* ---------- submit ---------- */
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!value.trim() || sending) return;
+    const optimisticMsg: Msg = {
+      id: `opt-${Date.now()}`,
+      role: 'user',
+      content: value,
+      created_at: new Date().toISOString(),
+    }
+    const key = threadId ? `/api/chat?threadId=${threadId}` : null
 
-    setSending(true);
+    // === 1) Optimistic UI + CLEAR INPUT NGAY LẬP TỨC ===
+    const prev = value
+    setValue('') // ⟵ clear ngay khi bấm gửi
+    if (!threadId) {
+      onDraft(optimisticMsg)
+    } else {
+      await mutate(
+        key!,
+        (prevData: any) => ({ messages: [...(prevData?.messages || []), optimisticMsg] }),
+        false
+      )
+    }
+
     try {
-      /* build payload */
-      const payload: Record<string, any> = {
-        userId,
-        content: value.trim(),
-      };
-      if (threadId && isUUIDv4(threadId)) payload.threadId = threadId;
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: prev, threadId: threadId || undefined }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Send failed')
 
-      /* gửi API */
-      const res  = await fetch("/api/chat/send", {
-        method : "POST",
-        headers: { "Content-Type": "application/json" },
-        body   : JSON.stringify(payload),
-      });
-      const data = await res.json();       // { assistantReply, threadId }
-
-      /* callback cho component cha */
-      onSent?.(data.threadId);
-
-      setValue("");
-      inputRef.current?.focus();
+      // 2) Nếu là thread mới → cập nhật URL + load lại
+      if (!threadId && json.threadId) {
+        router.replace(`/chat?threadId=${json.threadId}`)
+        onClearDraft()
+        await mutate(`/api/chat?threadId=${json.threadId}`)
+      } else if (threadId) {
+        await mutate(key!)
+      }
+    } catch (e) {
+      console.error(e)
+      // Khôi phục input nếu lỗi gửi
+      setValue(prev)
+      if (threadId) await mutate(key!) // rollback append lạc quan bằng revalidate
     } finally {
-      setSending(false);
+      setLoading(false)
     }
   }
 
-  /* ---------- UI ---------- */
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mx-4 mb-4 flex items-center gap-2 rounded-full border bg-white px-4 py-2 shadow-sm"
-    >
-      <input
-        ref={inputRef}
+    <div className="border-t p-3 flex gap-2">
+      <textarea
+        className="flex-1 resize-none border rounded-xl p-3 focus:outline-none focus:ring"
+        rows={2}
+        placeholder="Nhập câu hỏi…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Hỏi tuvannghe để được giải đáp"
-        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            send()
+          }
+        }}
       />
-
-      {value && (
-        <span className="rounded-full bg-violet-500 px-2 py-0.5 text-xs font-medium text-white">
-          {value.length}
-        </span>
-      )}
-
       <button
-        type="submit"
-        disabled={sending || !value.trim()}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
-          sending || !value.trim()
-            ? "cursor-not-allowed bg-muted text-muted-foreground"
-            : "bg-violet-500 text-white hover:bg-violet-600"
-        }`}
+        onClick={send}
+        disabled={loading || !value.trim()}
+        className="px-4 py-2 rounded-xl bg-black text-white disabled:opacity-50"
       >
-        <ArrowUpCircle className="h-5 w-5" />
+        {loading ? 'Đang gửi…' : 'Gửi'}
       </button>
-    </form>
-  );
+    </div>
+  )
 }
