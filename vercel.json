@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "crons": [
     { "path": "/api/supabase-ping", "schedule": "0 */3 * * *" }
   ]
