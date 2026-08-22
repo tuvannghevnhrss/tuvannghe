@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# database dumps (not migrations — supabase/migrations/*.sql is unaffected)
+*.dump
+
+# local archives/backups (e.g. src.zip, exports/*.zip) — none are needed to
+# build/run the app; kept locally, never intended for the repo
+*.zip
+
 # vercel
 .vercel
 

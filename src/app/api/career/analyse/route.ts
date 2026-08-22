@@ -2,12 +2,10 @@
    /api/career/analyse – Phân tích Knowdell + gợi ý nghề + lưu Supabase
  * ------------------------------------------------------------------------- */
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
 
 import { analyseKnowdell }                 from '@/lib/career/analyseKnowdell'
 import { suggestJobs }                     from '@/lib/career/matchJobs'
-import { createSupabaseRouteServerClient } from '@/lib/supabaseServer'
+import { createSupabaseRouteServerClient } from '@/lib/supabase/server'
 
 // ❗️CHỈ KHAI BÁO 1 LẦN
 export const dynamic = 'force-dynamic'  // Edge hay Node tuỳ Vercel
@@ -16,38 +14,9 @@ export const runtime  = 'nodejs'        // cần SERVICE_ROLE key cho DB-write
 export async function POST() {
   try {
     /* ------------------------------------------------------------------- *
-     * 1) Khởi tạo Supabase client an toàn (unwrap helper + fallback)
+     * 1) Khởi tạo Supabase client
      * ------------------------------------------------------------------- */
-    const _ret = await createSupabaseRouteServerClient()
-
-    let supabase: any =
-      _ret && typeof _ret === 'object'
-        ? (('from' in _ret || 'auth' in _ret) ? _ret
-           : ('supabase' in _ret)             ? (_ret as any).supabase
-           : ('client'   in _ret)             ? (_ret as any).client
-                                              : null)
-        : null
-
-    if (!supabase || typeof supabase?.auth?.getUser !== 'function') {
-      const cookieStore = cookies()
-      supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get: (name) => cookieStore.get(name)?.value,
-            set: (name, value, options) =>
-              cookieStore.set({ name, value, ...options }),
-            remove: (name, options) =>
-              cookieStore.set({ name, value: '', ...options, maxAge: 0 }),
-          },
-        }
-      )
-    }
-
-    if (!supabase) {
-      return NextResponse.json({ error: 'SUPABASE_CLIENT' }, { status: 500 })
-    }
+    const supabase = await createSupabaseRouteServerClient()
 
     /* ------------------------------------------------------------------- *
      * 2) Lấy user từ cookie
@@ -77,11 +46,14 @@ export async function POST() {
     }
 
     /* ------------------------------------------------------------------- *
-     * 4) (GIỮ LOGIC CŨ) Chạy phân tích Knowdell + gợi ý nghề
-     *    — giữ nguyên chữ ký hàm của dự án bạn (nếu khác, sửa lại đúng chữ ký)
+     * 4) Chạy phân tích Knowdell + gợi ý nghề
+     *    — analyseKnowdell(profile) và suggestJobs(profile) chỉ nhận 1 tham số;
+     *    trước đây gọi kèm (supabase, uid, ...) khiến profile bên trong 2 hàm
+     *    này thực chất nhận nhầm object supabase client, không phải dữ liệu
+     *    hồ sơ thật — sửa lại đúng chữ ký.
      * ------------------------------------------------------------------- */
-    const summaryMD = await (analyseKnowdell as any)(supabase, uid, profile)
-    const jobs      = await (suggestJobs as any)(supabase, uid, summaryMD, profile)
+    const summaryMD = await analyseKnowdell(profile)
+    const jobs      = await suggestJobs(profile)
 
     /* ------------------------------------------------------------------- *
      * 5) (GIỮ LOGIC CŨ) Lưu kết quả vào DB

@@ -1,11 +1,16 @@
-// ⬅ KHÔNG “use client” (file này vẫn là Server-Component)
-export const dynamic = "force-dynamic";        // luôn render mỗi request
+export const dynamic = "force-dynamic";
 
 import PaymentContent from "./PaymentContent";
+import { SERVICE, type ServiceKey } from "@/lib/constants";
 
-type Props = { searchParams: { product?: string } };
+type Props = { searchParams: Promise<{ product?: string }> };
 
-export default function PaymentPage({ searchParams }: Props) {
-  const product = searchParams.product ?? "mbti";   // lấy ngay trên server
-  return <PaymentContent product={product} />;      // truyền xuống Client-Component
+const VALID_PRODUCTS = new Set<string>(Object.values(SERVICE));
+
+export default async function PaymentPage({ searchParams }: Props) {
+  const { product = "mbti" } = await searchParams;
+  const safeProduct: ServiceKey = VALID_PRODUCTS.has(product)
+    ? (product as ServiceKey)
+    : "mbti";
+  return <PaymentContent product={safeProduct} />;
 }

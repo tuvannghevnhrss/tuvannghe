@@ -13,6 +13,8 @@ import {
 export interface Action {
   id: string;
   what: string;
+  who?: string;
+  deadline: string;
   done: boolean;
 }
 

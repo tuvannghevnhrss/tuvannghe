@@ -1,10 +1,10 @@
 /*  src/app/knowdell/quiz/page.tsx  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { SERVICE } from "@/lib/constants";
 
 const LIMIT   = 10;
@@ -14,7 +14,7 @@ const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export default function KnowdellQuizPage() {
   const router   = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   /* 1. kiểm tra thanh toán */
   const { data: pay, isLoading } = useSWR(

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseRouteServerClient } from "@/lib/supabase/server";
 import { sendMail } from "@/lib/mail";
 
 export const runtime = "nodejs"; // đảm bảo dùng Node runtime cho thư viện mail
 
 export async function POST(req: NextRequest) {
-  const supa = createRouteHandlerClient({ cookies });
+  const supa = await createSupabaseRouteServerClient();
 
   // 1) Lấy user hiện tại
   const { data: { user } } = await supa.auth.getUser();

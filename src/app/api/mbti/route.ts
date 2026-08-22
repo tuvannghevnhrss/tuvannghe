@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient }
-  from "@supabase/auth-helpers-nextjs";
-import type { Database } from "@/types/supabase";
+import { createSupabaseRouteServerClient } from "@/lib/supabase/server";
 
 export const runtime = "edge";
 
 export async function POST(req: Request) {
   const { code } = await req.json();          // EX: "INFJ"
-  const supabase = createRouteHandlerClient<Database>({ cookies });
+  const supabase = await createSupabaseRouteServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -30,7 +27,7 @@ export async function POST(req: Request) {
 
   if (error) {
     console.error("MBTI upsert error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "INTERNAL_SERVER_ERROR" }, { status: 500 });
   }
 
   return NextResponse.json({ code });

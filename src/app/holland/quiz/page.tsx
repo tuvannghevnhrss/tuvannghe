@@ -1,10 +1,8 @@
 // -----------------------------------------------------------------------------
 // src/app/holland/quiz/page.tsx       (SERVER component – no "use client")
 // -----------------------------------------------------------------------------
-import { cookies }            from 'next/headers';
 import { redirect }           from 'next/navigation';
-import { createServerComponentClient }
-       from '@supabase/auth-helpers-nextjs';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { STATUS }             from '@/lib/constants';
 
 import QuizClient             from './QuizClient';
@@ -13,9 +11,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function HollandQuizPage() {
   /* 1 ▸ Auth --------------------------------------------------------------- */
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login?redirectedFrom=/holland/quiz');
+  if (!user) redirect('/signup?redirectedFrom=/holland/quiz');
 
   /* 2 ▸ Đã trả tiền?  (Holland **hoặc** Knowdell) -------------------------- */
   const { data: payments } = await supabase

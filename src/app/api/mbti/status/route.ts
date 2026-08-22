@@ -1,11 +1,10 @@
 // API: GET /api/mbti/status
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { STATUS } from "@/lib/constants";          // ✅ thêm import
+import { createSupabaseRouteServerClient } from "@/lib/supabase/server";
+import { STATUS } from "@/lib/constants";
 
 export async function GET() {
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await createSupabaseRouteServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -8,22 +8,34 @@ const nextConfig = {
   reactStrictMode: true,
 
   /* ───────────────────────── ESLint / TS ────────────────── */
-  eslint: { ignoreDuringBuilds: true },   // bỏ lint khi build CI
-  typescript: { ignoreBuildErrors: true },// bỏ lỗi TS (dọn sau)
+  eslint: { ignoreDuringBuilds: false },
+  typescript: { ignoreBuildErrors: false },
+
+  /* ───────────────────────── Experimental ───────────────── */
+  experimental: {
+    // Tree-shake icon/chart libraries — chỉ bundle icon/component thực sự dùng
+    optimizePackageImports: [
+      '@heroicons/react',
+      'recharts',
+      'react-chartjs-2',
+      'chart.js',
+      'lucide-react',
+    ],
+  },
 
   /* ───────────────────────── Images ─────────────────────── */
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',  // cho phép mọi domain (có thể thu hẹp sau)
+        hostname: '**',
         pathname: '/**',
       },
     ],
   },
 
   /* ───────────────────────── Webpack ────────────────────── */
-  webpack(config) {
+  webpack(config: any) {
     // Alias ffmpeg-core để tránh lỗi "module not found" ở runtime
     config.resolve.alias[
       '/node_modules/@ffmpeg/core/dist/ffmpeg-core.js'

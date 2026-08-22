@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseRouteServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   const { list } = await req.json();              // ["Quản trị nhân sự", …]
-  const supa = createRouteHandlerClient({ cookies });
+  const supa = await createSupabaseRouteServerClient();
   const { data:{ user } } = await supa.auth.getUser();
   if (!user) return NextResponse.json({ error:"Unauth" },{ status:401 });
 

@@ -1,500 +1,557 @@
-// app/page.tsx
-import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 import {
-  PhoneIcon,
-  ChatBubbleLeftRightIcon,
-  PlayCircleIcon,
-  CalendarDaysIcon,
-  ShieldCheckIcon,
-  RocketLaunchIcon,
   ArrowRightIcon,
-  EnvelopeIcon, // <-- NEW
+  BriefcaseIcon,
+  CalendarDaysIcon,
+  ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
+  ClipboardDocumentCheckIcon,
+  EnvelopeIcon,
+  LightBulbIcon,
+  MapIcon,
+  PhoneIcon,
+  SparklesIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
-import { CheckCircleIcon, StarIcon } from "@heroicons/react/24/solid";
+import { CheckCircleIcon as CheckCircleSolidIcon } from "@heroicons/react/24/solid";
 
 export const metadata: Metadata = {
-  title: "Coaching nghề nghiệp 1–1 | Trần Thanh Phong – HRBP & Career Mentor",
+  title: "Tư vấn hướng nghiệp 1-1 cùng Trần Thanh Phong | TuVanNghe",
   description:
-    "Chương trình 1–1 giúp bạn rõ nghề – rõ lộ trình – rõ việc làm. Cá nhân hoá theo Holland/Knowdell, kèm sửa CV & phỏng vấn giả định.",
+    "Trang mentor của Trần Thanh Phong, giúp bạn hiểu bản thân, chọn hướng nghề phù hợp và chuẩn bị CV, phỏng vấn dựa trên hệ sinh thái TuVanNghe.",
   openGraph: {
-    title: "Coaching nghề nghiệp 1–1 | Trần Thanh Phong",
+    title: "Tư vấn hướng nghiệp 1-1 cùng Trần Thanh Phong",
     description:
-      "Rõ nghề trong 4 tuần. Kèm CV, mock interview & roadmap 6–12 tháng.",
+      "Kết hợp góc nhìn HR thực chiến với MBTI, Holland, Knowdell và luyện phỏng vấn AI để biến định hướng thành kế hoạch hành động.",
     type: "website",
+    images: ["/avatar-phongtran.jpg"],
   },
-  alternates: { canonical: "/" },
+  alternates: { canonical: "/phongtran" },
+};
+
+const situations = [
+  {
+    title: "Bạn chưa rõ mình phù hợp với nghề gì",
+    text: "Bạn có nhiều lựa chọn nhưng thiếu một khung rõ ràng để hiểu điểm mạnh, động lực và kiểu môi trường làm việc phù hợp.",
+    icon: LightBulbIcon,
+  },
+  {
+    title: "Bạn muốn chọn ngành, đổi việc hoặc chuyển hướng",
+    text: "Bạn cần so sánh các hướng đi một cách thực tế hơn, không chỉ dựa vào cảm hứng nhất thời hoặc lời khuyên rời rạc.",
+    icon: MapIcon,
+  },
+  {
+    title: "Bạn đã có mục tiêu nhưng chưa tự tin ứng tuyển",
+    text: "Bạn cần chỉnh CV, luyện cách kể câu chuyện nghề nghiệp và chuẩn bị câu trả lời phỏng vấn thuyết phục hơn.",
+    icon: BriefcaseIcon,
+  },
+];
+
+const pathway = [
+  {
+    step: "01",
+    title: "Khám phá bản thân",
+    text: "Bắt đầu từ MBTI, Holland và Knowdell để có dữ liệu nền về tính cách, sở thích nghề nghiệp và giá trị ưu tiên.",
+    href: "/career",
+    cta: "Xem hub hướng nghiệp",
+  },
+  {
+    step: "02",
+    title: "Chọn hướng đi khả thi",
+    text: "Cùng mentor đọc kết quả, lọc các lựa chọn phù hợp với bối cảnh thật của bạn và chốt nhóm nghề nên ưu tiên.",
+    href: "/knowdell",
+    cta: "Làm rõ giá trị nghề nghiệp",
+  },
+  {
+    step: "03",
+    title: "Biến định hướng thành hành động",
+    text: "Xây roadmap 3-6 tháng, chỉnh CV, luyện phỏng vấn và xác định việc cần làm ngay trong tuần đầu tiên.",
+    href: "/interview",
+    cta: "Luyện phỏng vấn AI",
+  },
+];
+
+const services = [
+  {
+    name: "Gỡ rối định hướng",
+    badge: "1 buổi",
+    description:
+      "Phù hợp khi bạn đang phân vân giữa vài lựa chọn và cần một buổi soi lại vấn đề thật rõ.",
+    features: [
+      "Làm rõ tình huống hiện tại",
+      "Đọc nhanh kết quả test nếu đã có",
+      "Chốt 2-3 hướng nên kiểm chứng tiếp",
+    ],
+  },
+  {
+    name: "Combo hướng nghiệp cá nhân",
+    badge: "Khuyến nghị",
+    description:
+      "Phù hợp khi bạn muốn đi trọn flow từ hiểu bản thân, chọn hướng nghề đến có kế hoạch hành động.",
+    features: [
+      "Kết hợp MBTI, Holland, Knowdell",
+      "Buổi tư vấn 1-1 để giải nghĩa kết quả",
+      "Roadmap 3-6 tháng theo mục tiêu cá nhân",
+    ],
+    highlighted: true,
+  },
+  {
+    name: "CV và Mock Interview",
+    badge: "Ứng tuyển",
+    description:
+      "Phù hợp khi bạn đã có mục tiêu công việc và cần chuẩn bị hồ sơ, câu chuyện, câu trả lời phỏng vấn.",
+    features: [
+      "Rà soát CV theo vị trí ứng tuyển",
+      "Luyện kể kinh nghiệm bằng STAR/CARE",
+      "Gợi ý cách tiếp tục luyện với AI",
+    ],
+  },
+];
+
+const outcomes = [
+  "Bản đồ nghề cá nhân dựa trên dữ liệu từ test và buổi trao đổi",
+  "Danh sách hướng nghề hoặc vị trí nên ưu tiên kiểm chứng",
+  "Roadmap 3-6 tháng với kỹ năng, dự án và việc cần làm cụ thể",
+  "Gợi ý chỉnh CV, portfolio hoặc hồ sơ ứng tuyển",
+  "Kịch bản luyện phỏng vấn phù hợp với mục tiêu gần nhất",
+  "Một bước hành động rõ ràng để bắt đầu ngay sau buổi tư vấn",
+];
+
+const mentorReasons = [
+  {
+    title: "Có góc nhìn HR thực chiến",
+    text: "Buổi tư vấn không chỉ dừng ở cảm nhận cá nhân, mà luôn đặt trong bối cảnh tuyển dụng, năng lực và thị trường việc làm.",
+  },
+  {
+    title: "Cá nhân hóa theo dữ liệu",
+    text: "Kết quả MBTI, Holland, Knowdell được dùng như điểm bắt đầu để hiểu bạn, không phải nhãn dán cố định.",
+  },
+  {
+    title: "Tập trung vào hành động",
+    text: "Mục tiêu cuối cùng là giúp bạn biết nên làm gì tiếp theo: học gì, thử gì, sửa gì và ứng tuyển thế nào.",
+  },
+];
+
+const faqs = [
+  {
+    q: "Tôi chưa biết bắt đầu từ đâu thì nên làm gì trước?",
+    a: "Bạn có thể bắt đầu bằng MBTI miễn phí hoặc hub hướng nghiệp. Nếu đang rối và muốn tiết kiệm thời gian, hãy đặt một buổi tư vấn 1-1 để mentor giúp bạn xác định điểm xuất phát.",
+  },
+  {
+    q: "Có cần làm bài test trước khi tư vấn không?",
+    a: "Không bắt buộc, nhưng nên có. Kết quả test giúp buổi tư vấn cụ thể hơn, tránh nói chung chung và giúp mentor nhìn rõ mẫu tính cách, sở thích nghề nghiệp, giá trị ưu tiên của bạn.",
+  },
+  {
+    q: "Tư vấn 1-1 khác gì tự đọc kết quả trên website?",
+    a: "Website giúp bạn có dữ liệu ban đầu. Tư vấn 1-1 giúp kết nối dữ liệu đó với bối cảnh thật của bạn: ngành học, kinh nghiệm, mục tiêu, nỗi lo và kế hoạch hành động.",
+  },
+  {
+    q: "Nếu tôi đang chuẩn bị phỏng vấn gấp thì có phù hợp không?",
+    a: "Có. Khi mục tiêu đã rõ, buổi tư vấn có thể tập trung vào CV, câu chuyện nghề nghiệp, câu hỏi khó và cách luyện tiếp với khu vực phỏng vấn AI.",
+  },
+];
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Trần Thanh Phong",
+  jobTitle: "Career Mentor",
+  image: "/avatar-phongtran.jpg",
+  email: "mailto:vnhrss@gmail.com",
+  sameAs: ["https://facebook.com/kyvophong"],
+  makesOffer: {
+    "@type": "Offer",
+    name: "Tư vấn hướng nghiệp 1-1",
+    priceCurrency: "VND",
+    availability: "https://schema.org/InStock",
+    url: "https://zalo.me/0919122225",
+  },
 };
 
 export default function PhongTranProfile() {
-  // --- JSON-LD (SEO) ---
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: "Trần Thanh Phong",
-    jobTitle: "HRBP Manager & Career Mentor",
-    image: "/avatar-phongtran.jpg",
-    email: "mailto:vnhrss@gmail.com", // <-- NEW
-    sameAs: ["https://facebook.com/kyvophong"],
-    makesOffer: {
-      "@type": "Offer",
-      name: "Coaching nghề nghiệp 1–1 (4 tuần)",
-      priceCurrency: "VND",
-      price: "799000",
-      availability: "https://schema.org/InStock",
-      url: "tel:0919122225",
-    },
-  };
-
   return (
-    <main className="bg-white text-gray-800">
+    <div className="bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_30%,#f1f5f9_100%)] text-slate-900">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-indigo-50">
-        <div className="container mx-auto grid items-center gap-10 px-6 py-20 md:grid-cols-2 md:py-28">
-          <div className="order-2 md:order-1">
-            <span className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-2 text-sm font-medium text-indigo-700">
-              <ShieldCheckIcon className="h-5 w-5" />
-              Coaching 1–1 cá nhân hoá
-            </span>
-            <h1 className="mt-4 text-4xl font-extrabold leading-tight text-indigo-900 md:text-5xl">
-              Rõ nghề trong <span className="text-indigo-600">4 tuần</span>, cùng
-              chuyên gia HR
+      <section className="px-4 pb-14 pt-12 sm:px-6 lg:px-8 lg:pb-20 lg:pt-16">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700">
+              <SparklesIcon className="h-4 w-4" />
+              Mentor hướng nghiệp trong hệ sinh thái TuVanNghe
+            </div>
+
+            <h1 className="mt-6 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+              Hiểu mình rõ hơn, chọn hướng nghề chắc hơn và chuẩn bị ứng tuyển tốt hơn
             </h1>
-            <p className="mt-4 text-lg text-gray-700">
-              Kết hợp kinh nghiệm <b>12+ năm HRBP</b> với bộ công cụ Holland/
-              Knowdell. Nhận <b>roadmap 6–12 tháng</b>, kèm <b>sửa CV</b> và{" "}
-              <b>mock interview</b>.
+
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+              Cùng Trần Thanh Phong kết nối kết quả MBTI, Holland, Knowdell với
+              bối cảnh thật của bạn để biến những điều còn mơ hồ thành một lộ
+              trình nghề nghiệp có thể bắt đầu ngay.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#booking"
-                className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-indigo-700"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                Đặt lịch tư vấn 1–1 <ArrowRightIcon className="h-5 w-5" />
+                Đặt lịch tư vấn 1-1
+                <ArrowRightIcon className="h-4 w-4" />
               </a>
-              <a
-                href="#pricing"
-                className="inline-flex items-center gap-2 rounded-full border border-indigo-300 px-6 py-3 font-semibold text-indigo-700 hover:bg-indigo-50"
+              <Link
+                href="/career"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
               >
-                Xem bảng giá
-              </a>
+                Bắt đầu với hướng nghiệp
+              </Link>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-6 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                100+ mentee hài lòng
-              </div>
-              <div className="flex items-center gap-2">
-                <CalendarDaysIcon className="h-5 w-5 text-indigo-600" />
-                Lịch linh hoạt tối/ cuối tuần
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheckIcon className="h-5 w-5 text-indigo-600" />
-                Cam kết rõ kết quả
-              </div>
+            <div className="mt-10 grid max-w-2xl gap-4 sm:grid-cols-3">
+              {[
+                { value: "1-1", label: "Tư vấn theo tình huống cá nhân" },
+                { value: "3", label: "Bộ công cụ MBTI, Holland, Knowdell" },
+                { value: "AI", label: "Luyện phỏng vấn sau khi rõ mục tiêu" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <p className="text-2xl font-bold text-slate-950">{item.value}</p>
+                  <p className="mt-1 text-sm leading-5 text-slate-500">{item.label}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="order-1 md:order-2">
-            <div className="relative mx-auto h-64 w-64 overflow-hidden rounded-full shadow-2xl ring-8 ring-white md:h-80 md:w-80">
-              <Image
-                src="/avatar-phongtran.jpg"
-                alt="Trần Thanh Phong – HRBP & Career Mentor"
-                fill
-                className="object-cover"
-                priority
-              />
+          <div className="flex justify-center lg:justify-end">
+            <div className="text-center">
+              <div className="relative mx-auto h-64 w-64 overflow-hidden rounded-full bg-slate-100 shadow-2xl shadow-slate-200/80 ring-8 ring-white md:h-80 md:w-80">
+                <Image
+                  src="/avatar-phongtran.jpg"
+                  alt="Trần Thanh Phong - Career Mentor"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <div className="mx-auto mt-6 max-w-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                  Trần Thanh Phong
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-slate-950">
+                  Career Mentor đồng hành từ định hướng đến ứng tuyển
+                </h2>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* WHY 1–1 */}
-      <section id="coaching" className="bg-indigo-50/60">
-        <div className="container mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-center text-3xl font-bold text-indigo-800">
-            Vì sao 1–1 hiệu quả?
-          </h2>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                title: "Cá nhân hoá theo tính cách",
-                desc: "Dùng Holland + Knowdell để hiểu tiềm năng, giá trị & động lực của bạn.",
-                icon: RocketLaunchIcon,
-              },
-              {
-                title: "Kèm thực chiến HR",
-                desc: "Sửa CV, mock interview, chiến lược tìm việc theo thị trường thật.",
-                icon: ShieldCheckIcon,
-              },
-              {
-                title: "Roadmap rõ ràng",
-                desc: "Nhận lộ trình 6–12 tháng, checklist từng tuần & tài nguyên học.",
-                icon: CalendarDaysIcon,
-              },
-            ].map((b) => (
-              <div
-                key={b.title}
-                className="rounded-3xl bg-white p-8 shadow-md transition hover:-translate-y-1 hover:shadow-xl"
+      <section className="px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">
+              Điểm xuất phát
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Trang này dành cho bạn nếu đang cần một người giúp gỡ rối nghề nghiệp
+            </h2>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {situations.map((item) => (
+              <article
+                key={item.title}
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
               >
-                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700">
-                  <b.icon className="h-7 w-7" />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <item.icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-semibold text-indigo-900">
-                  {b.title}
-                </h3>
-                <p className="mt-2 text-gray-600">{b.desc}</p>
-              </div>
+                <h3 className="mt-5 text-xl font-bold text-slate-950">{item.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{item.text}</p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* KẾT QUẢ */}
-      <section className="container mx-auto max-w-5xl px-6 py-16">
-        <h2 className="text-3xl font-bold text-indigo-800">
-          Bạn nhận được gì sau chương trình?
-        </h2>
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-          {[
-            "Bản đồ nghề cá nhân (Holland/Knowdell) + năng lực lõi",
-            "CV thu hút",
-            "Kịch bản trả lời 20+ câu hỏi phỏng vấn khó",
-            "Roadmap 6–12 tháng (skill, dự án, portfolio)",
-            "Bộ template email, theo dõi ứng tuyển, checklist",
-            "Support 30 ngày sau khoá học qua Zalo",
-          ].map((item) => (
-            <li key={item} className="flex items-start gap-3">
-              <CheckCircleIcon className="mt-1 h-5 w-5 shrink-0 text-green-600" />
-              <span className="text-gray-700">{item}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <section className="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
+              Lộ trình hỗ trợ
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              Không chỉ làm bài test, mà biến kết quả thành lựa chọn và hành động
+            </h2>
+          </div>
 
-      {/* PRICING */}
-      <section id="pricing" className="bg-indigo-50 py-20">
-        <div className="container mx-auto max-w-6xl px-6">
-          <h2 className="text-center text-3xl font-bold text-indigo-800">
-            Bảng giá & gói dịch vụ 1–1
-          </h2>
-
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            {/* CV PRO */}
-            <div className="rounded-3xl bg-white p-8 shadow-md">
-              <h3 className="text-xl font-semibold text-indigo-900">CV Pro</h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Sửa CV chuyên sâu + thư ứng tuyển
-              </p>
-              <div className="mt-4 text-3xl font-extrabold text-indigo-700">
-                100.000đ
-              </div>
-              <ul className="mt-6 space-y-2 text-gray-700">
-                {[
-                  "Phân tích JD & chọn từ khoá ATS",
-                  "Góp ý bố cục, định lượng thành tựu",
-                  "Template thư ứng tuyển",
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <CheckCircleIcon className="mt-1 h-5 w-5 text-green-600" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="#booking"
-                className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-indigo-300 px-4 py-3 font-semibold text-indigo-700 hover:bg-indigo-50"
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {pathway.map((item) => (
+              <article
+                key={item.step}
+                className="rounded-2xl border border-white/10 bg-white/[0.06] p-6"
               >
-                Đặt gói này
-              </a>
-            </div>
-
-            {/* INTERVIEW PRO */}
-            <div className="rounded-3xl bg-white p-8 shadow-md">
-              <h3 className="text-xl font-semibold text-indigo-900">
-                Interview Pro
-              </h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Phỏng vấn thử 60–90’, nhận nhận xét chi tiết
-              </p>
-              <div className="mt-4 text-3xl font-extrabold text-indigo-700">
-                200.000đ
-              </div>
-              <ul className="mt-6 space-y-2 text-gray-700">
-                {[
-                  "Mock interview theo vị trí của bạn",
-                  "Kịch bản trả lời STAR/CARE",
-                  "Checklist trước – trong – sau PV",
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <CheckCircleIcon className="mt-1 h-5 w-5 text-green-600" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="#booking"
-                className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-indigo-300 px-4 py-3 font-semibold text-indigo-700 hover:bg-indigo-50"
-              >
-                Đặt gói này
-              </a>
-            </div>
-
-            {/* CAREER 1–1 – popular */}
-            <div className="relative rounded-3xl bg-white p-8 shadow-xl ring-2 ring-indigo-600">
-              <span className="absolute -top-3 right-6 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-                Khuyến nghị
-              </span>
-              <h3 className="text-xl font-semibold text-indigo-900">
-                Career 1–1 (4 tuần)
-              </h3>
-              <p className="mt-1 text-sm text-gray-600">
-                Định hướng nghề – đổi việc – thăng tiến
-              </p>
-              <div className="mt-4 text-3xl font-extrabold text-indigo-700">
-                799.000đ
-              </div>
-              <ul className="mt-6 space-y-2 text-gray-700">
-                {[
-                  "Đánh giá Holland & bộ thẻ giá trị Knowdell",
-                  "2 buổi/tuần × 60–90’ (online)",
-                  "CV + mock interview",
-                  "Roadmap 6–12 tháng & tài liệu học",
-                  "Hỗ trợ Zalo 30 ngày sau khoá",
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <CheckCircleIcon className="mt-1 h-5 w-5 text-green-600" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="#booking"
-                className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white shadow hover:bg-indigo-700"
-              >
-                Bắt đầu 1–1 ngay
-              </a>
-            </div>
+                <p className="text-sm font-bold text-emerald-300">{item.step}</p>
+                <h3 className="mt-4 text-2xl font-bold">{item.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-300">{item.text}</p>
+                <Link
+                  href={item.href}
+                  className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-emerald-300"
+                >
+                  {item.cta}
+                  <ArrowRightIcon className="h-4 w-4" />
+                </Link>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="container mx-auto max-w-6xl px-6 py-16">
-        <h2 className="text-3xl font-bold text-indigo-800">
-          Học viên nói gì?
-        </h2>
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          {[
-            {
-              name: "Thảo N.",
-              text:
-                "Sau 3 tuần mình có offer đúng ngành, CV được sửa rất kỹ và mock interview cực hữu ích.",
-            },
-            {
-              name: "Duy P.",
-              text:
-                "Bản đồ nghề + roadmap giúp mình chuyển ngành mượt. Mentor theo sát và có bài tập rõ ràng.",
-            },
-            {
-              name: "Lan H.",
-              text:
-                "Nhiệt tình, thực tế từ góc nhìn HR. Bộ câu hỏi phỏng vấn giúp tự tin thấy rõ.",
-            },
-          ].map((t) => (
-            <figure
-              key={t.name}
-              className="rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                {[...Array(5)].map((_, i) => (
-                  <StarIcon key={i} className="h-5 w-5 text-yellow-400" />
-                ))}
-              </div>
-              <blockquote className="mt-3 text-gray-700">{t.text}</blockquote>
-              <figcaption className="mt-4 text-sm font-semibold text-indigo-900">
-                {t.name}
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
+      <section className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">
+                Hình thức đồng hành
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                Chọn đúng mức hỗ trợ theo nhu cầu hiện tại
+              </h2>
+            </div>
+            <Link href="/pricing" className="text-sm font-semibold text-emerald-700">
+              Xem bảng giá trên TuVanNghe
+            </Link>
+          </div>
 
-      {/* HÀNH TRÌNH */}
-      <section className="bg-indigo-50 py-16">
-        <div className="container mx-auto max-w-4xl space-y-10 px-6">
-          <h2 className="text-center text-3xl font-bold text-indigo-800">
-            Hành trình sự nghiệp
-          </h2>
-          <ul className="relative border-l-2 border-indigo-300 pl-8">
-            {[
-              {
-                time: "2023–2025",
-                role: "HR Manager – JTExpress",
-                desc: "Tái cấu trúc, tiết kiệm 3 tỷ ₫ chi phí; quản lý 5.000 nhân sự",
-              },
-              {
-                time: "2017–2022",
-                role: "HR Manager – PGS Group",
-                desc: "Mở 6 chi nhánh; quy mô tăng 270 → 1.000; tuyển–đào tạo–truyền lửa",
-              },
-              {
-                time: "2014–2017",
-                role: "HR Lead – E.Land / TC Garment",
-                desc: "Triển khai phần mềm HR, xây dựng lương sản phẩm",
-              },
-            ].map((e, i) => (
-              <li key={i} className="mb-8 relative">
-                <span className="absolute -left-4 top-1 flex h-3 w-3 items-center justify-center rounded-full bg-indigo-600 ring-4 ring-indigo-100">
-                  <span className="block h-2 w-2 rounded-full bg-white" />
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {services.map((service) => (
+              <article
+                key={service.name}
+                className={`rounded-2xl border p-6 shadow-sm ${
+                  service.highlighted
+                    ? "border-emerald-400 bg-emerald-50 shadow-emerald-100"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <span
+                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                    service.highlighted
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {service.badge}
                 </span>
-                <div>
-                  <div className="font-semibold text-indigo-800">{e.time}</div>
-                  <div className="mt-1 font-medium">{e.role}</div>
-                  <p className="mt-2 text-gray-600">{e.desc}</p>
-                </div>
-              </li>
+                <h3 className="mt-4 text-2xl font-bold text-slate-950">{service.name}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  {service.description}
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {service.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                      <CheckCircleSolidIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </article>
             ))}
-          </ul>
+          </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="container mx-auto max-w-4xl px-6 py-16">
-        <h2 className="text-3xl font-bold text-indigo-800">Câu hỏi thường gặp</h2>
-        <div className="mt-6 space-y-3">
-          {[
-            {
-              q: "Mình chưa định hình nghề, có phù hợp không?",
-              a: "Rất phù hợp. Buổi 1–2 tập trung khám phá tính cách, năng lực & giá trị, sau đó mới chốt hướng đi khả thi.",
-            },
-            {
-              q: "Không có nhiều thời gian thì sao?",
-              a: "Lịch linh hoạt tối/ cuối tuần. Mỗi tuần 2 buổi × 60–90’, kèm bài tập ngắn gọn, có mẫu để làm nhanh.",
-            },
-            {
-              q: "Nếu sau khoá vẫn chưa rõ thì sao?",
-              a: "Có hỗ trợ Zalo 30 ngày & 1 buổi follow-up miễn phí để chốt roadmap.",
-            },
-          ].map((f, i) => (
-            <details
-              key={i}
-              className="group rounded-2xl border border-indigo-100 bg-white p-5 open:shadow-sm"
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between text-base font-semibold text-indigo-900">
-                {f.q}
-                <span className="ml-4 text-indigo-600">+</span>
-              </summary>
-              <p className="mt-3 text-gray-700">{f.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
+      <section className="bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">
+              Kết quả sau tư vấn
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Điều quan trọng nhất là bạn biết nên làm gì tiếp theo
+            </h2>
+            <p className="mt-4 text-base leading-8 text-slate-600">
+              Một buổi tư vấn tốt không khiến bạn phụ thuộc vào mentor. Nó giúp
+              bạn có ngôn ngữ rõ hơn về bản thân và một kế hoạch đủ cụ thể để tự đi tiếp.
+            </p>
+          </div>
 
-      {/* QUÀ TẶNG */}
-      <section className="container mx-auto max-w-2xl px-6 pb-16">
-        <div className="rounded-3xl bg-indigo-600 px-8 py-12 text-center text-white shadow-lg">
-          <h2 className="text-3xl font-bold">Quà tặng dành cho bạn</h2>
-          <p className="mt-3 text-lg">
-            Nhập mã <span className="font-semibold tracking-wider">PT20</span>{" "}
-            để giảm 20.000 đ khi mua combo hướng nghiệp.
-          </p>
-          <a
-            href="/payment?product=knowdell"
-            className="mt-6 inline-block rounded-full bg-white px-8 py-3 font-semibold text-indigo-700 hover:bg-gray-100"
-          >
-            Nhận ưu đãi
-          </a>
-        </div>
-      </section>
-
-      {/* BOOKING / CONTACT */}
-      <section id="booking" className="bg-gray-50 py-16">
-        <div className="container mx-auto grid grid-cols-1 gap-10 px-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-          {[
-            {
-              label: "Gọi ngay",
-              icon: PhoneIcon,
-              href: "tel:0919122225",
-              info: "0919 122 225",
-              bg: "bg-indigo-600",
-            },
-            {
-              label: "Chat Zalo",
-              icon: ChatBubbleLeftRightIcon,
-              href: "https://zalo.me/0919122225",
-              info: "0919 122 225",
-              bg: "bg-sky-500",
-            },
-            {
-              label: "Email",
-              icon: EnvelopeIcon,
-              href: "mailto:vnhrss@gmail.com",
-              info: "vnhrss@gmail.com",
-              bg: "bg-emerald-600", // <-- NEW CONTACT CARD
-            },
-            {
-              label: "Facebook",
-              icon: PlayCircleIcon,
-              href: "https://facebook.com/kyvophong",
-              info: "/kyvophong",
-              bg: "bg-blue-600",
-            },
-            {
-              label: "YouTube (sắp)",
-              icon: PlayCircleIcon,
-              href: "#",
-              info: "Sắp cập nhật",
-              bg: "bg-red-600/80",
-              disabled: true,
-            },
-            {
-              label: "TikTok (sắp)",
-              icon: PlayCircleIcon,
-              href: "#",
-              info: "Sắp cập nhật",
-              bg: "bg-black/80",
-              disabled: true,
-            },
-          ].map((c, i) => (
-            <a
-              key={i}
-              href={c.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex flex-col items-center space-y-3 rounded-xl bg-white p-6 shadow transition hover:shadow-lg ${
-                // @ts-ignore
-                c.disabled ? "pointer-events-none opacity-50" : ""
-              }`}
-            >
+          <div className="grid gap-3 sm:grid-cols-2">
+            {outcomes.map((item) => (
               <div
-                className={`${c.bg} flex h-16 w-16 items-center justify-center rounded-full text-white`}
+                key={item}
+                className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
               >
-                <c.icon className="h-8 w-8" />
+                <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                <p className="text-sm leading-6 text-slate-700">{item}</p>
               </div>
-              <p className="font-semibold text-indigo-800">{c.label}</p>
-              <p className="text-sm text-gray-600">{c.info}</p>
-            </a>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* STICKY CTA (mobile) */}
-      <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto block md:hidden">
+      <section className="px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">
+              Vì sao nên làm cùng mentor
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Có người giúp bạn đọc đúng dữ liệu và đưa ra lựa chọn thực tế hơn
+            </h2>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {mentorReasons.map((item) => (
+              <article
+                key={item.title}
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                  <ClipboardDocumentCheckIcon className="h-6 w-6" />
+                </div>
+                <h3 className="mt-5 text-xl font-bold text-slate-950">{item.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8 lg:p-10">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                Đi cùng hệ sinh thái
+              </p>
+              <h2 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">
+                Bạn có thể tự bắt đầu bằng công cụ, rồi đặt tư vấn khi cần người gỡ rối sâu hơn
+              </h2>
+              <p className="mt-3 max-w-3xl text-base leading-8 text-slate-700">
+                Cách này giúp buổi tư vấn đi thẳng vào vấn đề của bạn, thay vì mất thời gian
+                với những câu hỏi nền tảng có thể chuẩn bị trước.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+              <Link
+                href="/mbti"
+                className="rounded-2xl bg-slate-950 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Làm MBTI miễn phí
+              </Link>
+              <Link
+                href="/payment?product=knowdell"
+                className="rounded-2xl border border-emerald-300 bg-white px-5 py-3 text-center text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+              >
+                Chọn combo hướng nghiệp
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">
+            FAQ
+          </p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+            Câu hỏi thường gặp
+          </h2>
+
+          <div className="mt-8 space-y-3">
+            {faqs.map((faq) => (
+              <details
+                key={faq.q}
+                className="group rounded-2xl border border-slate-200 bg-slate-50 p-5"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-slate-950">
+                  <span>{faq.q}</span>
+                  <span className="text-2xl leading-none text-emerald-600">+</span>
+                </summary>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="booking" className="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
+                Đặt lịch
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                Sẵn sàng gỡ rối hướng nghề của bạn?
+              </h2>
+              <p className="mt-4 text-base leading-8 text-slate-300">
+                Gửi tin nhắn ngắn về tình huống hiện tại của bạn: đang học gì,
+                đang làm gì, đang phân vân điều gì và mục tiêu gần nhất là gì.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  label: "Gọi ngay",
+                  icon: PhoneIcon,
+                  href: "tel:0919122225",
+                  info: "0919 122 225",
+                },
+                {
+                  label: "Chat Zalo",
+                  icon: ChatBubbleLeftRightIcon,
+                  href: "https://zalo.me/0919122225",
+                  info: "0919 122 225",
+                },
+                {
+                  label: "Email",
+                  icon: EnvelopeIcon,
+                  href: "mailto:vnhrss@gmail.com",
+                  info: "vnhrss@gmail.com",
+                },
+                {
+                  label: "Cộng đồng",
+                  icon: UserGroupIcon,
+                  href: "https://facebook.com/kyvophong",
+                  info: "Facebook",
+                },
+              ].map((contact) => (
+                <a
+                  key={contact.label}
+                  href={contact.href}
+                  target={contact.href.startsWith("http") ? "_blank" : undefined}
+                  rel={contact.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                  className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 transition hover:border-emerald-300/60 hover:bg-white/[0.1]"
+                >
+                  <contact.icon className="h-7 w-7 text-emerald-300" />
+                  <p className="mt-4 font-semibold">{contact.label}</p>
+                  <p className="mt-1 text-sm text-slate-300">{contact.info}</p>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="fixed bottom-4 left-4 right-4 z-50 block md:hidden">
         <a
           href="#booking"
-          className="flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-6 py-3 font-semibold text-white shadow-2xl ring-1 ring-indigo-400/40"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-2xl shadow-emerald-900/30"
         >
-          Đặt lịch tư vấn 1–1 <ArrowRightIcon className="h-5 w-5" />
+          Đặt lịch tư vấn 1-1
+          <CalendarDaysIcon className="h-4 w-4" />
         </a>
       </div>
-    </main>
+    </div>
   );
 }

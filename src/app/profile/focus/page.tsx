@@ -3,13 +3,13 @@
    Nạp dữ liệu từ bảng career_goal rồi render FocusTab
 ---------------------------------------------------------------- */
 import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from '@/lib/supabaseServer'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import FocusTab from '@/components/FocusTab'
 
 export const dynamic = 'force-dynamic'
 
 export default async function FocusPage () {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {

@@ -4,30 +4,31 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 const TABS = [
-  { key: "trait",   label: "1. Đặc tính" },
-  { key: "options", label: "2. Lựa chọn" },
-  { key: "focus",   label: "3. Mục tiêu" },
-  { key: "plan",    label: "4. Kế hoạch" },
+  { key: "trait", label: "Tổng quan kết quả" },
+  { key: "options", label: "Gợi ý nghề phù hợp" },
+  { key: "focus", label: "Mục tiêu nghề nghiệp" },
+  { key: "plan", label: "Kế hoạch hành động" },
 ];
 
 export default function StepTabs({ current }: { current?: string }) {
   const search = useSearchParams();
-  const step   = current ?? search.get("step") ?? "trait";
+  const step = current ?? search.get("step") ?? "trait";
 
   return (
-    <div className="mb-8 flex flex-wrap gap-3">
-      {TABS.map((t) => {
-        const active = t.key === step;
+    <div className="flex flex-wrap gap-3">
+      {TABS.map((tab) => {
+        const active = tab.key === step;
         return (
           <Link
-            key={t.key}
-            href={`/profile?step=${t.key}`}
-            className={`rounded-md px-4 py-2 text-sm font-medium transition
-              ${active
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+            key={tab.key}
+            href={`/profile?step=${tab.key}`}
+            className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
+              active
+                ? "bg-slate-950 text-white"
+                : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+            }`}
           >
-            {t.label}
+            {tab.label}
           </Link>
         );
       })}

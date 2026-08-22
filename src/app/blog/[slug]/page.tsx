@@ -1,6 +1,7 @@
 // app/blog/[slug]/page.tsx
 import React from 'react';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import styles from './post.module.css';
 import HuongNghiepCap3 from '../notebooks/HuongNghiepCap3';
@@ -9,13 +10,47 @@ import CachXacDinhNghe from '../notebooks/CachXacDinhNghe';
 // 👇 Quan trọng: trong Next 15, params là Promise
 type PageProps = { params: Promise<{ slug: string }> };
 
+const META: Record<string, { title: string; category: 'MBTI'|'Holland'|'Tips'; date: string; description: string }> = {
+  'huong-nghiep-cap-3': {
+    title: 'Hướng nghiệp từ cấp 3 - Bí quyết chọn nghề phù hợp với bản thân',
+    category: 'Tips',
+    date: '2025-01-12',
+    description:
+      'Bài viết hướng nghiệp cho học sinh cấp 3: hiểu bản thân, khám phá ngành nghề và lập kế hoạch học tập phù hợp.',
+  },
+  'cach-xac-dinh-nghe': {
+    title: 'Cách xác định nghề nghiệp tương lai phù hợp với học sinh cấp 3',
+    category: 'Holland',
+    date: '2025-01-20',
+    description:
+      'Gợi ý 5 bước thực tế để học sinh cấp 3 xác định nghề nghiệp tương lai, từ sở thích đến trải nghiệm thực tế.',
+  },
+};
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const meta = META[slug];
+
+  if (!meta) {
+    return {};
+  }
+
+  return {
+    title: `${meta.title} | Tư vấn Nghề nghiệp`,
+    description: meta.description,
+    alternates: {
+      canonical: `/blog/${slug}`,
+    },
+    openGraph: {
+      title: `${meta.title} | Tư vấn Nghề nghiệp`,
+      description: meta.description,
+      type: 'article',
+    },
+  };
+}
+
 export default async function PostPage({ params }: PageProps) {
   const { slug } = await params; // 👈 phải await
-
-  const META: Record<string, { title: string; category: 'MBTI'|'Holland'|'Tips'; date: string }> = {
-    'huong-nghiep-cap-3': { title: 'Hướng nghiệp từ cấp 3 – Bí quyết chọn nghề phù hợp với bản thân', category: 'Tips', date: '2025-01-12' },
-    'cach-xac-dinh-nghe': { title: 'Cách xác định nghề nghiệp tương lai phù hợp với học sinh cấp 3', category: 'Holland', date: '2025-01-20' },
-  };
 
   let Content: React.FC | null = null;
   switch (slug) {

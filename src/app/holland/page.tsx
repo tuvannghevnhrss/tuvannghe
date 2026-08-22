@@ -8,8 +8,6 @@ export const metadata = {
 };
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { STATUS } from "@/lib/constants";
 
 import HollandLanding from "./HollandLanding"; // trang landing (chưa login)

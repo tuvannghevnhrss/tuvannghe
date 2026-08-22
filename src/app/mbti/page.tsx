@@ -6,7 +6,7 @@ import MbtiLanding from './MbtiLanding'
 import MbtiIntro from './MbtiIntro'
 
 export default async function MbtiPage() {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
 
   // 1) Auth
   const {

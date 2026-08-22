@@ -15,11 +15,11 @@ export default async function MbtiQuizPage({ searchParams }: Props) {
   if (start !== '1') redirect('/mbti')
 
   /* 1 – Auth */
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/login?redirectedFrom=/mbti')
+  if (!user) redirect('/signup?redirectedFrom=/mbti')
 
   /* 2 – nếu đã làm rồi thì về Intro (hoặc Result) */
   const { data: done } = await supabase

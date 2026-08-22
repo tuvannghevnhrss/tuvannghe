@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createSupabaseRouteServerClient } from "@/lib/supabase/server";
 
 export async function GET() {
-  const supa = createRouteHandlerClient({ cookies });
+  const supa = await createSupabaseRouteServerClient();
   const {
     data: { user },
   } = await supa.auth.getUser();
@@ -19,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const supa = createRouteHandlerClient({ cookies });
+  const supa = await createSupabaseRouteServerClient();
   const {
     data: { user },
   } = await supa.auth.getUser();
@@ -28,15 +27,18 @@ export async function POST(req: NextRequest) {
   const list: string[] = await req.json();
 
   /* xóa cũ, rồi insert mới */
-  await supa.from("knowdell_interests").delete().eq("user_id", user.id);
+  const { error: delError } = await supa.from("knowdell_interests").delete().eq("user_id", user.id);
+  if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
+
   if (list.length) {
-    await supa.from("knowdell_interests").insert(
+    const { error: insError } = await supa.from("knowdell_interests").insert(
       list.map((vi) => ({
         user_id: user.id,
         interest_key: vi,
         bucket: "very_interested",
       }))
     );
+    if (insError) return NextResponse.json({ error: insError.message }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
 }

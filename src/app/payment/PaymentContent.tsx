@@ -6,15 +6,19 @@
 "use client";
 
 import { useEffect, useState, useRef, KeyboardEvent } from "react";
-import { SERVICE } from "@/lib/constants";
+import Image from "next/image";
+import type { ServiceKey } from "@/lib/constants";
 
-const START_PATH: Record<keyof typeof SERVICE, string> = {
-  mbti    : "/mbti/quiz",
-  holland : "/holland/quiz",
-  knowdell: "/knowdell",                // drag-drop ngay tại /knowdell
+const START_PATH: Partial<Record<ServiceKey, string>> = {
+  mbti              : "/mbti/quiz",
+  holland           : "/holland/quiz",
+  knowdell          : "/knowdell",
+  interview_starter : "/interview",
+  interview_pro     : "/interview",
+  interview_premium : "/interview",
 };
 
-type Props = { product: keyof typeof SERVICE };
+type Props = { product: ServiceKey };
 
 type Quote =
   | { error: string }
@@ -35,15 +39,33 @@ export default function PaymentContent({ product }: Props) {
   const [error,    setErr]    = useState("");
   const [busy,     setBusy]   = useState(false);
 
-  const destURL  = START_PATH[product] ?? `/${product}`;
+  const [justPaid,     setJustPaid]     = useState(false);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+
+  // Định danh GIAO DỊCH hiện tại (khác với "product") — dùng để poll đúng
+  // payment này, không bị nhầm với 1 payment khác cùng product đã paid từ
+  // trước. orderCode chỉ giữ để hiển thị/debug khi cần, không dùng để poll.
+  const [paymentId, setPaymentId] = useState<number | null>(null);
+  const [orderCode, setOrderCode] = useState<string | null>(null);
+
+  const destURL  = START_PATH[product] ?? "/profile";
   const onceFlag = useRef(false);               // auto-checkout đúng 1 lần
 
   /* --------------------------- utils --------------------------- */
-  /** gọi quote 1 sản phẩm */
+  /** gọi quote 1 sản phẩm — luôn trả về Quote hợp lệ, không throw, để không
+      bao giờ làm treo state ở "Đang tải…" khi network/API lỗi. */
   async function fetchQuote(prod: string, code?: string): Promise<Quote> {
     const qs = new URLSearchParams({ product: prod, ts: Date.now().toString() });
     if (code) qs.append("coupon", code);
-    return fetch(`/api/payments/quote?${qs}`, { cache: "no-store" }).then(r => r.json());
+    try {
+      const res = await fetch(`/api/payments/quote?${qs}`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) return { error: json?.error ?? `HTTP_${res.status}` };
+      return json as Quote;
+    } catch (err) {
+      console.error("fetchQuote failed:", err);
+      return { error: "NETWORK_ERROR" };
+    }
   }
 
   /** nếu X==holland & knowdell đã paid → redirect */
@@ -67,20 +89,26 @@ export default function PaymentContent({ product }: Props) {
   /* ---------------------- 1. lấy quote đầu ---------------------- */
   useEffect(() => {
     (async () => {
-      // 👉 nếu holland được bundle bởi knowdell
-      if (await maybeSkipForHolland()) return;
+      try {
+        // 👉 nếu holland được bundle bởi knowdell
+        if (await maybeSkipForHolland()) return;
 
-      const res = await fetchQuote(product);
-      if ("error" in res) { setAmount(-1); return; }
+        const res = await fetchQuote(product);
+        if ("error" in res) { setAmount(-1); return; }
 
-      setAmount(res.amount);
-      setDisc  (res.discount);
+        setAmount(res.amount);
+        setDisc  (res.discount);
 
-      if (res.paid) {                       // đã ghi PAID
-        window.location.replace(destURL);
-      } else if (res.amount === 0 && !onceFlag.current) {
-        onceFlag.current = true;
-        doCheckout(true);
+        if (res.paid) {                       // đã ghi PAID
+          window.location.replace(destURL);
+        } else if (res.amount === 0 && !onceFlag.current) {
+          onceFlag.current = true;
+          doCheckout(true);
+        }
+      } catch (err) {
+        // Không để lỗi bất ngờ (network, JSON hỏng...) làm treo mãi ở "Đang tải…"
+        console.error("Payment quote flow failed:", err);
+        setAmount(-1);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,14 +116,32 @@ export default function PaymentContent({ product }: Props) {
 
   /* ------------------- 2. polling khi có QR -------------------- */
   useEffect(() => {
-    if (!qr) return;
+    if (!qr || paymentId == null) return;
+    setPollTimedOut(false);
+    const startedAt = Date.now();
+    const MAX_POLL_MS = 15 * 60 * 1000; // dừng poll sau 15 phút không xác nhận
     const id = setInterval(() => {
-      fetch(`/api/payments/status?product=${product}`, { cache: "no-store" })
+      if (Date.now() - startedAt > MAX_POLL_MS) {
+        clearInterval(id);
+        setPollTimedOut(true);
+        return;
+      }
+      // Poll đúng GIAO DỊCH hiện tại (payment_id), không phải "product" —
+      // nếu poll theo product, 1 payment khác cùng product đã paid từ trước
+      // sẽ khiến giao dịch pending hiện tại bị báo nhầm là đã thanh toán.
+      fetch(`/api/payments/status?payment_id=${paymentId}`, { cache: "no-store" })
         .then(r => r.json())
-        .then(res => { if (res.paid) window.location.replace(destURL); });
+        .then(res => {
+          if (res.paid) {
+            clearInterval(id);
+            setJustPaid(true);
+            setTimeout(() => window.location.replace(destURL), 1200);
+          }
+        })
+        .catch(err => console.error("Payment status poll failed:", err));
     }, 3000);
     return () => clearInterval(id);
-  }, [qr, product, destURL]);
+  }, [qr, paymentId, destURL]);
 
   /* -------------------- 3. áp mã giảm --------------------------- */
   async function applyCoupon() {
@@ -119,24 +165,36 @@ export default function PaymentContent({ product }: Props) {
     if (busy) return;
     setBusy(true); setErr("");
 
-    const body: Record<string, any> = { product, coupon: coupon.trim() || undefined };
-    const res  = await fetch("/api/payments/checkout", {
-      method: "POST",
-      body  : JSON.stringify(body),
-      cache : "no-store",
-    }).then(r => r.json());
+    try {
+      const body: Record<string, any> = { product, coupon: coupon.trim() || undefined };
+      const httpRes = await fetch("/api/payments/checkout", {
+        method : "POST",
+        headers: { "Content-Type": "application/json" },
+        body   : JSON.stringify(body),
+        cache  : "no-store",
+      });
+      const res = await httpRes.json();
 
-    setBusy(false);
+      if (!httpRes.ok || res.error) {
+        setErr(res.error ?? `Không thể thanh toán (HTTP ${httpRes.status}).`);
+        return;
+      }
 
-    if (res.error) { setErr(res.error); return; }
-
-    if (res.free) {
-      window.location.replace(destURL);
-      return;
-    }
-    if (!auto) {
-      setQr(res.qr_url);
-      setAmount(res.amount);
+      if (res.free) {
+        window.location.replace(destURL);
+        return;
+      }
+      if (!auto) {
+        setQr(res.qr_url);
+        setAmount(res.amount);
+        setPaymentId(typeof res.payment_id === "number" ? res.payment_id : null);
+        setOrderCode(typeof res.order_code === "string" ? res.order_code : null);
+      }
+    } catch (err) {
+      console.error("doCheckout failed:", err);
+      setErr("Không thể kết nối tới máy chủ thanh toán. Vui lòng thử lại.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -182,11 +240,32 @@ export default function PaymentContent({ product }: Props) {
 
       {/* QR hoặc nút */}
       {qr ? (
-        <img
-          src={qr}
-          alt="QR thanh toán"
-          className="mx-auto h-64 w-64 rounded border"
-        />
+        <div className="space-y-3">
+          <Image
+            src={qr}
+            alt="QR thanh toán"
+            width={256}
+            height={256}
+            className="mx-auto h-64 w-64 rounded border"
+          />
+          {justPaid ? (
+            <p className="font-medium text-green-600">
+              ✓ Thanh toán thành công! Đang chuyển trang…
+            </p>
+          ) : pollTimedOut ? (
+            <p className="text-sm text-amber-600">
+              Chưa nhận được xác nhận thanh toán tự động. Nếu bạn đã chuyển khoản,
+              vui lòng chờ thêm ít phút — hệ thống sẽ tiếp tục kiểm tra khi bạn tải
+              lại trang, hoặc liên hệ hỗ trợ để được xác nhận thủ công
+              {orderCode ? ` (mã đơn: ${orderCode})` : ""}.
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">
+              Đang chờ thanh toán… Sau khi chuyển khoản thành công, hệ thống sẽ tự
+              động xác nhận.
+            </p>
+          )}
+        </div>
       ) : (
         <button
           onClick={() => doCheckout(false)}

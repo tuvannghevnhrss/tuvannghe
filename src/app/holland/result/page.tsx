@@ -1,12 +1,11 @@
 // app/holland/result/page.tsx
 export const dynamic = "force-dynamic";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 interface Props {
-  searchParams: { code?: string; score?: string };
+  searchParams: Promise<{ code?: string; score?: string }>;
 }
 
 /* ── Giải thích 6 nhóm R-I-A-S-E-C ───────────────────── */
@@ -30,10 +29,11 @@ export default async function HollandResultPage({ searchParams }: Props) {
   /* ------------------------------------------------------------------ */
   /* 0) Lấy & validate mã Holland & điểm radar                          */
   /* ------------------------------------------------------------------ */
-  const code = (searchParams.code ?? "").toUpperCase();
+  const sp = await searchParams;
+  const code = (sp.code ?? "").toUpperCase();
   if (!/^[RIASEC]{3}$/.test(code)) redirect("/holland");
 
-  const scoreParam = searchParams.score;
+  const scoreParam = sp.score;
   if (!scoreParam) redirect("/holland");
 
   let score: Record<string, number>;
@@ -44,13 +44,13 @@ export default async function HollandResultPage({ searchParams }: Props) {
   }
 
   /* ------------------------------------------------------------------ */
-  /* 1) Supabase + Auth (FIX: dùng đúng hàm createServerComponentClient) */
+  /* 1) Supabase + Auth                                                 */
   /* ------------------------------------------------------------------ */
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirectedFrom=/holland");
+  if (!user) redirect("/signup?redirectedFrom=/holland");
 
   /* ------------------------------------------------------------------ */
   /* 2) Lưu kết quả vào DB                                              */

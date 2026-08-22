@@ -2,7 +2,7 @@
    /api/career/focus – lưu mục tiêu (WHAT / WHY / HOW) vào career_goal
  * -----------------------------------------------------------------*/
 import { NextResponse } from 'next/server'
-import { createSupabaseRouteServerClient } from '@/lib/supabaseServer'
+import { createSupabaseRouteServerClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 export const runtime  = 'nodejs'

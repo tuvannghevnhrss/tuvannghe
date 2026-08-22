@@ -1,6 +1,4 @@
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import type { Database } from "@/types/supabase";
+import { createSupabaseRouteServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -8,9 +6,7 @@ export async function POST(req: Request) {
   if (!id || done === undefined)
     return NextResponse.json({ error: "missing field" }, { status: 400 });
 
-  const supa = createRouteHandlerClient<Database>({
-    cookies: () => cookies(),
-  });
+  const supa = await createSupabaseRouteServerClient();
   const { data: { user } } = await supa.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauth" }, { status: 401 });
 
@@ -20,6 +16,9 @@ export async function POST(req: Request) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("career_actions update error:", error);
+    return NextResponse.json({ error: "INTERNAL_SERVER_ERROR" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

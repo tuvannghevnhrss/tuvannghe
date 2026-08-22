@@ -9,6 +9,7 @@ type Props = {
 };
 
 const PRICE = 100_000;
+const priceLabel = PRICE.toLocaleString("vi-VN");
 
 /* Ô thống kê nhỏ */
 const StatBox = ({ value, label }: { value: string; label: string }) => (
@@ -55,7 +56,7 @@ export default function KnowdellIntro({ hasPaid, hasResult }: Props) {
         <h2 className="font-semibold mb-2">Quy trình:</h2>
         <ol className="list-decimal pl-5 space-y-1">
           <li>
-            <b>Thanh toán</b> {PRICE.toLocaleString()} đ phí (bằng QR tại trang thanh toán)
+            <b>Thanh toán</b> {priceLabel} đ phí (bằng QR tại trang thanh toán)
           </li>
           <li>
             <b>Kéo-thả</b> 10 thẻ giá trị quan trọng nhất với bạn
@@ -79,7 +80,7 @@ export default function KnowdellIntro({ hasPaid, hasResult }: Props) {
           ? "Xem kết quả Knowdell"
           : hasPaid
           ? "Bắt đầu Quiz Knowdell"
-          : `Thanh toán ${PRICE.toLocaleString()} đ`}
+          : `Thanh toán ${priceLabel} đ`}
       </button>
     </main>
   );

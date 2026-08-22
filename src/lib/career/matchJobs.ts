@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------ *
    Gợi ý 5 nghề phù hợp nhất từ bảng jobs
  * ------------------------------------------------------------------ */
-import { createSupabaseServerClient } from '@/lib/supabaseServer';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function suggestJobs (profile: any) {
   // 🔧 Lấy đúng Supabase client (helper có thể trả client trực tiếp hoặc { supabase })
@@ -14,7 +14,8 @@ export async function suggestJobs (profile: any) {
 
   return jobs
     .map((j: any) => {
-      let score = 0, reasons: string[] = [];
+      let score = 0;
+      const reasons: string[] = [];
 
       /* Holland ký tự đầu (40) */
       if (profile.holland_profile?.code?.[0] &&
@@ -38,6 +39,6 @@ export async function suggestJobs (profile: any) {
 
       return { id: j.id, title: j.title, score, reason: reasons.join(' · ') };
     })
-    .sort((a, b) => b.score - a.score)
+    .sort((a: any, b: any) => b.score - a.score)
     .slice(0, 5);
 }

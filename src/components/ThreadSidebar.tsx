@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabaseChat as supabase } from '@/lib/supabaseChat/client'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 type Thread = {
   id: string
@@ -17,6 +17,7 @@ export default function ThreadSidebar() {
   const router = useRouter()
   const search = useSearchParams()
   const activeId = search.get('threadId')
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
 
   useEffect(() => {
     const load = async () => {
@@ -58,7 +59,7 @@ export default function ThreadSidebar() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [supabase])
 
   return (
     <aside className="w-72 border-r h-full overflow-y-auto">

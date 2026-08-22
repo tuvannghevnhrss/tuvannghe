@@ -8,6 +8,7 @@ type Props = {
 };
 
 const PRICE = 20_000;
+const priceLabel = PRICE.toLocaleString("vi-VN");
 const STAT  = [
   { value: '54',  label: 'Câu hỏi'      },
   { value: '2',   label: 'Lựa chọn/câu' },
@@ -34,7 +35,7 @@ export default function HollandIntro({ hasPaid, hasResult }: Props) {
   const label =
     hasResult ? 'Xem lại kết quả'
     : hasPaid ? 'Bắt đầu Quiz Holland'
-    : `Thanh toán ${PRICE.toLocaleString()} đ`;
+    : `Thanh toán ${priceLabel} đ`;
 
   /* --------------------------------- render */
   return (
@@ -55,7 +56,7 @@ export default function HollandIntro({ hasPaid, hasResult }: Props) {
       <div className="border border-dashed rounded-2xl p-6 text-left leading-6 inline-block">
         <p className="font-semibold mb-2">Quy trình:</p>
         <ol className="list-decimal list-inside space-y-1">
-          <li><b>Thanh toán</b> {PRICE.toLocaleString()} đ (QR ở trang thanh toán)</li>
+          <li><b>Thanh toán</b> {priceLabel} đ (QR ở trang thanh toán)</li>
           <li><b>Hoàn thành</b> 54 câu hỏi – chọn đáp án đúng nhất với bạn</li>
           <li><b>Kết quả</b> sẽ hiển thị trong Hồ sơ nghề nghiệp</li>
         </ol>

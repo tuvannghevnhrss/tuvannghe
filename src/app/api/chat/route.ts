@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import OpenAI from 'openai'
 import { createSupabaseRouteServerClient } from '@/lib/supabase/server'
+import { createChatCompletion } from '@/lib/openai'
+import { resolvePrompt } from '@/lib/ai/prompts'
 
-const openai =
-  process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null
+const CHAT_SYSTEM_FALLBACK =
+  'Bạn là trợ lý hướng nghiệp tích hợp vào website. Trả lời ngắn gọn, rõ ràng, và thân thiện.'
 
 const PostSchema = z.object({
   message: z.string().min(1),
@@ -27,11 +28,12 @@ async function getQuota(
   userId: string
 ): Promise<Quota> {
   // Đếm số tin do user đã gửi (role='user')
-  const { count: used = 0 } = await supabase
+  const { count } = await supabase
     .from('chat_messages')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('role', 'user')
+  const used = count ?? 0
 
   // Lấy các payment đã thanh toán
   const { data: payments, error: payErr } = await supabase
@@ -88,7 +90,10 @@ export async function GET(req: NextRequest) {
     getQuota(supabase, user.id),
   ])
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) {
+    console.error('GET /api/chat messages error:', error)
+    return NextResponse.json({ error: 'INTERNAL_SERVER_ERROR' }, { status: 400 })
+  }
   return NextResponse.json({ messages: messages ?? [], quota })
 }
 
@@ -145,7 +150,8 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (eThread || !t) {
-      return NextResponse.json({ error: eThread?.message || 'THREAD_CREATE' }, { status: 400 })
+      if (eThread) console.error('chat_threads insert error:', eThread)
+      return NextResponse.json({ error: 'THREAD_CREATE' }, { status: 400 })
     }
     threadId = t.id
   }
@@ -158,7 +164,10 @@ export async function POST(req: NextRequest) {
       role: 'user',
       content: message,
     })
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    if (error) {
+      console.error('chat_messages (user) insert error:', error)
+      return NextResponse.json({ error: 'INTERNAL_SERVER_ERROR' }, { status: 400 })
+    }
   }
 
   // 4) Load context (tối đa 20 msg gần nhất)
@@ -172,19 +181,19 @@ export async function POST(req: NextRequest) {
 
   // 5) Gọi LLM (fallback nếu thiếu API key)
   let assistantText = 'Mình đã nhận được câu hỏi của bạn và đang xử lý.'
-  if (openai) {
+  if (process.env.OPENAI_API_KEY) {
     try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Bạn là trợ lý hướng nghiệp tích hợp vào website. Trả lời ngắn gọn, rõ ràng, và thân thiện.',
-          },
-          ...(history || []).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        ],
-      })
+      const systemPrompt = await resolvePrompt('chat.system', CHAT_SYSTEM_FALLBACK)
+      const completion = await createChatCompletion(
+        {
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt.template },
+            ...(history || []).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+          ],
+        },
+        { route: 'chat', userId: user.id, sessionId: threadId, promptKey: 'chat.system', promptVersion: systemPrompt.version }
+      )
       assistantText =
         completion.choices[0]?.message?.content?.trim() || 'Mình đã nhận được câu hỏi của bạn.'
     } catch (err) {
@@ -207,8 +216,14 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id),
   ])
 
-  if (eAsst) return NextResponse.json({ error: eAsst.message }, { status: 400 })
-  if (eThreadUpdate) return NextResponse.json({ error: eThreadUpdate.message }, { status: 400 })
+  if (eAsst) {
+    console.error('chat_messages (assistant) insert error:', eAsst)
+    return NextResponse.json({ error: 'INTERNAL_SERVER_ERROR' }, { status: 400 })
+  }
+  if (eThreadUpdate) {
+    console.error('chat_threads update error:', eThreadUpdate)
+    return NextResponse.json({ error: 'INTERNAL_SERVER_ERROR' }, { status: 400 })
+  }
 
   // Có thể trả lại quota mới để UI hiển thị còn lại
   const newQuota = await getQuota(supabase, user.id)

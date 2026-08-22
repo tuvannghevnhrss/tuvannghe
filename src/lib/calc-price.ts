@@ -8,7 +8,7 @@ export async function calcOutstandingPrice(
   product: (typeof SERVICE)[keyof typeof SERVICE],
 ): Promise<number> {
   // Giá niêm yết
-  let amount = PRICES[product];
+  const amount = PRICES[product];
 
   // Chỉ cần xử lý combo
   if (product !== SERVICE.COMBO) return amount;

@@ -1,26 +1,39 @@
 // src/app/api/payments/status/route.ts
 import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import type { Database } from "@/types/supabase";
 import { STATUS } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
-  const product = req.nextUrl.searchParams.get("product");
-  if (!product) return NextResponse.json({ paid: false });
+  const paymentIdRaw = req.nextUrl.searchParams.get("payment_id");
+  const paymentId = Number(paymentIdRaw);
+  if (!paymentIdRaw || !Number.isFinite(paymentId)) {
+    return NextResponse.json({ error: "PAYMENT_ID_REQUIRED", paid: false }, { status: 400 });
+  }
 
-  const supabase = createRouteHandlerClient<Database>({ cookies });
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ paid: false });
 
-  const { data } = await supabase
+  // PAYMENT TRANSACTION, không phải PRODUCT ENTITLEMENT: chỉ nhìn vào đúng
+  // 1 giao dịch (payment_id) mà trang /payment hiện đang hiển thị QR, không
+  // suy ra "paid" từ 1 giao dịch KHÁC (kể cả cùng product) đã paid trước đó.
+  // Nếu user có Payment A (product=holland, paid) rồi tạo tiếp Payment B
+  // (product=holland, pending), gọi /status?payment_id=B phải trả
+  // paid:false cho tới khi CHÍNH Payment B được webhook đánh dấu paid —
+  // không được fallback sang .eq("product", ...).eq("status","paid") để
+  // xác nhận hộ giao dịch này.
+  const { data: payment } = await supabase
     .from("payments")
-    .select("status")
+    .select("id, status")
+    .eq("id", paymentId)
     .eq("user_id", user.id)
-    .eq("product", product)
-    .order("created_at", { ascending: false })
-    .limit(1)
     .maybeSingle();
 
-  return NextResponse.json({ paid: data?.status === STATUS.PAID });
+  return NextResponse.json({ paid: payment?.status === STATUS.PAID });
 }

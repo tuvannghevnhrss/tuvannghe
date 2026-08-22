@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect, useMemo, useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 type Int = { interest_key: string; vi: string };
 const LIMIT = 20;
 
 export default function KnowdellInterests() {
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router   = useRouter();
 
   const [list,   setList]   = useState<Int[]>([]);
@@ -18,7 +18,7 @@ export default function KnowdellInterests() {
   useEffect(() => {
     supabase.from("lookup_interests").select("*").order("vi")
       .then(({ data }) => setList(data as Int[]));
-  }, []);
+  }, [supabase]);
 
   const toggle = (k:string)=>
     setPicked(p =>

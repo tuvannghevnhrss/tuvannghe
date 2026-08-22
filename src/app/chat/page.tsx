@@ -10,7 +10,7 @@ import MessageInput from '@/components/MessageInput'
 export default async function ChatPage({
   searchParams,
 }: {
-  searchParams: { threadId?: string }
+  searchParams: Promise<{ threadId?: string }>
 }) {
   const supabase = await createSupabaseServerClient()
   const {
@@ -18,7 +18,7 @@ export default async function ChatPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/signup?redirectedFrom=/chat')
 
-  let threadId = searchParams.threadId ?? undefined
+  const { threadId } = await searchParams
 
   // Nếu không có threadId → lấy thread mới nhất rồi redirect
   if (!threadId) {

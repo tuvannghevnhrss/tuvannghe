@@ -1,86 +1,78 @@
-/* ------------------------------------------------------------------ */
-/*  /api/payments/quote      –  Tính số tiền phải trả + trạng thái     */
-/* ------------------------------------------------------------------ */
-import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { STATUS } from '@/lib/constants';
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+import { PRICES, STATUS } from "@/lib/constants";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const PRICE = {
-  mbti    : 0,          // MBTI luôn free
-  holland : 20_000,
-  knowdell: 100_000,    // giá gốc (có thể giảm thành combo)
-  combo   : 90_000,     // Knowdell + Holland
-} as const;
+const PRICE = PRICES;
 
 export async function GET(req: NextRequest) {
-  /* 1. auth -------------------------------------------------------------- */
-  const supa = createRouteHandlerClient({ cookies });
+  const cookieStore = await cookies();
+  const supa = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
   const {
     data: { user },
   } = await supa.auth.getUser();
+
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  /* 2. input ------------------------------------------------------------- */
-  const product = (req.nextUrl.searchParams.get('product') ?? '')
-    .toLowerCase() as keyof typeof PRICE;
-  const rawCode = req.nextUrl.searchParams.get('coupon');      // có thể null
+  const product = (req.nextUrl.searchParams.get("product") ?? "").toLowerCase() as keyof typeof PRICE;
+  const rawCode = req.nextUrl.searchParams.get("coupon");
 
   if (!Object.hasOwn(PRICE, product)) {
-    return NextResponse.json({ error: 'Invalid product' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
 
-  /* 3. Đã thanh toán gì trước đó? --------------------------------------- */
   const { data: paidRows } = await supa
-    .from('payments')
-    .select('product')
-    .eq('user_id', user.id)
-    .eq('status', STATUS.PAID);
+    .from("payments")
+    .select("product")
+    .eq("user_id", user.id)
+    .eq("status", STATUS.PAID);
 
-  const paidSet = new Set<string>((paidRows ?? []).map((r) => r.product));
+  const paidSet = new Set<string>((paidRows ?? []).map((row) => row.product));
+  const knowdellPaid = paidSet.has("knowdell");
+  if (knowdellPaid) paidSet.add("holland");
 
-  /* rule bundle: Knowdell bao gồm Holland */
-  const knowdellPaid = paidSet.has('knowdell');
-  if (knowdellPaid) paidSet.add('holland');
-
-  /* 4. Tính tiền gốc cần trả ------------------------------------------- */
   const listPrice = PRICE[product];
 
-  /* combo giá “Knowdell nếu chưa có Holland” */
   let amount_due = listPrice;
-  if (product === 'knowdell' && !paidSet.has('holland')) {
-    amount_due = PRICE.combo;                  // 90 K cho cả 2 gói
+  if (product === "knowdell" && !paidSet.has("holland")) {
+    amount_due = PRICE.combo;
   }
 
-  /* Holland đã bao gồm trong Knowdell combo ⇒ 0 đ */
-  if (product === 'holland' && knowdellPaid) {
+  if (product === "holland" && knowdellPaid) {
     amount_due = 0;
   }
 
-  /* 5. coupon (tùy chọn) ------------------------------------------------ */
   let discount = 0;
   if (rawCode?.trim()) {
     const code = rawCode.trim().toUpperCase();
-    const { data: cpn } = await supa
-      .from('coupons')
-      .select('discount, product, expires_at')
-      .eq('code', code)
+    // coupons chỉ đọc được qua service-role (RLS chặn anon/authenticated qua
+    // PostgREST) — tra cứu 1 mã cụ thể không cần và không nên đi qua client
+    // theo session của user. Không đổi gì khác trong route này.
+    const { data: coupon } = await createSupabaseAdminClient()
+      .from("coupons")
+      .select("discount, product, expires_at")
+      .eq("code", code)
       .maybeSingle();
 
     const now = new Date();
     const valid =
-      cpn &&
-      (!cpn.expires_at || new Date(cpn.expires_at) > now) &&
-      (!cpn.product || cpn.product === product);
+      coupon &&
+      (!coupon.expires_at || new Date(coupon.expires_at) > now) &&
+      (!coupon.product || coupon.product === product);
 
-    if (valid) discount = cpn!.discount ?? 0;
+    if (valid) discount = coupon.discount ?? 0;
   }
 
   const amount = Math.max(0, amount_due - discount);
-  const paid   = paidSet.has(product);   // đã có record PAID ở DB hay bundle
+  const paid = paidSet.has(product);
 
-  /* 6. response --------------------------------------------------------- */
   return NextResponse.json({
     listPrice,
     amount_due,

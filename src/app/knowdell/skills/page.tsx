@@ -1,14 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useEffect, useMemo, useState } from "react"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 type Skill = { skill_key: string; vi: string }
 const LIMIT = 10                               /* ⬅️ đổi 15 → 10 */
 
 export default function KnowdellSkills () {
-  const supabase = createClientComponentClient()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const router   = useRouter()
 
   const [list,   setList]   = useState<Skill[]>([])
@@ -21,7 +21,7 @@ export default function KnowdellSkills () {
       .select("*")
       .order("vi")
       .then(({ data }) => setList(data as Skill[]))
-  }, [])
+  }, [supabase])
 
   /* Thêm / gỡ kỹ năng */
   const toggle = (k: string) =>

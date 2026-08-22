@@ -1,9 +1,7 @@
 // -----------------------------------------------------------------------------
 // src/lib/career/analyseKnowdell.ts
 // -----------------------------------------------------------------------------
-import OpenAI from 'openai';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+import { createChatCompletion } from '@/lib/openai';
 
 /* ------------------------------------------------------------------ */
 /* 1. Tạo prompt – chỉ dùng Holland + Knowdell interests              */
@@ -13,22 +11,23 @@ function buildPrompt(profile: any) {
   const hollandObj = profile.holland_profile ?? {};
   const hollandStr = Object.entries(hollandObj)
     .map(([k, v]) => `${k}:${v}`)
-    .join(', ');
+    .join(', ') || 'Chưa có dữ liệu';
 
-  // Interests: [{interest_key:"Police Officer", …}, …]
-  const interests = 
-    profile.knowdell?.interests?.map((i: any) => i.interest_key) ?? [];
+  // knowdell.{values,skills,interests}: [{value_key/skill_key/interest_key: "...", ...}, …]
+  const values = (profile.knowdell?.values ?? []).map((v: any) => v.value_key).join(', ') || 'Chưa có dữ liệu';
+  const skills = (profile.knowdell?.skills ?? []).map((s: any) => s.skill_key).join(', ') || 'Chưa có dữ liệu';
+  const interests = (profile.knowdell?.interests ?? []).map((i: any) => i.interest_key).join(', ') || 'Chưa có dữ liệu';
 
   return `
 Bạn là chuyên gia tư vấn hướng nghiệp. Bạn cần phân tích và đề xuất nghề nghiệp phù hợp cho ứng viên dựa trên kết quả từ các đánh giá sau đây:
 
-Kết quả Holland (Điểm % mỗi nhóm): {Holland_scores}
+Kết quả Holland (Điểm % mỗi nhóm): ${hollandStr}
 
-Danh sách Sở thích nghề nghiệp (Knowdell): {Knowdell_Interests}
+Danh sách Sở thích nghề nghiệp (Knowdell): ${interests}
 
-Kỹ năng tạo động lực hàng đầu (Knowdell): {Knowdell_Skills}
+Kỹ năng tạo động lực hàng đầu (Knowdell): ${skills}
 
-Giá trị nghề nghiệp quan trọng nhất (Knowdell): {Knowdell_Values}
+Giá trị nghề nghiệp quan trọng nhất (Knowdell): ${values}
 
 Dựa trên các thông tin trên, hãy thực hiện các bước sau:
 
@@ -69,14 +68,17 @@ Trả lời dưới dạng **Markdown tiếng Việt rõ ràng**.`;
 export async function analyseKnowdell(profile: any): Promise<string> {
   const prompt = buildPrompt(profile);
 
-  const chat = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    temperature: 0.7,
-    messages: [
-      { role: 'system', content: 'Bạn là chuyên gia hướng nghiệp.' },
-      { role: 'user',   content: prompt },
-    ],
-  });
+  const chat = await createChatCompletion(
+    {
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: 'Bạn là chuyên gia hướng nghiệp.' },
+        { role: 'user',   content: prompt },
+      ],
+    },
+    { route: 'career.analyseKnowdell' }
+  );
 
-  return chat.choices[0].message.content.trim();
+  return (chat.choices[0].message.content ?? '').trim();
 }

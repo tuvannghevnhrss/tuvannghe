@@ -1,6 +1,6 @@
 // src/app/api/profile/init/route.ts (Node runtime)
 import { NextResponse } from 'next/server';
-import { createSupabaseRouteServerClient } from '@/lib/supabaseServer';
+import { createSupabaseRouteServerClient } from '@/lib/supabase/server';
 
 export async function POST() {
   const supabase = await createSupabaseRouteServerClient();

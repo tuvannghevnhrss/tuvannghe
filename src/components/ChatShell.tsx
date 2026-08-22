@@ -55,7 +55,7 @@ export default function ChatShell({ threadId }: Props) {
           key={m.id}
           className={
             m.role === "user"
-              ? "self-end max-w-[80%] rounded-lg bg-violet-500 px-3 py-2 text-white"
+              ? "self-end max-w-[80%] rounded-lg bg-emerald-500 px-3 py-2 text-white"
               : "max-w-[80%] rounded-lg bg-muted px-3 py-2"
           }
         >

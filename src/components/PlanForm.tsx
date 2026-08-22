@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, FormEvent } from "react";
 import { v4 as uuid } from "uuid";
-import ProgressChart from "./ProgressChart";
+import dynamic from "next/dynamic";
+const ProgressChart = dynamic(() => import("./ProgressChart"), { ssr: false });
 
 interface Task {
   id: string;

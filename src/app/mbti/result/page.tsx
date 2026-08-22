@@ -8,11 +8,11 @@ import { MBTI_MAP } from '@/lib/mbtiDescriptions'
 type Props = { searchParams: Promise<{ code?: string | string[] }> }
 
 export default async function MbtiResultPage({ searchParams }: Props) {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/login?redirectedFrom=/mbti')
+  if (!user) redirect('/signup?redirectedFrom=/mbti')
 
   // 1) Lấy code từ query (nếu có) – Next 15 cần await
   const sp = await searchParams
@@ -78,7 +78,7 @@ export default async function MbtiResultPage({ searchParams }: Props) {
   )
 }
 
-function Section({ title, items = [] as string[] }) {
+function Section({ title, items = [] as string[] }: { title: string; items?: string[] }) {
   if (!items?.length) return null
   return (
     <div>
