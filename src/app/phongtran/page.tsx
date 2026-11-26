@@ -236,6 +236,7 @@ export default function PhongTranProfile() {
                   src="/avatar-phongtran.jpg"
                   alt="Trần Thanh Phong - Career Mentor"
                   fill
+                  sizes="(min-width: 768px) 320px, 256px"
                   className="object-cover"
                   priority
                 />

@@ -95,7 +95,7 @@ export default function CareerHubPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700">
               <SparklesIcon className="h-4 w-4" />
-              Hub hướng nghiệp
+              Trung tâm hướng nghiệp
             </div>
             <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl">
               Hướng nghiệp AI để hiểu bản thân và chọn nghề phù hợp
@@ -188,7 +188,7 @@ export default function CareerHubPage() {
               href="/interview"
               className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
             >
-              Mở Interview Suite
+              Mở bộ công cụ phỏng vấn
             </Link>
             <Link
               href="/pricing"

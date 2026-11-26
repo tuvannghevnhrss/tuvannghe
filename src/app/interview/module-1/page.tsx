@@ -52,7 +52,7 @@ export default function InterviewModuleOnePage() {
     fallbackDifficultyLevels[1]?.id ?? 2
   );
   const [experienceLevelId, setExperienceLevelId] = useState<string | number>(
-    fallbackExperienceLevels[2]?.id ?? 3
+    fallbackExperienceLevels[0]?.id ?? 1
   );
   const [languageCode, setLanguageCode] = useState("vi");
   const [jobTitle, setJobTitle] = useState("");
@@ -66,13 +66,34 @@ export default function InterviewModuleOnePage() {
       try {
         const res = await fetch("/api/interview/module-1/options");
         if (!res.ok) return;
-        const json = (await res.json()) as OptionsPayload;
+        const raw = (await res.json()) as OptionsPayload;
+        // DB trả về theo id (không có thứ tự logic) → sắp xếp theo thứ tự chuẩn của fallback,
+        // mục lạ (không khớp tên) xếp cuối.
+        const sortByFallback = (items: Option[], fallback: Option[]) => {
+          const rank = (o: Option) => {
+            const i = fallback.findIndex(
+              (f) => normalizeVietnameseInterviewLabel(f.name) === normalizeVietnameseInterviewLabel(o.name)
+            );
+            return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+          };
+          return [...items].sort((a, b) => rank(a) - rank(b));
+        };
+        const json: OptionsPayload = {
+          // Chỉ giữ ngành có bộ câu hỏi (khớp theo tên) — ngành khác sẽ bị quy về "Nhân sự" khi luyện
+          roles: (() => {
+            const known = new Set(fallbackRoles.map((r) => normalizeVietnameseInterviewLabel(r.name)));
+            const matched = raw.roles.filter((r) => known.has(normalizeVietnameseInterviewLabel(r.name)));
+            return sortByFallback(matched.length ? matched : fallbackRoles, fallbackRoles);
+          })(),
+          difficulties: sortByFallback(raw.difficulties, fallbackDifficultyLevels),
+          experienceLevels: sortByFallback(raw.experienceLevels, fallbackExperienceLevels),
+        };
         setOptions(json);
         if (json.roles[0]?.id != null) setRoleId(json.roles[0].id);
         if (json.difficulties[1]?.id != null) setDifficultyLevelId(json.difficulties[1].id);
         else if (json.difficulties[0]?.id != null) setDifficultyLevelId(json.difficulties[0].id);
-        if (json.experienceLevels[2]?.id != null) setExperienceLevelId(json.experienceLevels[2].id);
-        else if (json.experienceLevels[0]?.id != null) setExperienceLevelId(json.experienceLevels[0].id);
+        // Mặc định cấp thấp nhất (Sinh viên / Thực tập sinh) vì khách chính là sinh viên
+        if (json.experienceLevels[0]?.id != null) setExperienceLevelId(json.experienceLevels[0].id);
       } catch (loadError) {
         console.error("module 1 options fallback", loadError);
       }

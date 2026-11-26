@@ -18,16 +18,16 @@ export default function MbtiLanding() {
             Khám phá tính cách MBTI của bạn
           </h1>
           <p className="max-w-xl mb-8 text-lg text-gray-600">
-            60 câu hỏi • 2 phút • Báo cáo cá nhân hoá hoàn toàn
+            60 câu hỏi • khoảng 8–10 phút • Báo cáo cá nhân hoá hoàn toàn
             <br />
             <span className="font-medium">Miễn phí</span> – bắt đầu ngay!
           </p>
 
           <Link
-            href="/signup"
+            href="/mbti/quiz?start=1"
             className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-white font-semibold hover:bg-indigo-700 transition"
           >
-            Đăng nhập & bắt đầu
+            Bắt đầu làm bài
             <ArrowRightCircleIcon className="h-6 w-6" />
           </Link>
         </div>
@@ -75,8 +75,8 @@ export default function MbtiLanding() {
         <h2 className="text-3xl font-bold">Tham gia chỉ trong 3 bước</h2>
         <ol className="mx-auto grid gap-6 md:grid-cols-3 max-w-4xl">
           {[
-            "Đăng nhập tài khoản",
-            "Trả lời 60 câu hỏi",
+            "Trả lời 60 câu hỏi (không cần đăng nhập)",
+            "Đăng nhập để lưu kết quả",
             "Nhận báo cáo về tính cách của bạn",
           ].map((step, idx) => (
             <li

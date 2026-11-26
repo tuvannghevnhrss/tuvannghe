@@ -89,7 +89,7 @@ export default function InterviewHubPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700">
               <SparklesIcon className="h-4 w-4" />
-              Hub Phỏng vấn AI
+              Trung tâm Phỏng vấn AI
             </div>
             <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl">
               Luyện phỏng vấn AI theo từng module rõ ràng

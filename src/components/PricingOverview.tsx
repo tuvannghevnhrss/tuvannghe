@@ -34,7 +34,7 @@ const careerPlans = [
     features: [
       "54 câu hỏi Holland",
       "Hiểu nhóm nghề phù hợp trước khi chọn ngành",
-      "Tự động mở nếu mua Knowdell combo",
+      "Tự động mở nếu mua Knowdell",
     ],
   },
   {
@@ -46,7 +46,7 @@ const careerPlans = [
     description: "Xác định điều bạn coi trọng khi chọn nghề, môi trường và lộ trình phát triển.",
     features: [
       "Card sort theo logic Knowdell",
-      "Mua Knowdell sẽ bao gồm Holland",
+      "Đã bao gồm Holland — nếu đã mua Holland lẻ, bạn chỉ trả phần chênh lệch",
       "Phù hợp để ra quyết định nghề nghiệp rõ hơn",
     ],
   },
@@ -68,7 +68,7 @@ const careerPlans = [
 const pricingFaqs = [
   {
     q: "Gói nào phù hợp nếu tôi mới bắt đầu?",
-    a: "Nếu bạn mới làm quen với nền tảng, nên bắt đầu từ gói thấp hơn để thử trải nghiệm và chỉ nâng cấp khi thật sự cần luyện sâu hơn.",
+    a: "Nếu chưa rõ nghề phù hợp: làm MBTI miễn phí, sau đó chọn combo Holland + Knowdell (90.000đ). Nếu đã có mục tiêu ứng tuyển: bắt đầu với gói Khởi động (89.000đ, 5 buổi Module 1 và 2 buổi Module 2).",
   },
   {
     q: "Module 2 và Module 3 khác nhau ra sao?",
@@ -80,11 +80,11 @@ const pricingFaqs = [
   },
   {
     q: "Có thể nâng cấp sau không?",
-    a: "Có. Hệ thống được thiết kế để người dùng có thể bắt đầu từ gói thấp và nâng cấp khi nhu cầu luyện tập tăng lên.",
+    a: "Có. Bạn có thể mua thêm gói cao hơn bất cứ lúc nào. Gói Khởi động còn kèm voucher nâng cấp 50.000đ trong 7 ngày. Nếu đã mua Holland lẻ, bạn chỉ trả phần chênh lệch khi mua Knowdell.",
   },
   {
     q: "Tôi nên xem trang nào trước khi quyết định mua?",
-    a: "Hãy xem hub hướng nghiệp nếu bạn chưa rõ nghề phù hợp. Nếu đã có mục tiêu ứng tuyển, chuyển sang hub phỏng vấn AI để chọn module phù hợp.",
+    a: "Hãy xem trang Hướng nghiệp nếu bạn chưa rõ nghề phù hợp. Nếu đã có mục tiêu ứng tuyển, chuyển sang trang Phỏng vấn AI để chọn module phù hợp.",
   },
 ];
 
@@ -299,8 +299,8 @@ export default function PricingOverview({ reason }: { reason?: string }) {
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">Phỏng vấn AI</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Các gói luyện phỏng vấn theo mức độ cam kết</h2>
           <p className="mt-3 text-base leading-8 text-slate-600">
-            Giá được thiết kế để người dùng dễ bắt đầu, dễ nâng cấp và luôn nhìn thấy lý do để đi
-            tiếp từ gói thấp lên gói phù hợp hơn với mục tiêu ứng tuyển.
+            Chọn gói theo số buổi luyện và mục tiêu ứng tuyển của bạn. Bạn có thể bắt đầu
+            từ gói nhỏ và nâng cấp bất cứ lúc nào.
           </p>
         </div>
 
@@ -362,8 +362,8 @@ export default function PricingOverview({ reason }: { reason?: string }) {
           Chọn đúng lộ trình trước khi thanh toán
         </h2>
         <p className="mt-3 max-w-4xl text-base leading-8 text-slate-600">
-          Nếu bạn còn đang phân vân giữa hướng nghiệp và luyện phỏng vấn, hãy quay lại đúng cụm nội
-          dung trước khi mua. Cách này giúp người dùng tự chọn đúng nhu cầu, giảm bounce và tăng chuyển đổi.
+          Nếu bạn còn đang phân vân giữa hướng nghiệp và luyện phỏng vấn, hãy xem trước nội dung
+          từng phần để chọn đúng nhu cầu trước khi thanh toán.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/career" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">

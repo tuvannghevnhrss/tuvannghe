@@ -205,16 +205,19 @@ function createQuestionForCombination(
   const isJunior = experience.id <= 2;   // Sinh viên / Mới tốt nghiệp
   const isMid    = experience.id === 3 || experience.id === 4; // Nhân viên / Trưởng nhóm
   const isSenior = experience.id >= 5;   // Quản lý trở lên
+  // Luân phiên cách gọi lĩnh vực để các câu hỏi không lặp nguyên văn một cụm dài
+  const domA = variant % 2 === 0 ? `lĩnh vực ${blueprint.domain}` : `ngành ${blueprint.roleName}`;
+  const domB = variant % 2 === 0 ? blueprint.domain : `ngành ${blueprint.roleName}`;
 
   // ─── DỄ (8 câu) ──────────────────────────────────────────────────────────
   if (difficulty.id === 1) {
     switch (variant) {
       case 0: return {
-        content: `Hãy giới thiệu bản thân và chia sẻ lý do bạn chọn theo đuổi lĩnh vực ${blueprint.domain}.`,
+        content: `Hãy giới thiệu bản thân và chia sẻ lý do bạn chọn theo đuổi ${domA}.`,
         category: "behavioral",
       };
       case 1: return {
-        content: `Điểm mạnh nổi trội của bạn khi làm việc trong lĩnh vực ${blueprint.domain} là gì? Hãy minh họa bằng một ví dụ cụ thể.`,
+        content: `Điểm mạnh nổi trội của bạn khi làm việc trong ${domA} là gì? Hãy minh họa bằng một ví dụ cụ thể.`,
         category: "behavioral",
       };
       case 2: return {
@@ -222,19 +225,19 @@ function createQuestionForCombination(
           ? `Bạn đã chuẩn bị gì trong quá trình học tập để sẵn sàng bước vào vị trí ${blueprint.roleName}?`
           : isMid
           ? `Hãy kể về thành tích bạn tự hào nhất trong giai đoạn ${levelName} của mình.`
-          : `Ở cấp ${levelName}, điều gì tiếp tục thúc đẩy bạn phát triển trong lĩnh vực ${blueprint.domain}?`,
+          : `Ở cấp ${levelName}, điều gì tiếp tục thúc đẩy bạn phát triển trong ${domA}?`,
         category: "behavioral",
       };
       case 3: return {
         content: isJunior
-          ? `Hãy chia sẻ một trải nghiệm thực tập, dự án học thuật hoặc tự học liên quan đến ${blueprint.domain}.`
+          ? `Hãy chia sẻ một trải nghiệm thực tập, dự án học thuật hoặc tự học liên quan đến ${domB}.`
           : isMid
-          ? `Bạn định hướng phát triển bản thân như thế nào ở giai đoạn ${levelName} trong lĩnh vực ${blueprint.domain}?`
-          : `Bạn đã xây dựng và phát triển đội nhóm trong lĩnh vực ${blueprint.domain} như thế nào?`,
+          ? `Bạn định hướng phát triển bản thân như thế nào ở giai đoạn ${levelName} trong ${domA}?`
+          : `Bạn đã xây dựng và phát triển đội nhóm trong ${domA} như thế nào?`,
         category: "behavioral",
       };
       case 4: return {
-        content: `Khi nhận một nhiệm vụ mới trong lĩnh vực ${blueprint.domain}, bạn làm gì để hiểu rõ yêu cầu và hoàn thành đúng kỳ vọng?`,
+        content: `Khi nhận một nhiệm vụ mới trong ${domA}, bạn làm gì để hiểu rõ yêu cầu và hoàn thành đúng kỳ vọng?`,
         category: "behavioral",
       };
       case 5: return {
@@ -248,7 +251,7 @@ function createQuestionForCombination(
         category: "behavioral",
       };
       default: return { // variant 7
-        content: `Mục tiêu nghề nghiệp trong 2–3 năm tới của bạn trong lĩnh vực ${blueprint.domain} là gì?`,
+        content: `Mục tiêu nghề nghiệp trong 2–3 năm tới của bạn trong ${domA} là gì?`,
         category: "behavioral",
       };
     }
@@ -266,25 +269,25 @@ function createQuestionForCombination(
         category: "situational",
       };
       case 2: return {
-        content: `Bạn đánh giá hiệu quả công việc của mình trong lĩnh vực ${blueprint.domain} bằng tiêu chí hoặc chỉ số nào? Cho ví dụ cụ thể.`,
+        content: `Bạn đánh giá hiệu quả công việc của mình trong ${domA} bằng tiêu chí hoặc chỉ số nào? Cho ví dụ cụ thể.`,
         category: "situational",
       };
       case 3: return {
         content: isJunior
-          ? `Nếu bạn không biết cách giải quyết một vấn đề mới trong ${blueprint.domain}, bạn sẽ làm gì để tìm ra hướng xử lý?`
+          ? `Nếu bạn không biết cách giải quyết một vấn đề mới trong ${domB}, bạn sẽ làm gì để tìm ra hướng xử lý?`
           : isMid
-          ? `Hãy mô tả một dự án phức tạp trong ${blueprint.domain} mà bạn đã đóng vai trò chính. Bạn điều phối và xử lý vướng mắc thế nào?`
-          : `Ở cấp ${levelName}, khi thông tin chưa đầy đủ và áp lực thời gian cao, bạn ra quyết định như thế nào trong lĩnh vực ${blueprint.domain}?`,
+          ? `Hãy mô tả một dự án phức tạp trong ${domB} mà bạn đã đóng vai trò chính. Bạn điều phối và xử lý vướng mắc thế nào?`
+          : `Ở cấp ${levelName}, khi thông tin chưa đầy đủ và áp lực thời gian cao, bạn ra quyết định như thế nào trong ${domA}?`,
         category: "situational",
       };
       case 4: return {
         content: isSenior
-          ? `Bạn đã thiết lập quy trình hoặc cải tiến hệ thống nào trong lĩnh vực ${blueprint.domain} ảnh hưởng đến cả đội nhóm?`
-          : `Hãy kể về một lần bạn phải thuyết phục người khác thay đổi cách làm việc trong ${blueprint.domain}. Bạn tiếp cận như thế nào?`,
+          ? `Bạn đã thiết lập quy trình hoặc cải tiến hệ thống nào trong ${domA} ảnh hưởng đến cả đội nhóm?`
+          : `Hãy kể về một lần bạn phải thuyết phục người khác thay đổi cách làm việc trong ${domB}. Bạn tiếp cận như thế nào?`,
         category: "behavioral",
       };
       case 5: return {
-        content: `Bạn xử lý như thế nào khi phải hoàn thành nhiều việc cùng lúc với deadline chồng chéo trong ${blueprint.domain}?`,
+        content: `Bạn xử lý như thế nào khi phải hoàn thành nhiều việc cùng lúc với deadline chồng chéo trong ${domB}?`,
         category: "situational",
       };
       case 6: return {
@@ -294,7 +297,7 @@ function createQuestionForCombination(
       default: return { // variant 7
         content: isJunior
           ? `Bạn tự học hoặc phát triển kỹ năng ${blueprint.coreSkill} như thế nào ngoài công việc chính thức?`
-          : `Nếu bạn phải cải thiện một quy trình trong lĩnh vực ${blueprint.domain}, bạn sẽ bắt đầu từ đâu và đo lường thành công như thế nào?`,
+          : `Nếu bạn phải cải thiện một quy trình trong ${domA}, bạn sẽ bắt đầu từ đâu và đo lường thành công như thế nào?`,
         category: "situational",
       };
     }
@@ -311,31 +314,31 @@ function createQuestionForCombination(
       category: "pressure_behavioral",
     };
     case 2: return {
-      content: `Chia sẻ một quyết định thực sự khó trong lĩnh vực ${blueprint.domain} mà bạn đã từng phải đưa ra. Bạn đã cân nhắc những yếu tố nào?`,
+      content: `Chia sẻ một quyết định thực sự khó trong ${domA} mà bạn đã từng phải đưa ra. Bạn đã cân nhắc những yếu tố nào?`,
       category: "pressure_behavioral",
     };
     case 3: return {
       content: isSenior
         ? `Ở cấp ${levelName}, khi nào bạn sẵn sàng bất đồng với quyết định của lãnh đạo cấp cao và bạn thực hiện điều đó như thế nào?`
-        : `Nếu bạn phát hiện đồng nghiệp đang đưa ra quyết định sai trong lĩnh vực ${blueprint.domain}, bạn sẽ xử lý thế nào?`,
+        : `Nếu bạn phát hiện đồng nghiệp đang đưa ra quyết định sai trong ${domA}, bạn sẽ xử lý thế nào?`,
       category: "pressure_behavioral",
     };
     case 4: return {
-      content: `Hãy mô tả một tình huống buộc bạn phải thay đổi hoàn toàn kế hoạch vào phút chót trong ${blueprint.domain}. Kết quả và bài học là gì?`,
+      content: `Hãy mô tả một tình huống buộc bạn phải thay đổi hoàn toàn kế hoạch vào phút chót trong ${domB}. Kết quả và bài học là gì?`,
       category: "pressure_behavioral",
     };
     case 5: return {
       content: isSenior
-        ? `Với vai trò ${levelName} trong ${blueprint.domain}, bạn đã xây dựng năng lực đội nhóm và quản lý hiệu suất cá nhân như thế nào?`
-        : `Khi phải cân bằng giữa chất lượng và tốc độ trong ${blueprint.domain}, bạn xác định ngưỡng chấp nhận được như thế nào?`,
+        ? `Với vai trò ${levelName} trong ${domB}, bạn đã xây dựng năng lực đội nhóm và quản lý hiệu suất cá nhân như thế nào?`
+        : `Khi phải cân bằng giữa chất lượng và tốc độ trong ${domB}, bạn xác định ngưỡng chấp nhận được như thế nào?`,
       category: isSenior ? "pressure_behavioral" : "pressure_case",
     };
     case 6: return {
-      content: `Nếu nguồn lực bị cắt giảm đáng kể nhưng mục tiêu vẫn giữ nguyên trong lĩnh vực ${blueprint.domain}, bạn sẽ làm gì?`,
+      content: `Nếu nguồn lực bị cắt giảm đáng kể nhưng mục tiêu vẫn giữ nguyên trong ${domA}, bạn sẽ làm gì?`,
       category: "pressure_case",
     };
     default: return { // variant 7
-      content: `Điều gì khiến bạn thực sự khác biệt so với các ứng viên cùng cấp ${levelName} trong lĩnh vực ${blueprint.domain}?`,
+      content: `Điều gì khiến bạn thực sự khác biệt so với các ứng viên cùng cấp ${levelName} trong ${domA}?`,
       category: "pressure_behavioral",
     };
   }

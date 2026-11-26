@@ -187,15 +187,15 @@ export default function InterviewSidebar() {
         <div className={`mb-6 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
           <Link
             href="/interview"
-            aria-label="Interview Suite — Trang chủ"
+            aria-label="Luyện phỏng vấn AI — Trang chủ"
             className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white"
           >
             <SparklesIcon className="h-6 w-6" />
-            {collapsed && <Tooltip label="Interview Suite" />}
+            {collapsed && <Tooltip label="Luyện phỏng vấn AI" />}
           </Link>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-500">Interview Suite</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-500">Luyện phỏng vấn AI</p>
               <h2 className="text-lg font-semibold text-slate-900">Luyện tập phỏng vấn</h2>
             </div>
           )}

@@ -12,7 +12,12 @@ export default async function MbtiResultPage({ searchParams }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/signup?redirectedFrom=/mbti')
+  const sp0 = await searchParams
+  const c0 = (Array.isArray(sp0.code) ? sp0.code[0] : sp0.code) ?? ''
+  if (!user) {
+    const back = /^[EISNTFJP]{4}$/i.test(c0) ? `/mbti/result?code=${c0.toUpperCase()}` : '/mbti'
+    redirect(`/signup?redirectedFrom=${encodeURIComponent(back)}`)
+  }
 
   // 1) Lấy code từ query (nếu có) – Next 15 cần await
   const sp = await searchParams

@@ -44,7 +44,7 @@ export default function SignupClient() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 pt-24">
       <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
-        <h1 className="text-2xl font-bold mb-4 text-center">Đăng ký / Đăng nhập</h1>
+        <h1 className="text-2xl font-bold mb-4 text-center">Đăng nhập hoặc tạo tài khoản</h1>
         {authError && (
           <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {translateAuthError(authError)}
@@ -55,11 +55,11 @@ export default function SignupClient() {
           providers={["google", "facebook"]}
           redirectTo={redirectTo}
           magicLink={false}
-          socialLayout="horizontal"
+          socialLayout="vertical"
           appearance={{
             theme: ThemeSupa,
             variables: {
-              default: { colors: { brand: "#EFD90C", brandAccent: "#FFC40C" } },
+              default: { colors: { brand: "#059669", brandAccent: "#047857" } },
             },
           }}
           localization={{

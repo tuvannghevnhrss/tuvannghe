@@ -11,7 +11,7 @@ const Progress = ({ now,total}:{now:number,total:number}) => (
   </div>
 );
 
-export default function QuizClient() {
+export default function QuizClient({ guest = false }: { guest?: boolean }) {
   const router=useRouter();
   const total=QUESTIONS.length;          // 60
   const [idx,setIdx]=useState(0);
@@ -31,6 +31,11 @@ export default function QuizClient() {
       (tally.S>tally.N?'S':'N')+
       (tally.T>tally.F?'T':'F')+
       (tally.J>tally.P?'J':'P');
+    if (guest) {
+      // Chưa đăng nhập: đăng nhập để lưu & xem kết quả, quay lại đúng trang kết quả
+      router.replace(`/signup?redirectedFrom=${encodeURIComponent(`/mbti/result?code=${type}`)}`);
+      return null;
+    }
     router.replace(`/mbti/thanks?code=${type}`);
     return null;
   }

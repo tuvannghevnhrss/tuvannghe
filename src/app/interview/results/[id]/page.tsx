@@ -91,10 +91,10 @@ export default function InterviewResultPage() {
     return (
       <ResultMessage
         icon="🔒"
-        title="Phiên đăng nhập đã hết hạn"
-        description="Vui lòng đăng nhập lại để xem kết quả buổi phỏng vấn này."
+        title="Đăng nhập để xem kết quả"
+        description="Kết quả buổi phỏng vấn được lưu theo tài khoản. Hãy đăng nhập để xem."
         actionHref={`/signup?redirectedFrom=${encodeURIComponent(`/interview/results/${params.id}`)}`}
-        actionLabel="Đăng nhập lại"
+        actionLabel="Đăng nhập"
       />
     );
   }

@@ -41,8 +41,9 @@ export async function GET(req: NextRequest) {
   const listPrice = PRICE[product];
 
   let amount_due = listPrice;
-  if (product === "knowdell" && !paidSet.has("holland")) {
-    amount_due = PRICE.combo;
+  if (product === "knowdell") {
+    // Knowdell đã gồm Holland: chưa có Holland → giá combo; đã mua Holland lẻ → trừ phần Holland
+    amount_due = paidSet.has("holland") ? PRICE.knowdell - PRICE.holland : PRICE.combo;
   }
 
   if (product === "holland" && knowdellPaid) {

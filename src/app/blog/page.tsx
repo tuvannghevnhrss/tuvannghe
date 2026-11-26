@@ -71,10 +71,12 @@ export default function BlogIndexPage() {
             </div>
 
             <div className="heroSummary" aria-label="Tóm tắt blog">
-              <div>
-                <strong>{blogPosts.length}</strong>
-                <span>bài nền tảng</span>
-              </div>
+              {blogPosts.length >= 6 && (
+                <div>
+                  <strong>{blogPosts.length}</strong>
+                  <span>bài viết</span>
+                </div>
+              )}
               <div>
                 <strong>4</strong>
                 <span>chủ đề chính</span>

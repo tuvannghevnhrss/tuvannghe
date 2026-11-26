@@ -50,7 +50,7 @@ export async function middleware(req: NextRequest) {
   /* ---------------------------------------------------- *
    * Public paths — cho qua không cần auth
    * ---------------------------------------------------- */
-  const publicPaths = ['/', '/signup', '/auth/callback', '/auth/confirm', '/blog', '/phongtran', '/tuyendung']
+  const publicPaths = ['/', '/signup', '/mbti', '/mbti/quiz', '/mbti/thanks', '/terms', '/privacy', '/refund', '/pricing', '/auth/callback', '/auth/confirm', '/blog', '/phongtran', '/tuyendung']
   const isPublicPath =
     publicPaths.includes(pathname) ||
     pathname.startsWith('/blog/')         ||
@@ -67,7 +67,7 @@ export async function middleware(req: NextRequest) {
   if (!session?.user) {
     const url = req.nextUrl.clone()
     url.pathname = '/signup'
-    url.searchParams.set('redirectedFrom', req.nextUrl.pathname)
+    url.searchParams.set('redirectedFrom', req.nextUrl.pathname + req.nextUrl.search)
     return NextResponse.redirect(url)
   }
 
@@ -98,8 +98,8 @@ export async function middleware(req: NextRequest) {
    * Kiểm tra thanh toán theo đường dẫn
    * ---------------------------------------------------- */
   let product: 'mbti' | 'holland' | 'knowdell' | null = null
-  if      (pathname.startsWith('/mbti'))     product = 'mbti'
-  else if (pathname.startsWith('/holland'))  product = 'holland'
+  // MBTI miễn phí → chỉ cần đăng nhập (đã kiểm ở trên), không cần bản ghi thanh toán
+  if      (pathname.startsWith('/holland'))  product = 'holland'
   else if (pathname.startsWith('/knowdell')) product = 'knowdell'
 
   if (product) {

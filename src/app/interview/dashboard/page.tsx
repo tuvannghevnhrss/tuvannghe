@@ -129,10 +129,10 @@ export default function InterviewProgressPage() {
     return (
       <StateMessage
         icon="🔒"
-        title="Phiên đăng nhập đã hết hạn"
-        description="Vui lòng đăng nhập lại để xem tiến độ luyện phỏng vấn của bạn."
+        title="Đăng nhập để xem tiến độ"
+        description="Tiến độ luyện phỏng vấn được lưu theo tài khoản. Hãy đăng nhập để xem lịch sử và điểm số của bạn."
         actionHref="/signup?redirectedFrom=/interview/dashboard"
-        actionLabel="Đăng nhập lại"
+        actionLabel="Đăng nhập"
       />
     );
   }

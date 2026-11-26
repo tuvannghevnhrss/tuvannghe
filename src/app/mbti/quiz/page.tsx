@@ -19,7 +19,8 @@ export default async function MbtiQuizPage({ searchParams }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/signup?redirectedFrom=/mbti')
+  // Khách chưa đăng nhập vẫn làm được bài; chỉ yêu cầu đăng nhập khi xem/lưu kết quả
+  if (!user) return <MbtiClient guest />
 
   /* 2 – nếu đã làm rồi thì về Intro (hoặc Result) */
   const { data: done } = await supabase

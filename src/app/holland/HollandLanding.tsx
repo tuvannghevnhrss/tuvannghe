@@ -18,7 +18,7 @@ export default function HollandLanding() {
             Khám phá sở thích nghề nghiệp với Holland
           </h1>
           <p className="max-w-xl mb-8 text-lg text-gray-600">
-            54 câu hỏi • 3 phút • Hiểu rõ 6 nhóm nghề theo RIASEC
+            54 câu hỏi • khoảng 6–8 phút • Hiểu rõ 6 nhóm nghề theo RIASEC
             <br />
             <span className="font-medium">Tìm hiểu</span> – bắt đầu ngay!
           </p>

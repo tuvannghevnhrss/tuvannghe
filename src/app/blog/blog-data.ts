@@ -52,9 +52,9 @@ export const blogFAQs = [
       'Nên bắt đầu từ trang Career để hiểu bản thân, sau đó sang Blog để đọc kiến thức cụ thể và cuối cùng xem Interview nếu bạn muốn luyện trả lời phỏng vấn.',
   },
   {
-    question: 'Blog có hỗ trợ SEO cho từ khóa hướng nghiệp AI không?',
+    question: 'Nội dung blog được trình bày như thế nào?',
     answer:
-      'Có. Trang blog được tổ chức theo heading, FAQ, internal link và nội dung theo cụm từ khóa để hỗ trợ tìm kiếm tự nhiên trên Google.',
+      'Mỗi bài được chia thành các mục rõ ràng, có câu hỏi thường gặp và liên kết tới các công cụ MBTI, Holland, Knowdell và luyện phỏng vấn để bạn đọc xong có thể thực hành ngay.',
   },
 ];
 

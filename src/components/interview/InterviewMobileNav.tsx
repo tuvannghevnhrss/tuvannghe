@@ -36,10 +36,10 @@ export default function InterviewMobileNav() {
         type="button"
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-        aria-label="Mở menu Interview Suite"
+        aria-label="Mở menu Luyện phỏng vấn AI"
       >
         <Bars3Icon className="h-5 w-5" />
-        Interview Suite
+        Luyện phỏng vấn AI
       </button>
 
       <div className={`fixed inset-0 z-50 flex ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
@@ -60,7 +60,7 @@ export default function InterviewMobileNav() {
                 <SparklesIcon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-500">Interview Suite</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-500">Luyện phỏng vấn AI</p>
                 <h2 className="text-lg font-semibold text-slate-900">Luyện tập phỏng vấn</h2>
               </div>
             </div>

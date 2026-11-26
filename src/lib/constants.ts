@@ -115,7 +115,7 @@ export const INTERVIEW_PACKAGES: InterviewPackageMeta[] = [
       module1    : 40,
       module2    : 20,
       module3    : 3,
-      assessments: "Holland + Knowdell + MBTI",
+      assessments: "Holland + Knowdell",
     },
     features: [
       "40 buổi Module 1 + 20 buổi Module 2",

@@ -94,7 +94,16 @@ export default function PaymentContent({ product }: Props) {
         if (await maybeSkipForHolland()) return;
 
         const res = await fetchQuote(product);
-        if ("error" in res) { setAmount(-1); return; }
+        if ("error" in res) {
+          // Chưa đăng nhập → chuyển sang trang đăng nhập rồi quay lại đúng trang thanh toán
+          if (res.error === "Unauthorized" || res.error === "HTTP_401") {
+            const back = `/payment?product=${product}`;
+            window.location.replace(`/signup?redirectedFrom=${encodeURIComponent(back)}`);
+            return;
+          }
+          setAmount(-1);
+          return;
+        }
 
         setAmount(res.amount);
         setDisc  (res.discount);

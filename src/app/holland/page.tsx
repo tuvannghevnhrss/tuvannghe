@@ -2,7 +2,7 @@
 /* Server-component: quyết định render Landing hay Intro cho Holland */
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "Holland Test – Career Guidance",
+  title: "Bài test Holland | Tư vấn nghề",
   description:
     "Khám phá sở thích nghề nghiệp theo mô hình Holland (RIASEC) để định hướng công việc phù hợp.",
 };

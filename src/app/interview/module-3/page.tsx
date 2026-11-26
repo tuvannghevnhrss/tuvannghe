@@ -61,7 +61,7 @@ export default function InterviewModuleThreePage() {
 
   const [roleId, setRoleId] = useState<string | number>(fallbackRoles[0]?.id ?? 1);
   const [experienceLevelId, setExperienceLevelId] = useState<string | number>(
-    fallbackExperienceLevels[2]?.id ?? 3
+    fallbackExperienceLevels[0]?.id ?? 1
   );
   const [interviewType, setInterviewType] = useState<
     "behavioral" | "technical" | "mixed"
@@ -76,10 +76,27 @@ export default function InterviewModuleThreePage() {
       try {
         const res = await fetch("/api/interview/module-1/options");
         if (!res.ok) return;
-        const json = (await res.json()) as OptionsPayload;
+        const raw = (await res.json()) as OptionsPayload;
+        // Sắp xếp theo thứ tự chuẩn (DB trả theo id, không có thứ tự logic)
+        const sortByFallback = <T extends { name: string }>(items: T[], fallback: { name: string }[]): T[] => {
+          const rank = (o: { name: string }) => {
+            const i = fallback.findIndex(
+              (f) => normalizeVietnameseInterviewLabel(f.name) === normalizeVietnameseInterviewLabel(o.name)
+            );
+            return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+          };
+          return [...items].sort((a, b) => rank(a) - rank(b));
+        };
+        const json: OptionsPayload = {
+          ...raw,
+          roles: sortByFallback(raw.roles, fallbackRoles),
+          experienceLevels: sortByFallback(raw.experienceLevels, fallbackExperienceLevels),
+        };
         setOptions(json);
-        setRoleId((prev) => prev || json.roles[0]?.id || 1);
-        setExperienceLevelId((prev) => prev || json.experienceLevels[0]?.id || 1);
+        // Luôn chọn mục đầu của danh sách thật: id fallback (số) không tồn tại trong DB
+        // nên giữ giá trị cũ làm select/tóm tắt hiện nhãn mặc định "Ngành nghề / Cấp bậc".
+        if (json.roles[0]?.id != null) setRoleId(json.roles[0].id);
+        if (json.experienceLevels[0]?.id != null) setExperienceLevelId(json.experienceLevels[0].id);
       } catch {
         // fallback data already set
       }

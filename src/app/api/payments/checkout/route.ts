@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   let amount_due = PRICE[product as keyof typeof PRICE] ?? 0;
 
   if (product === "knowdell") {
-    amount_due = has("holland") ? PRICE.knowdell : PRICE.combo;
+    amount_due = has("holland") ? PRICE.knowdell - PRICE.holland : PRICE.combo;
   }
 
   if (product === "holland" && has("knowdell")) {

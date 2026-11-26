@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Knowdell Card Sort – Career Guidance',
+  title: 'Giá trị bản thân (Knowdell) | Tư vấn nghề',
   description:
     'Khám phá giá trị cốt lõi của bạn thông qua trò chơi Knowdell Card Sort và xây dựng hồ sơ phát triển nghề nghiệp.',
 };

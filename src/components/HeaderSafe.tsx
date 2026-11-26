@@ -103,10 +103,10 @@ export default function HeaderSafe() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
         <Link href="/" className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
           <Image src="/logo.png" alt="Logo" width={32} height={32} className="sm:h-10 sm:w-10" priority />
-          <span className="text-base font-semibold text-navText sm:text-lg">Tư vấn nghề nghiệp</span>
+          <span className="whitespace-nowrap text-base font-semibold text-navText sm:text-lg">Tư vấn nghề nghiệp</span>
         </Link>
 
-        <nav className="hidden flex-1 items-center justify-center gap-4 whitespace-nowrap md:flex sm:gap-8 lg:gap-12">
+        <nav className="hidden flex-1 items-center justify-center gap-4 whitespace-nowrap lg:flex lg:gap-8 xl:gap-12">
           {MENU.map((item) => (
             <Link
               key={item.href}
@@ -185,7 +185,7 @@ export default function HeaderSafe() {
           ) : (
             <Link
               href={`/signup?redirectedFrom=${encodeURIComponent(pathname)}`}
-              className="hidden rounded-full bg-brandYellow px-4 py-1.5 text-sm text-black transition hover:bg-yellow-500 sm:inline-block sm:text-base"
+              className="hidden whitespace-nowrap rounded-full bg-brandYellow px-4 py-1.5 text-sm text-black transition hover:bg-yellow-500 sm:inline-block sm:text-base"
             >
               Đăng ký / Đăng nhập
             </Link>
@@ -193,7 +193,7 @@ export default function HeaderSafe() {
 
           <button
             onClick={() => setMenuOpen((value) => !value)}
-            className="p-2 text-gray-600 transition hover:text-gray-800 md:hidden"
+            className="p-2 text-gray-600 transition hover:text-gray-800 lg:hidden"
             aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
           >
             {menuOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
@@ -202,7 +202,7 @@ export default function HeaderSafe() {
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 md:hidden">
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden">
           <div className="absolute right-0 top-0 h-full w-3/4 max-w-xs overflow-y-auto bg-white p-6 shadow-lg">
             <nav className="flex flex-col gap-4">
               {MENU.map((item) => (
