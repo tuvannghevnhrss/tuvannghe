@@ -25,7 +25,9 @@ export type EvidenceRow = { competency: string; quote: string; signal: string; s
 
 export type InterviewReport = {
   overall_score: number; // 0–100
-  weighted_average: number; // 1–5
+  weighted_average: number; // 1–5 (chỉ tính năng lực đã có bằng chứng)
+  /** Tỷ lệ trọng số năng lực đã có bằng chứng (0–1). */
+  coverage: number;
   fit_label: "very_high" | "high" | "medium" | "low";
   recommendation: Recommendation;
   recommendation_note: string | null;
@@ -180,6 +182,7 @@ Rules:
   return {
     overall_score: overall.overall_score,
     weighted_average: overall.weighted_average,
+    coverage: overall.coverage,
     fit_label: overall.fit_label,
     recommendation: reco.recommendation,
     recommendation_note: reco.downgraded_reason,

@@ -25,19 +25,29 @@ export type ScoredCompetency = {
 };
 
 export type OverallResult = {
-  weighted_average: number; // 1–5
+  weighted_average: number; // 1–5, chỉ tính trên các năng lực ĐÃ có bằng chứng
   overall_score: number; // 0–100
   fit_label: "very_high" | "high" | "medium" | "low";
+  /** Tỷ lệ trọng số năng lực đã có bằng chứng (0–1). */
+  coverage: number;
 };
 
-/** Điểm tổng theo trọng số: (avg − 1) / 4 × 100. */
-export function computeOverall(scored: Pick<ScoredCompetency, "weight" | "score">[]): OverallResult {
-  const totalW = scored.reduce((s, c) => s + c.weight, 0);
-  const avg = totalW > 0 ? scored.reduce((s, c) => s + c.weight * c.score, 0) / totalW : 1;
+/**
+ * Điểm tổng theo trọng số: (avg − 1) / 4 × 100.
+ * Năng lực CHƯA đủ bằng chứng không bị tính là "điểm thấp" (tránh phạt buổi phỏng vấn ngắn);
+ * chúng bị loại khỏi trung bình và được phản ánh qua `coverage`.
+ */
+export function computeOverall(scored: (Pick<ScoredCompetency, "weight" | "score"> & { insufficient_data?: boolean })[]): OverallResult {
+  const totalAll = scored.reduce((s, c) => s + c.weight, 0);
+  const assessed = scored.filter((c) => !c.insufficient_data);
+  const base = assessed.length ? assessed : scored;
+  const totalW = base.reduce((s, c) => s + c.weight, 0);
+  const avg = totalW > 0 ? base.reduce((s, c) => s + c.weight * c.score, 0) / totalW : 1;
+  const coverage = totalAll > 0 ? Math.round((assessed.reduce((s, c) => s + c.weight, 0) / totalAll) * 100) / 100 : 0;
   const weighted_average = Math.round(avg * 100) / 100;
   const overall_score = Math.round(((weighted_average - 1) / 4) * 100);
   const fit_label = overall_score >= 80 ? "very_high" : overall_score >= 62 ? "high" : overall_score >= 42 ? "medium" : "low";
-  return { weighted_average, overall_score, fit_label };
+  return { weighted_average, overall_score, fit_label, coverage };
 }
 
 /**
@@ -61,11 +71,13 @@ export function deriveRecommendation(
   const down = (l: Recommendation) => order[Math.min(order.length - 1, order.indexOf(l) + 1)];
   let reason: string | null = null;
 
-  const insufficientWeight = scored.filter((c) => c.insufficient_data).reduce((s, c) => s + c.weight, 0);
-  const totalW = scored.reduce((s, c) => s + c.weight, 0) || 1;
-  if (insufficientWeight / totalW >= 0.4 && level !== "not_recommended") {
+  // Không đủ bằng chứng thì không được đề xuất mạnh: tối đa "Consider"
+  if (overall.coverage < 0.6 && (level === "highly_recommended" || level === "recommended")) {
+    level = "consider";
+    reason = `Mới có bằng chứng cho ${Math.round(overall.coverage * 100)}% trọng số năng lực nên mức đề xuất bị giới hạn ở 'Consider'.`;
+  } else if (overall.coverage < 0.8 && level === "highly_recommended") {
     level = down(level);
-    reason = "Hơn 40% trọng số năng lực chưa đủ bằng chứng nên mức đề xuất bị hạ một bậc.";
+    reason = `Bằng chứng mới phủ ${Math.round(overall.coverage * 100)}% trọng số năng lực nên mức đề xuất bị hạ một bậc.`;
   }
 
   const heavyFail = scored.some((c) => c.weight >= 0.2 && c.score <= 1 && !c.insufficient_data);

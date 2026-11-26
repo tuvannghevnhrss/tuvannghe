@@ -47,12 +47,17 @@ export function planSummaryForPrompt(plan: InterviewPlan): string {
 
 /** Bảo đảm kế hoạch hợp lệ: id năng lực tồn tại, trọng số = 1, tổng lượt = ngân sách, có chặng bắt buộc. */
 export function normalizePlan(raw: InterviewPlan, budget: number): InterviewPlan {
+  // Buổi ngắn thì ít năng lực hơn: mỗi năng lực cần ~1.4 lượt để có bằng chứng
+  const maxCompetencies = Math.round(clamp(budget / 1.4, 3, 8));
   const competencies = normalizeWeights(
-    raw.competencies.map((c, i) => ({
-      ...c,
-      id: c.id || `c${i + 1}`,
-      target_evidence: Math.round(clamp(c.target_evidence, 1, 3)),
-    })),
+    [...raw.competencies]
+      .map((c, i) => ({
+        ...c,
+        id: c.id || `c${i + 1}`,
+        target_evidence: Math.round(clamp(c.target_evidence, 1, 3)),
+      }))
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, maxCompetencies),
   );
   const ids = new Set(competencies.map((c) => c.id));
 

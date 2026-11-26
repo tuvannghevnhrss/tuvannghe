@@ -76,6 +76,7 @@ export default function ReportTab({ report, candidateName, jobTitle }: { report:
               <span className={`rounded-full px-4 py-1.5 text-sm font-semibold ${reco?.tone ?? ""}`}>{reco?.label ?? report.recommendation}</span>
               <Chip tone="indigo">Mức phù hợp JD: {FIT_LABEL[report.fit_label]}</Chip>
               <Chip>Điểm TB có trọng số: {report.weighted_average}/5</Chip>
+              <Chip tone={report.coverage >= 0.8 ? "emerald" : report.coverage >= 0.6 ? "amber" : "rose"}>Độ phủ bằng chứng: {Math.round(report.coverage * 100)}%</Chip>
             </div>
             <p className="text-sm leading-7 text-slate-700">{report.summary}</p>
             <p className="text-sm leading-7 text-slate-600"><span className="font-medium text-slate-800">Lý do đề xuất:</span> {report.recommendation_rationale}</p>
@@ -86,7 +87,7 @@ export default function ReportTab({ report, candidateName, jobTitle }: { report:
       </Card>
 
       {/* 4: bảng điểm */}
-      <Card title="Bảng điểm năng lực" subtitle="Thang 1–5. Điểm tổng được tính theo trọng số; mỗi nhận định đều dẫn chứng từ transcript.">
+      <Card title="Bảng điểm năng lực" subtitle="Thang 1–5. Điểm tổng tính theo trọng số trên các năng lực đã có bằng chứng; năng lực chưa được hỏi đủ sâu được đánh dấu riêng và không bị tính là điểm thấp.">
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <Radar items={report.competencies.map((c) => ({ name: c.name, score: c.score }))} />
           <div className="overflow-x-auto">

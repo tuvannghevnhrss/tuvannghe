@@ -218,7 +218,7 @@ export const OrchestratorSchema = z.object({
   action: z.enum(ORCHESTRATOR_ACTIONS),
   competency: str.describe("id năng lực mà câu hỏi tiếp theo nhắm tới"),
   stage_key: z.enum(STAGE_KEYS),
-  reason: str,
+  reason: str.describe("tối đa 15 từ"),
   answer_assessment: z.object({
     quality: z.enum(["strong", "adequate", "vague", "off_topic", "insufficient"]),
     has_personal_role: bool,
@@ -242,7 +242,7 @@ export const OrchestratorSchema = z.object({
     .object({ cv_ref: str, cv_text: str, said_text: str })
     .nullable(),
   question: str.describe("câu hỏi tiếp theo (đúng 1 câu hỏi chính)"),
-  next_focus: str,
+  next_focus: str.describe("tối đa 8 từ"),
 });
 export type OrchestratorDecision = z.infer<typeof OrchestratorSchema>;
 

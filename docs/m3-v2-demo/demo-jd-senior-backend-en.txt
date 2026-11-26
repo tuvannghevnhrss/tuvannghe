@@ -1,0 +1,5 @@
+Senior Backend Engineer
+
+Senior Backend Engineer — Orion Payments
+Responsibilities: Design scalable payment APIs; own reliability and observability; mentor engineers; lead technical design reviews.
+Required: 6+ years backend; PostgreSQL; distributed systems; experience with high-throughput systems. Nice to have: Kafka, AWS.

@@ -79,13 +79,25 @@ describe("scoring", () => {
     const hi = [{ weight: 0.5, score: 5, insufficient_data: false }, { weight: 0.5, score: 4, insufficient_data: false }];
     expect(deriveRecommendation(computeOverall(hi), hi).recommendation).toBe("highly_recommended");
     const thin = [{ weight: 0.6, score: 5, insufficient_data: true }, { weight: 0.4, score: 5, insufficient_data: false }];
-    expect(deriveRecommendation(computeOverall(thin), thin).recommendation).toBe("recommended");
+    const thinRes = deriveRecommendation(computeOverall(thin), thin);
+    expect(thinRes.recommendation).toBe("consider"); // mới có bằng chứng cho 40% → không được đề xuất mạnh
+    expect(thinRes.downgraded_reason).toMatch(/40%/);
     const failHeavy = [{ weight: 0.25, score: 1, insufficient_data: false }, { weight: 0.75, score: 5, insufficient_data: false }];
     const r = deriveRecommendation(computeOverall(failHeavy), failHeavy);
     expect(r.recommendation).toBe("consider");
     expect(r.downgraded_reason).toBeTruthy();
     const low = [{ weight: 1, score: 2, insufficient_data: false }];
     expect(deriveRecommendation(computeOverall(low), low).recommendation).toBe("not_recommended");
+  });
+  it("năng lực chưa đủ bằng chứng không bị tính là điểm thấp, mà phản ánh qua độ phủ", () => {
+    const o = computeOverall([
+      { weight: 0.5, score: 5, insufficient_data: false },
+      { weight: 0.5, score: 1, insufficient_data: true },
+    ]);
+    expect(o.weighted_average).toBe(5);
+    expect(o.overall_score).toBe(100);
+    expect(o.coverage).toBe(0.5);
+    expect(computeOverall([{ weight: 1, score: 2, insufficient_data: true }]).coverage).toBe(0);
   });
   it("loại trích dẫn bịa và không cho điểm cao khi thiếu bằng chứng", () => {
     const utter = [
@@ -146,6 +158,13 @@ describe("planner.normalizePlan", () => {
       { id: "s1", key: "jd_competency", name: "JD", objective: "o", competencies: ["c1", "zzz"], planned_turns: 8, evidence_needed: [], exit_condition: "", seed_questions: [{ text: "Hãy kể về một lần bạn xử lý khiếu nại khó.", competency: "c1", source_ref: null }, { text: "ok", competency: "c1", source_ref: null }] },
     ],
   };
+  it("buổi ngắn → giới hạn số năng lực, giữ năng lực trọng số cao nhất", () => {
+    const many: InterviewPlan = { ...raw, competencies: Array.from({ length: 8 }, (_, i) => ({ id: `c${i + 1}`, name: `N${i + 1}`, description: "", weight: 8 - i, source: "jd" as const, jd_refs: [], target_evidence: 2, assessment_type: "behavioral" as const })) };
+    const p = normalizePlan(many, 7);
+    expect(p.competencies.length).toBeLessThanOrEqual(5);
+    expect(p.competencies.map((c) => c.id)).toEqual(["c1", "c2", "c3", "c4", "c5"]);
+    expect(p.competencies.reduce((s, c) => s + c.weight, 0)).toBeCloseTo(1);
+  });
   it("bổ sung chặng bắt buộc, sắp xếp, chuẩn hóa trọng số, ràng buộc ngân sách", () => {
     const p = normalizePlan(raw, 14);
     expect(p.stages[0].key).toBe("warmup");

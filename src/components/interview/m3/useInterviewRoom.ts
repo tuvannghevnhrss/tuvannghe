@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { jaccard } from "@/lib/m3/text";
-import { sayInstruction } from "@/lib/m3/persona";
+import { fillerPhrase, sayInstruction } from "@/lib/m3/persona";
 import type { InterviewConfig } from "@/lib/m3/schemas";
 import { ApiError, m3api, type Message, type Progress, type TurnResponse } from "./api";
 
@@ -80,6 +80,9 @@ export function useInterviewRoom(opts: {
   const recorderRef = useRef<{ rec: MediaRecorder; chunks: Blob[]; startedAt: number } | null>(null);
   const finishingRef = useRef(false);
   const fallbackAudioRef = useRef<HTMLAudioElement | null>(null);
+  const responseActiveRef = useRef(false);
+  const pendingSayRef = useRef<string | null>(null);
+  const fillerCountRef = useRef(0);
 
   const setStatusSafe = useCallback((s: RoomStatus) => {
     statusRef.current = s;
@@ -111,6 +114,8 @@ export function useInterviewRoom(opts: {
 
   /* ────────── đọc câu hỏi bằng giọng nói ────────── */
   const markSpeakingEnded = useCallback(() => {
+    // Còn câu đệm/câu hỏi đang chờ hoặc đang phát → chưa kết thúc
+    if (responseActiveRef.current || pendingSayRef.current) return;
     if (speakingFallbackRef.current) clearTimeout(speakingFallbackRef.current);
     if (doneRef.current) {
       void finish();
@@ -119,18 +124,37 @@ export function useInterviewRoom(opts: {
     if (statusRef.current === "speaking") setStatusSafe("listening");
   }, [finish, setStatusSafe]);
 
+  const sendResponse = useCallback(
+    (text: string, quiet = false) => {
+      const dc = dcRef.current;
+      if (!dc || dc.readyState !== "open") return false;
+      responseActiveRef.current = true;
+      if (!quiet) setStatusSafe("speaking");
+      dc.send(JSON.stringify({ type: "response.create", response: { instructions: sayInstruction(text) } }));
+      // Phòng khi không nhận được sự kiện kết thúc phát âm
+      if (speakingFallbackRef.current) clearTimeout(speakingFallbackRef.current);
+      speakingFallbackRef.current = setTimeout(() => {
+        responseActiveRef.current = false;
+        markSpeakingEnded();
+      }, Math.min(90_000, 6000 + text.length * 110));
+      return true;
+    },
+    [markSpeakingEnded, setStatusSafe],
+  );
+
+  /** Đọc câu hỏi; nếu đang đọc câu đệm thì xếp hàng và đọc ngay khi câu đệm xong (API không cho 2 response chồng nhau). */
   const say = useCallback(
     (text: string) => {
       const dc = dcRef.current;
       if (!dc || dc.readyState !== "open") return false;
-      setStatusSafe("speaking");
-      dc.send(JSON.stringify({ type: "response.create", response: { instructions: sayInstruction(text) } }));
-      // Phòng khi không nhận được sự kiện kết thúc phát âm
-      if (speakingFallbackRef.current) clearTimeout(speakingFallbackRef.current);
-      speakingFallbackRef.current = setTimeout(markSpeakingEnded, Math.min(90_000, 6000 + text.length * 110));
-      return true;
+      if (responseActiveRef.current) {
+        pendingSayRef.current = text;
+        setStatusSafe("speaking");
+        return true;
+      }
+      return sendResponse(text);
     },
-    [markSpeakingEnded, setStatusSafe],
+    [sendResponse, setStatusSafe],
   );
 
   /* ────────── gửi câu trả lời → Orchestrator ────────── */
@@ -165,6 +189,11 @@ export function useInterviewRoom(opts: {
       busyRef.current = true;
       setStatusSafe("thinking");
       setNotice(null);
+      // Che độ trễ xử lý bằng một câu đệm ngắn (chỉ ở chế độ giọng nói, không dùng khi nghiêm khắc)
+      if (modeRef.current === "voice" && !responseActiveRef.current) {
+        const filler = fillerPhrase(config.language, config.strictness, (fillerCountRef.current += 1));
+        if (filler) sendResponse(filler, true);
+      }
       try {
         const res = await m3api.turn(interviewId, { answer: text, via, want_audio: modeRef.current === "fallback" });
         handleTurnResponse(res, text, true);
@@ -181,7 +210,7 @@ export function useInterviewRoom(opts: {
         busyRef.current = false;
       }
     },
-    [handleTurnResponse, interviewId, setStatusSafe],
+    [config.language, config.strictness, handleTurnResponse, interviewId, sendResponse, setStatusSafe],
   );
 
   const flushPending = useCallback(() => {
@@ -221,23 +250,36 @@ export function useInterviewRoom(opts: {
         case "output_audio_buffer.stopped":
           markSpeakingEnded();
           break;
-        case "response.done":
+        case "response.created":
+          responseActiveRef.current = true;
+          break;
+        case "response.done": {
+          responseActiveRef.current = false;
           if (speakingFallbackRef.current) clearTimeout(speakingFallbackRef.current);
+          const queued = pendingSayRef.current;
+          if (queued) {
+            pendingSayRef.current = null;
+            sendResponse(queued);
+            break;
+          }
           // Âm thanh còn đang phát một lúc sau response.done → chờ output_audio_buffer.stopped, có chốt chặn
           speakingFallbackRef.current = setTimeout(markSpeakingEnded, 9000);
           break;
+        }
         case "error":
           console.warn("Realtime error:", ev.error?.message);
           break;
       }
     },
-    [flushPending, markSpeakingEnded, setStatusSafe],
+    [flushPending, markSpeakingEnded, sendResponse, setStatusSafe],
   );
 
   /* ────────── kết nối giọng nói ────────── */
   const teardownVoice = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
+    responseActiveRef.current = false;
+    pendingSayRef.current = null;
     dcRef.current?.close();
     pcRef.current?.close();
     dcRef.current = null;

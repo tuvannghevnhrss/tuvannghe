@@ -83,3 +83,12 @@ You do NOT decide what to ask. A separate system decides every question.
 export function sayInstruction(text: string): string {
   return `SAY EXACTLY: «${text.replace(/[«»]/g, "")}»`;
 }
+
+/** Câu đệm ngắn nói NGAY khi nhận được câu trả lời để che độ trễ xử lý (không nói ở chế độ nghiêm khắc). */
+export function fillerPhrase(lang: "vi" | "en", strictness: InterviewConfig["strictness"], seed: number): string | null {
+  if (strictness === "strict") return null;
+  const vi = ["Vâng.", "Dạ, mình hiểu rồi.", "Ừm, cảm ơn bạn."];
+  const en = ["Okay.", "I see.", "Got it, thanks."];
+  const list = lang === "vi" ? vi : en;
+  return list[Math.abs(seed) % list.length];
+}
