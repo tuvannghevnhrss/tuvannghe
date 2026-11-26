@@ -141,6 +141,11 @@ export default function InterviewModuleThreePage() {
       />
 
       <ModuleSwitcher />
+      <a href="/interview/module-3/v2" className="block rounded-[28px] border border-emerald-200 bg-emerald-50 p-5 transition hover:bg-emerald-100">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Mới · Phiên bản 2</p>
+        <p className="mt-1 text-base font-semibold text-slate-900">Phỏng vấn AI theo CV và JD thật của bạn</p>
+        <p className="mt-1 text-sm text-slate-600">Tải CV (PDF/DOCX), nhập JD → AI lập kế hoạch, phỏng vấn thích ứng bằng giọng nói và chấm điểm theo năng lực của vị trí. Bấm để thử →</p>
+      </a>
 
       <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/60 px-5 py-4 text-sm leading-6 text-emerald-900">
         <span className="font-semibold">Khác Module 2: </span>

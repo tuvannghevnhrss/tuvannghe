@@ -7,7 +7,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run",
+    "m3:smoke": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/m3-smoke.ts",
+    "m3:eval": "node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/m3-eval.ts"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.80.0",
@@ -35,6 +38,7 @@
     "langchain": "^0.3.30",
     "lodash.shuffle": "^4.2.0",
     "lucide-react": "^0.534.0",
+    "mammoth": "^1.13.0",
     "next": "15.5.21",
     "openai": "^5.8.2",
     "react": "^19.0.0",
@@ -45,6 +49,7 @@
     "remark-gfm": "^4.0.1",
     "swr": "^2.3.3",
     "tailwind-merge": "^3.3.1",
+    "unpdf": "^2.2.2",
     "use-whisper": "^0.0.1",
     "uuid": "^11.1.0",
     "ws": "^8.21.3",
@@ -71,6 +76,8 @@
     "supabase": "^2.26.9",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "^3.4.4",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.1.2"
   }
 }
